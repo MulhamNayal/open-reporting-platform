@@ -11,6 +11,8 @@ public class ReportingDbContext : DbContext
 
     public DbSet<Report> Reports => Set<Report>();
 
+    public DbSet<DataSourceConnection> DataSourceConnections => Set<DataSourceConnection>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -22,3 +24,4 @@ public class ReportingDbContext : DbContext
         );
     }
 }
+
