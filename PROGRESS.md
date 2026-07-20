@@ -4,6 +4,12 @@ Running record of what's been built, in reverse-chronological order (newest firs
 
 ---
 
+## 2026-07-20 — Milestone 1 design approved
+
+- Wrote and approved the design for Milestone 1: swap the in-memory report list for a real SQL Server database via EF Core (using the local SQLEXPRESS instance, code-first migrations, repository moves from Singleton to Scoped).
+- See `docs/superpowers/specs/2026-07-20-milestone-1-real-database-design.md` for the full design.
+- Not yet implemented — plan and code come next.
+
 ## 2026-07-20 — Milestone 0 built (Hello, full stack)
 
 - Implemented Milestone 0 end to end — list reports and add a report, working across both servers.
