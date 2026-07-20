@@ -1,0 +1,10 @@
+using Backend.Models;
+
+namespace Backend.Services.DataSources;
+
+public interface IDataSourceProvider
+{
+    Task<ConnectionTestResult> TestConnectionAsync(DataSourceConnection connection);
+
+    Task<SchemaDescriptor> DiscoverSchemaAsync(DataSourceConnection connection);
+}
