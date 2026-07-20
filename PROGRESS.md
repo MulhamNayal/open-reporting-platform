@@ -4,6 +4,15 @@ Running record of what's been built, in reverse-chronological order (newest firs
 
 ---
 
+## 2026-07-20 — Milestone 1 built (real database)
+
+- Swapped the in-memory report list for a real SQL Server database. `ReportingDbContext` + `EfReportRepository` behind the same `IReportRepository` interface — `ReportsController` didn't need to change at all.
+- DI moved from Singleton (in-memory repo) to Scoped (`ReportingDbContext`/`EfReportRepository`), the normal EF Core lifetime for a web API.
+- Schema via a code-first migration (`InitialCreate`), applied to a local SQL Server Express instance (`localhost\SQLEXPRESS`, Windows Integrated auth).
+- Proved the actual point of the milestone: posted a report, restarted the app process, and it was still there — data isn't living in memory anymore.
+- Tests moved from a hand-rolled in-memory fake to EF Core's InMemory provider — same fast/no-real-DB-needed tests, but now exercising real EF Core query/save behavior. 7 tests passing (4 controller + 3 repository).
+- All 4 plan tasks done and reviewed.
+
 ## 2026-07-20 — Milestone 1 design approved
 
 - Wrote and approved the design for Milestone 1: swap the in-memory report list for a real SQL Server database via EF Core (using the local SQLEXPRESS instance, code-first migrations, repository moves from Singleton to Scoped).
