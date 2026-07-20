@@ -4,6 +4,12 @@ Running record of what's been built, in reverse-chronological order (newest firs
 
 ---
 
+## 2026-07-20 — Report designer vision written (not buildable yet)
+
+- Wrote a forward-looking design doc for the drag-and-drop designer: normalized Widget/WidgetBinding tables (not a JSON blob), gridstack.js + ECharts on the canvas, explicit Save (delete-then-insert the whole layout).
+- Explicitly can't be built yet — depends on a data-source/dataset milestone that doesn't exist. See `docs/superpowers/specs/2026-07-20-report-designer-vision-design.md`.
+- Reference doc only, no plan/tasks follow from this.
+
 ## 2026-07-20 — Milestone 1 built (real database)
 
 - Swapped the in-memory report list for a real SQL Server database. `ReportingDbContext` + `EfReportRepository` behind the same `IReportRepository` interface — `ReportsController` didn't need to change at all.
