@@ -9,19 +9,28 @@ A self-hosted, open-source, drag-and-drop report/dashboard builder — pluggable
 
 ## Status
 
-Early scaffold — nothing built yet beyond the default templates. Design and roadmap coming as the project takes shape.
+Milestone 0 ("Hello, full stack") works end to end: the frontend lists reports and can add a report, backed by a REST API. Reports are held in memory on the backend (no database yet). The backend has xUnit tests. Database, auth, and the drag-and-drop builder come in later milestones.
 
 ## Running locally
 
-**Backend:**
+Run both servers together — the frontend calls the backend, so both need to be up.
+
+**Backend** (listens on http://localhost:5198):
 ```bash
 cd backend
 dotnet run
 ```
 
-**Frontend:**
+**Frontend** (Vite dev server on http://localhost:5173):
 ```bash
 cd frontend
 npm install
 npm run dev
+```
+
+Then open http://localhost:5173.
+
+**Backend tests:**
+```bash
+dotnet test Backend.Tests/Backend.Tests.csproj
 ```
