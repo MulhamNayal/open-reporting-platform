@@ -4,6 +4,12 @@ Running record of what's been built, in reverse-chronological order (newest firs
 
 ---
 
+## 2026-07-20 — Milestone 2 design approved (data sources)
+
+- Wrote and approved the design for Milestone 2: a pluggable data-source abstraction — IDataSourceProvider with SqlServer and REST API implementations, encrypted credentials via IDataProtector, a new admin page, and React Router shows up for the first time.
+- See `docs/superpowers/specs/2026-07-20-milestone-2-data-sources-design.md` for the full design. Bigger than Milestones 0/1 — expect more tasks in the plan.
+- Not yet implemented — plan and code come next.
+
 ## 2026-07-20 — Report designer vision written (not buildable yet)
 
 - Wrote a forward-looking design doc for the drag-and-drop designer: normalized Widget/WidgetBinding tables (not a JSON blob), gridstack.js + ECharts on the canvas, explicit Save (delete-then-insert the whole layout).
