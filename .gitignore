@@ -1,6 +1,8 @@
 # .NET
 backend/bin/
 backend/obj/
+Backend.Tests/bin/
+Backend.Tests/obj/
 *.user
 
 # Node / Vite
