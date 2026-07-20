@@ -9,17 +9,16 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - run: dotnet restore
-      - run: dotnet build --no-restore
-      # dotnet test runs once a test project exists
+      # Backend.Tests references backend/Backend.csproj, so restoring/building it
+      # covers both projects. Run from the repo root so the tests actually execute.
+      - run: dotnet restore Backend.Tests/Backend.Tests.csproj
+      - run: dotnet build Backend.Tests/Backend.Tests.csproj --no-restore
+      - run: dotnet test Backend.Tests/Backend.Tests.csproj --no-build
 
   frontend:
     runs-on: ubuntu-latest
