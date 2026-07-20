@@ -10,16 +10,6 @@ public class SqlServerProvider : IDataSourceProvider
     {
         var credentials = ParseCredentials(connection.EncryptedCredentials);
 
-        var builder = new SqlConnectionStringBuilder
-        {
-            DataSource = connection.Host,
-            InitialCatalog = connection.DatabaseName ?? "",
-            UserID = credentials.Username,
-            Password = credentials.Password,
-            TrustServerCertificate = true,
-            Encrypt = false
-        };
-
         // Use manual string building to ensure the connection string has the expected format
         // (SqlConnectionStringBuilder uses "Data Source" and "Initial Catalog" standardized names)
         var parts = new List<string>();
@@ -31,6 +21,7 @@ public class SqlServerProvider : IDataSourceProvider
         parts.Add($"User Id={credentials.Username}");
         parts.Add($"Password={credentials.Password}");
         parts.Add("TrustServerCertificate=true");
+        parts.Add("Encrypt=false");
 
         return string.Join(";", parts);
     }
