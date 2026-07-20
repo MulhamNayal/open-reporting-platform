@@ -1,16 +1,29 @@
 using Backend.Controllers;
+using Backend.Data;
 using Backend.Models;
 using Backend.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Tests;
 
 public class ReportsControllerTests
 {
+    private static IReportRepository CreateSeededRepository()
+    {
+        var options = new DbContextOptionsBuilder<ReportingDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        var context = new ReportingDbContext(options);
+        context.Database.EnsureCreated();
+        return new EfReportRepository(context);
+    }
+
     [Fact]
     public void GetAll_ReturnsOkWithSeededReports()
     {
-        var controller = new ReportsController(new InMemoryReportRepository());
+        var controller = new ReportsController(CreateSeededRepository());
 
         var result = controller.GetAll();
 
@@ -22,7 +35,7 @@ public class ReportsControllerTests
     [Fact]
     public void Create_BlankName_Returns400()
     {
-        var controller = new ReportsController(new InMemoryReportRepository());
+        var controller = new ReportsController(CreateSeededRepository());
 
         var result = controller.Create(new CreateReportRequest("   ", "whatever"));
 
@@ -32,7 +45,7 @@ public class ReportsControllerTests
     [Fact]
     public void Create_NullName_Returns400()
     {
-        var controller = new ReportsController(new InMemoryReportRepository());
+        var controller = new ReportsController(CreateSeededRepository());
 
         var result = controller.Create(new CreateReportRequest(null, null));
 
@@ -42,7 +55,7 @@ public class ReportsControllerTests
     [Fact]
     public void Create_ValidInput_Returns201WithTheReport()
     {
-        var repo = new InMemoryReportRepository();
+        var repo = CreateSeededRepository();
         var controller = new ReportsController(repo);
 
         var result = controller.Create(new CreateReportRequest("Churn", "Customers lost per quarter"));

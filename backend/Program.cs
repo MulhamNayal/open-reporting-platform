@@ -1,11 +1,16 @@
+using Backend.Data;
 using Backend.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<IReportRepository, InMemoryReportRepository>();
+
+builder.Services.AddDbContext<ReportingDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ReportingDatabase")));
+builder.Services.AddScoped<IReportRepository, EfReportRepository>();
 
 builder.Services.AddCors(options =>
 {
