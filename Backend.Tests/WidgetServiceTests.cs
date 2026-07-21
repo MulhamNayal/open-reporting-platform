@@ -8,6 +8,12 @@ namespace Backend.Tests;
 
 public class WidgetServiceTests
 {
+    private class AlwaysValidBindingValidator : IWidgetBindingValidator
+    {
+        public WidgetBindingValidationResult Validate(WidgetType type, SaveWidgetBindingRequest? binding) =>
+            WidgetBindingValidationResult.Success();
+    }
+
     private static (IWidgetService Service, ReportingDbContext Context) CreateService(string databaseName)
     {
         var options = new DbContextOptionsBuilder<ReportingDbContext>()
@@ -18,6 +24,19 @@ public class WidgetServiceTests
         context.Database.EnsureCreated();
 
         var service = new WidgetService(context, new WidgetBindingValidator());
+        return (service, context);
+    }
+
+    private static (IWidgetService Service, ReportingDbContext Context) CreateServiceWithValidator(string databaseName, IWidgetBindingValidator validator)
+    {
+        var options = new DbContextOptionsBuilder<ReportingDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+        var context = new ReportingDbContext(options);
+        context.Database.EnsureCreated();
+
+        var service = new WidgetService(context, validator);
         return (service, context);
     }
 
@@ -61,6 +80,25 @@ public class WidgetServiceTests
     }
 
     [Fact]
+    public async Task SaveWidgetsAsync_MixedBatchWithInvalidLast_ThrowsAndPersistsNothing()
+    {
+        // Two valid widgets followed by one invalid widget: proves the whole batch is validated
+        // before any mutation happens, not just that a lone invalid widget gets rejected.
+        var (service, context) = CreateService(Guid.NewGuid().ToString());
+        var validWidgetOne = new SaveWidgetRequest(WidgetType.Text, 0, 0, 4, 2, "Valid Widget", "content", null);
+        var validWidgetTwo = new SaveWidgetRequest(WidgetType.Text, 4, 0, 4, 2, "Another Valid Widget", "content", null);
+        var badWidget = new SaveWidgetRequest(
+            WidgetType.Kpi, 0, 2, 4, 3, "Bad Kpi", null,
+            new SaveWidgetBindingRequest(1, "Region", new List<string> { "Revenue" }));
+        var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { validWidgetOne, validWidgetTwo, badWidget });
+
+        await Assert.ThrowsAsync<WidgetValidationException>(() => service.SaveWidgetsAsync(1, request));
+
+        Assert.Equal(0, await context.Widgets.CountAsync());
+        Assert.Equal(0, await context.WidgetBindings.CountAsync());
+    }
+
+    [Fact]
     public async Task SaveWidgetsAsync_PersistsWidgetsWithBindings()
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
@@ -80,7 +118,7 @@ public class WidgetServiceTests
     }
 
     [Fact]
-    public async Task SaveWidgetsAsync_TextWidgetWithSubmittedBinding_StripsBindingBeforeValidating()
+    public async Task SaveWidgetsAsync_TextWidgetWithSubmittedBinding_RejectedByValidator()
     {
         // WidgetBindingValidator itself would reject this (Text must not have a binding), so this
         // proves the service surfaces that as a 400-mapped WidgetValidationException rather than
@@ -92,6 +130,24 @@ public class WidgetServiceTests
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { textWidget });
 
         await Assert.ThrowsAsync<WidgetValidationException>(() => service.SaveWidgetsAsync(1, request));
+    }
+
+    [Fact]
+    public async Task SaveWidgetsAsync_TextWidgetWithSubmittedBinding_StrippedAtPersistenceEvenIfValidatorAllowsIt()
+    {
+        // Simulates a validator that (hypothetically) lets a Text widget with a binding through, to
+        // prove the service's own defensive check at persistence time still never saves the binding —
+        // independent of whatever the validator decided.
+        var (service, _) = CreateServiceWithValidator(Guid.NewGuid().ToString(), new AlwaysValidBindingValidator());
+        var textWidget = new SaveWidgetRequest(
+            WidgetType.Text, 0, 0, 4, 2, "A note", "Hello",
+            new SaveWidgetBindingRequest(1, null, new List<string> { "Anything" }));
+        var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { textWidget });
+
+        var saved = await service.SaveWidgetsAsync(1, request);
+
+        var widget = Assert.Single(saved);
+        Assert.Null(widget.Binding);
     }
 
     [Fact]
