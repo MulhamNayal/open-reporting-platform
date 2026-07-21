@@ -126,6 +126,40 @@ public class SqlServerProvider : IDataSourceProvider
         return (sql, parameters);
     }
 
+    public string BuildRawSqlDiscoveryWrapper(string sqlText)
+    {
+        return $"SELECT TOP (0) * FROM ({sqlText}) AS x";
+    }
+
+    public async Task<IReadOnlyList<ColumnDescriptor>> DiscoverRawSqlColumnsAsync(DataSourceConnection connection, string sqlText, CancellationToken cancellationToken)
+    {
+        var connectionString = BuildConnectionString(connection);
+        await using var sqlConnection = new SqlConnection(connectionString);
+        await sqlConnection.OpenAsync(cancellationToken);
+
+        var wrappedSql = BuildRawSqlDiscoveryWrapper(sqlText);
+
+        try
+        {
+            await using var command = new SqlCommand(wrappedSql, sqlConnection);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            var columns = new List<ColumnDescriptor>();
+            for (var i = 0; i < reader.FieldCount; i++)
+            {
+                columns.Add(new ColumnDescriptor(reader.GetName(i), reader.GetDataTypeName(i)));
+            }
+
+            return columns;
+        }
+        catch (SqlException ex) when (ex.Message.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Column preview requires removing a trailing ORDER BY from this query — SQL Server doesn't allow one inside a derived table without TOP/OFFSET. The query itself will still run fine at execution time.",
+                ex);
+        }
+    }
+
     public async Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken)
     {
         var connectionString = BuildConnectionString(connection);
@@ -140,6 +174,11 @@ public class SqlServerProvider : IDataSourceProvider
             case DatasetMode.TableQuery:
                 var tableQueryDefinition = JsonSerializer.Deserialize<TableQueryDefinition>(dataset.Definition)!;
                 (sql, parameters) = BuildTableQuerySql(tableQueryDefinition.Query, rowLimit);
+                break;
+            case DatasetMode.RawSql:
+                var rawSqlDefinition = JsonSerializer.Deserialize<RawSqlDefinition>(dataset.Definition)!;
+                sql = rawSqlDefinition.SqlText;
+                parameters = Array.Empty<SqlParameter>();
                 break;
             default:
                 throw new NotSupportedException($"SqlServerProvider.ExecuteQueryAsync does not yet support mode {dataset.Mode}.");
