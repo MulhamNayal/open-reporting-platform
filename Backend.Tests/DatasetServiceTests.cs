@@ -35,6 +35,20 @@ public class DatasetServiceTests
                 new List<object?[]> { new object?[] { 1 } }));
     }
 
+    private class StubRestApiProvider : IDataSourceProvider
+    {
+        public DataSourceType SupportedType => DataSourceType.RestApi;
+
+        public Task<ConnectionTestResult> TestConnectionAsync(DataSourceConnection connection) =>
+            throw new NotImplementedException();
+
+        public Task<SchemaDescriptor> DiscoverSchemaAsync(DataSourceConnection connection) =>
+            throw new NotImplementedException();
+
+        public Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+    }
+
     private static (IDatasetService Service, ReportingDbContext Context) CreateService(string databaseName)
     {
         var options = new DbContextOptionsBuilder<ReportingDbContext>()
@@ -56,7 +70,7 @@ public class DatasetServiceTests
         });
         context.SaveChanges();
 
-        var providers = new List<IDataSourceProvider> { new StubSqlServerProvider() };
+        var providers = new List<IDataSourceProvider> { new StubSqlServerProvider(), new StubRestApiProvider() };
         var service = new DatasetService(context, new PassThroughCredentialProtector(), providers);
         return (service, context);
     }
@@ -95,13 +109,33 @@ public class DatasetServiceTests
     [Fact]
     public async Task ListAsync_ReturnsDatasetsForTheGivenConnection()
     {
-        var (service, _) = CreateService(Guid.NewGuid().ToString());
-        await service.CreateAsync(new CreateDatasetRequest(1, "Reports Table", null, DatasetMode.TableQuery, TableQueryDefinitionJson(), null));
+        var (service, context) = CreateService(Guid.NewGuid().ToString());
+
+        // Add a second connection to test filtering
+        context.DataSourceConnections.Add(new DataSourceConnection
+        {
+            Id = 2,
+            Name = "Test SQL Source 2",
+            Type = DataSourceType.SqlServer,
+            Host = "localhost\\SQLEXPRESS2",
+            DatabaseName = "TestDb2",
+            EncryptedCredentials = "encrypted:{}",
+            CreatedAtUtc = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+
+        // Create dataset under connection 1
+        var dataset1 = await service.CreateAsync(new CreateDatasetRequest(1, "Reports Table", null, DatasetMode.TableQuery, TableQueryDefinitionJson(), null));
+
+        // Create dataset under connection 2
+        await service.CreateAsync(new CreateDatasetRequest(2, "Reports Table 2", null, DatasetMode.TableQuery, TableQueryDefinitionJson(), null));
 
         var datasets = await service.ListAsync(1);
 
+        // Should return only the dataset from connection 1
         var dataset = Assert.Single(datasets);
         Assert.Equal("Reports Table", dataset.Name);
+        Assert.Equal(1, dataset.DataSourceConnectionId);
     }
 
     [Fact]
@@ -134,12 +168,22 @@ public class DatasetServiceTests
     public async Task DiscoverColumnsAsync_TableQueryMode_FiltersConnectionSchemaToSelectedColumns()
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
-        var created = await service.CreateAsync(new CreateDatasetRequest(1, "Reports Table", null, DatasetMode.TableQuery, TableQueryDefinitionJson(), null));
+
+        // Build a definition that selects only "Id" (not "Name") to test the filtering
+        var definitionSelectingOnlyId = new TableQueryDefinition(
+            new SelectQuery("Reports", new[] { "Id" }, Array.Empty<QueryFilter>(), null, null));
+        var definitionJson = JsonSerializer.Serialize(definitionSelectingOnlyId);
+
+        var created = await service.CreateAsync(
+            new CreateDatasetRequest(1, "Reports Table", null, DatasetMode.TableQuery, definitionJson, null));
 
         var columns = await service.DiscoverColumnsAsync(created.Id);
 
-        Assert.Equal(2, columns.Count);
-        Assert.Contains(columns, c => c.Name == "Id" && c.NativeType == "int");
-        Assert.Contains(columns, c => c.Name == "Name" && c.NativeType == "nvarchar(50)");
+        // Should return only the "Id" column that was selected
+        Assert.Single(columns);
+        Assert.Equal("Id", columns[0].Name);
+        Assert.Equal("int", columns[0].NativeType);
+        // Verify that "Name" column is NOT included
+        Assert.DoesNotContain(columns, c => c.Name == "Name");
     }
 }
