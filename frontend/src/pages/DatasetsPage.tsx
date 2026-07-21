@@ -132,6 +132,8 @@ function DatasetsPage() {
           setColumnPreviewError(
             typeof err.response.data?.detail === "string" ? err.response.data.detail : "Could not preview columns for this query."
           );
+        } else {
+          setColumnPreviewError("Could not preview columns for this dataset.");
         }
       }
 
@@ -142,6 +144,8 @@ function DatasetsPage() {
       setSqlText("");
       setRoutineName("");
       setProcParams([{ name: "", value: "" }]);
+      setPathSuffix("");
+      setQueryParams([{ key: "", value: "" }]);
       setRowLimit("");
       await refreshDatasets(selectedConnectionId);
     } catch (err) {
