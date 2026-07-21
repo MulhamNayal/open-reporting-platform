@@ -81,12 +81,7 @@ public class RestApiProvider : IDataSourceProvider
         var definition = JsonSerializer.Deserialize<RestQueryDefinition>(dataset.Definition)!;
         var client = _httpClientFactory.CreateClient(nameof(RestApiProvider));
 
-        var url = connection.Host + (definition.PathSuffix ?? "");
-        if (definition.QueryParams.Count > 0)
-        {
-            var query = string.Join("&", definition.QueryParams.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
-            url += (url.Contains('?') ? "&" : "?") + query;
-        }
+        var url = BuildUrl(connection.Host, definition.PathSuffix, definition.QueryParams);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         AttachCredentials(request, connection);
@@ -98,6 +93,35 @@ public class RestApiProvider : IDataSourceProvider
         using var document = JsonDocument.Parse(body);
 
         return ParseQueryResult(document.RootElement, rowLimit);
+    }
+
+    public async Task<IReadOnlyList<ColumnDescriptor>> DiscoverRestQueryColumnsAsync(DataSourceConnection connection, string? pathSuffix, IReadOnlyList<QueryParam> queryParams, CancellationToken cancellationToken)
+    {
+        var client = _httpClientFactory.CreateClient(nameof(RestApiProvider));
+        var url = BuildUrl(connection.Host, pathSuffix, queryParams);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        AttachCredentials(request, connection);
+
+        var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        using var document = JsonDocument.Parse(body);
+
+        return ParseQueryResult(document.RootElement, rowLimit: 0).Columns;
+    }
+
+    private static string BuildUrl(string host, string? pathSuffix, IReadOnlyList<QueryParam> queryParams)
+    {
+        var url = host + (pathSuffix ?? "");
+        if (queryParams.Count > 0)
+        {
+            var query = string.Join("&", queryParams.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
+            url += (url.Contains('?') ? "&" : "?") + query;
+        }
+
+        return url;
     }
 
     private static void AttachCredentials(HttpRequestMessage request, DataSourceConnection connection)
