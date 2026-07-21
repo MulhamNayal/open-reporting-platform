@@ -11,6 +11,7 @@ import WidgetRenderer from "../widgets/WidgetRenderer";
 import WidgetBindingEditor from "../widgets/WidgetBindingEditor";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
 import Ribbon from "../reportEditor/Ribbon";
+import VisualizationsPane from "../reportEditor/VisualizationsPane";
 import QueryDefinitionForm from "./QueryDefinitionForm";
 import "../reportEditor/reportEditor.css";
 
@@ -24,6 +25,7 @@ function ReportCanvasInner() {
   const [error, setError] = useState<string | null>(null);
   const [reportName, setReportName] = useState("Report");
   const [changeSourceOpen, setChangeSourceOpen] = useState(false);
+  const [selectedWidgetId, setSelectedWidgetId] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -168,7 +170,7 @@ function ReportCanvasInner() {
                     className="grid-stack-item"
                     {...({ "gs-id": String(w.id), "gs-x": w.x, "gs-y": w.y, "gs-w": w.w, "gs-h": w.h } as Record<string, unknown>)}
                   >
-                    <div className="grid-stack-item-content">
+                    <div className="grid-stack-item-content" onClick={() => setSelectedWidgetId(w.id)}>
                       <button onClick={() => removeWidget(w.id)}>Remove</button>
                       <input
                         value={w.title}
@@ -197,6 +199,17 @@ function ReportCanvasInner() {
             </div>
           </div>
         </div>
+        <VisualizationsPane
+          selectedWidget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
+          onAddWidget={(type) => addWidget(type)}
+          onChangeType={(type) => {
+            if (selectedWidgetId !== null) {
+              dispatch({ type: "typeChanged", id: selectedWidgetId, newType: type, binding: null });
+            }
+          }}
+        >
+          {(tab) => <div>{tab} tab content — Tasks 14/16</div>}
+        </VisualizationsPane>
       </div>
       <div className="pagetabs">
         <button className="ptab active">Page 1</button>
