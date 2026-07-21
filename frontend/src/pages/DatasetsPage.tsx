@@ -43,6 +43,11 @@ function DatasetsPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [previewResult, setPreviewResult] = useState<QueryResult | null>(null);
+  const [mode, setMode] = useState<"TableQuery" | "RawSql" | "StoredProcedure">("TableQuery");
+  const [sqlText, setSqlText] = useState("");
+  const [routineName, setRoutineName] = useState("");
+  const [procParams, setProcParams] = useState<{ name: string; value: string }[]>([{ name: "", value: "" }]);
+  const [columnPreviewError, setColumnPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     getDataSources()
@@ -81,31 +86,48 @@ function DatasetsPage() {
       return;
     }
 
-    try {
-      const definitionJson = JSON.stringify({
-        query: {
-          table: selectedTable,
-          columns: selectedColumns,
-          filters: [],
-          sort: null,
-          top: null,
-        },
+    let definitionJson: string;
+    if (mode === "TableQuery") {
+      definitionJson = JSON.stringify({
+        query: { table: selectedTable, columns: selectedColumns, filters: [], sort: null, top: null },
       });
+    } else if (mode === "RawSql") {
+      definitionJson = JSON.stringify({ sqlText });
+    } else {
+      definitionJson = JSON.stringify({
+        routineName,
+        parameters: procParams.filter((p) => p.name !== ""),
+      });
+    }
 
+    try {
       const created = await createDataset({
         dataSourceConnectionId: selectedConnectionId,
         name,
         description: description === "" ? null : description,
-        mode: "TableQuery",
+        mode,
         definitionJson,
         rowLimit: rowLimit === "" ? null : Number(rowLimit),
       });
 
-      await discoverDatasetColumns(created.id);
+      setColumnPreviewError(null);
+      try {
+        await discoverDatasetColumns(created.id);
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 502) {
+          setColumnPreviewError(
+            typeof err.response.data?.detail === "string" ? err.response.data.detail : "Could not preview columns for this query."
+          );
+        }
+      }
+
       setName("");
       setDescription("");
       setSelectedTable("");
       setSelectedColumns([]);
+      setSqlText("");
+      setRoutineName("");
+      setProcParams([{ name: "", value: "" }]);
       setRowLimit("");
       await refreshDatasets(selectedConnectionId);
     } catch (err) {
@@ -132,6 +154,7 @@ function DatasetsPage() {
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>Datasets</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {columnPreviewError && <Alert severity="warning" sx={{ mb: 2 }}>{columnPreviewError}</Alert>}
       <TextField
         select
         label="Connection"
@@ -147,36 +170,114 @@ function DatasetsPage() {
 
       {typeof selectedConnectionId === "number" && (
         <>
+          <TextField
+            select
+            label="Mode"
+            size="small"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as typeof mode)}
+            sx={{ minWidth: 180, mb: 3 }}
+          >
+            <MenuItem value="TableQuery">Table Query</MenuItem>
+            <MenuItem value="RawSql">Raw SQL</MenuItem>
+            <MenuItem value="StoredProcedure">Stored Procedure</MenuItem>
+          </TextField>
+        </>
+      )}
+
+      {typeof selectedConnectionId === "number" && (
+        <>
           <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField label="Dataset Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
               <TextField label="Description (optional)" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
-              <TextField
-                select
-                label="Table"
-                size="small"
-                value={selectedTable}
-                onChange={(e) => { setSelectedTable(e.target.value); setSelectedColumns([]); }}
-                sx={{ minWidth: 180 }}
-              >
-                {tables.map((t) => (
-                  <MenuItem key={t.name} value={t.name}>{t.name}</MenuItem>
-                ))}
-              </TextField>
               <TextField label="Row Limit" size="small" value={rowLimit} onChange={(e) => setRowLimit(e.target.value)} />
             </Box>
-            {selectedTableFields.length > 0 && (
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-                {selectedTableFields.map((f) => (
-                  <FormControlLabel
-                    key={f.name}
-                    control={<Checkbox checked={selectedColumns.includes(f.name)} onChange={() => toggleColumn(f.name)} />}
-                    label={f.name}
-                  />
+
+            {mode === "TableQuery" && (
+              <>
+                <TextField
+                  select
+                  label="Table"
+                  size="small"
+                  value={selectedTable}
+                  onChange={(e) => { setSelectedTable(e.target.value); setSelectedColumns([]); }}
+                  sx={{ minWidth: 180, mb: 2 }}
+                >
+                  {tables.map((t) => (
+                    <MenuItem key={t.name} value={t.name}>{t.name}</MenuItem>
+                  ))}
+                </TextField>
+                {selectedTableFields.length > 0 && (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+                    {selectedTableFields.map((f) => (
+                      <FormControlLabel
+                        key={f.name}
+                        control={<Checkbox checked={selectedColumns.includes(f.name)} onChange={() => toggleColumn(f.name)} />}
+                        label={f.name}
+                      />
+                    ))}
+                  </Box>
+                )}
+              </>
+            )}
+
+            {mode === "RawSql" && (
+              <TextField
+                label="SQL"
+                multiline
+                minRows={3}
+                fullWidth
+                value={sqlText}
+                onChange={(e) => setSqlText(e.target.value)}
+                sx={{ mb: 2 }}
+              />
+            )}
+
+            {mode === "StoredProcedure" && (
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  label="Procedure or Function Name"
+                  size="small"
+                  value={routineName}
+                  onChange={(e) => setRoutineName(e.target.value)}
+                  sx={{ mb: 1, display: "block" }}
+                />
+                {procParams.map((p, i) => (
+                  <Box key={i} sx={{ display: "flex", gap: 1, mb: 1 }}>
+                    <TextField
+                      label="Parameter Name"
+                      size="small"
+                      value={p.name}
+                      onChange={(e) => {
+                        const next = [...procParams];
+                        next[i] = { ...next[i], name: e.target.value };
+                        setProcParams(next);
+                      }}
+                    />
+                    <TextField
+                      label="Value"
+                      size="small"
+                      value={p.value}
+                      onChange={(e) => {
+                        const next = [...procParams];
+                        next[i] = { ...next[i], value: e.target.value };
+                        setProcParams(next);
+                      }}
+                    />
+                  </Box>
                 ))}
+                <Button size="small" onClick={() => setProcParams([...procParams, { name: "", value: "" }])}>
+                  Add Parameter
+                </Button>
               </Box>
             )}
-            <Button type="submit" variant="contained" disabled={!selectedTable || selectedColumns.length === 0}>
+
+            <Button type="submit" variant="contained" disabled={
+              (mode === "TableQuery" && (!selectedTable || selectedColumns.length === 0)) ||
+              (mode === "RawSql" && sqlText.trim() === "") ||
+              (mode === "StoredProcedure" && routineName.trim() === "")
+            }>
               Add Dataset
             </Button>
           </Box>
