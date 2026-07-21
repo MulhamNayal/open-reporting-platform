@@ -158,7 +158,7 @@ public class SqlServerProvider : IDataSourceProvider
         }
         catch (SqlException ex) when (ex.Message.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException(
+            throw new QueryPreviewException(
                 "Column preview requires removing a trailing ORDER BY from this query — SQL Server doesn't allow one inside a derived table without TOP/OFFSET. The query itself will still run fine at execution time.",
                 ex);
         }
