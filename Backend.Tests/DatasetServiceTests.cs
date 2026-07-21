@@ -70,7 +70,7 @@ public class DatasetServiceTests
         });
         context.SaveChanges();
 
-        var providers = new List<IDataSourceProvider> { new StubSqlServerProvider(), new StubRestApiProvider() };
+        var providers = new List<IDataSourceProvider> { new StubRestApiProvider(), new StubSqlServerProvider() };
         var service = new DatasetService(context, new PassThroughCredentialProtector(), providers);
         return (service, context);
     }
