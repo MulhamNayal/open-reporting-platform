@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { widgetDraftReducer, type WidgetDraft } from "./widgetDraftReducer";
+import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
 
 const baseWidget: WidgetDraft = {
   id: 1, type: "Text", x: 0, y: 0, w: 4, h: 2, title: "A", content: "hi", binding: null,
@@ -44,7 +45,7 @@ describe("widgetDraftReducer", () => {
   });
 
   it("bindingChanged updates only the matching widget's binding", () => {
-    const binding = { datasetId: 1, categoryField: "Month", valueFields: ["Revenue"] };
+    const binding = { categoryField: "Month", valueFields: ["Revenue"], formatOptions: DEFAULT_FORMAT_OPTIONS };
     const result = widgetDraftReducer([baseWidget], { type: "bindingChanged", id: 1, binding });
     expect(result[0].binding).toEqual(binding);
   });

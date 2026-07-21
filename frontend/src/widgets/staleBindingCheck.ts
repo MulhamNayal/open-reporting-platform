@@ -31,10 +31,16 @@ export function isBindingComplete(
     case "Kpi":
       return categoryField === null && valueFields.length === 1;
     case "Pie":
+    case "Donut":
       return categoryField !== null && valueFields.length === 1;
     case "Bar":
+    case "ClusteredBar":
+    case "StackedColumn":
     case "Line":
+    case "Area":
       return categoryField !== null && valueFields.length >= 1;
+    case "Scatter":
+      return valueFields.length === 2;
     case "Table":
       return true;
     default:

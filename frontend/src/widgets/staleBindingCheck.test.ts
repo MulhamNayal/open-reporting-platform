@@ -48,4 +48,20 @@ describe("isBindingComplete", () => {
   it("returns true for a Table with no value fields", () => {
     expect(isBindingComplete("Table", null, [])).toBe(true);
   });
+
+  it("returns true for a Scatter with exactly two value fields and no category", () => {
+    expect(isBindingComplete("Scatter", null, ["Sales", "Profit"])).toBe(true);
+  });
+
+  it("returns false for a Scatter with only one value field", () => {
+    expect(isBindingComplete("Scatter", null, ["Sales"])).toBe(false);
+  });
+
+  it("returns true for a StackedColumn with a category and one value field", () => {
+    expect(isBindingComplete("StackedColumn", "Month", ["Revenue"])).toBe(true);
+  });
+
+  it("returns true for a Donut with a category and one value field", () => {
+    expect(isBindingComplete("Donut", "Month", ["Revenue"])).toBe(true);
+  });
 });

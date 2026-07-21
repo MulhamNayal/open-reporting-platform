@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { QueryResult } from "../api/datasets";
 import type { WidgetSummary } from "../api/widgets";
+import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
 import WidgetRenderer from "./WidgetRenderer";
-import * as useDatasetExecuteModule from "./useDatasetExecute";
 
 function makeWidget(overrides: Partial<WidgetSummary>): WidgetSummary {
   return {
@@ -19,49 +20,41 @@ function makeWidget(overrides: Partial<WidgetSummary>): WidgetSummary {
   };
 }
 
-describe("WidgetRenderer", () => {
-  it("renders a Text widget without calling useDatasetExecute for real data", () => {
-    vi.spyOn(useDatasetExecuteModule, "useDatasetExecute").mockReturnValue({ data: null, loading: false, error: null });
+const formatOptionsJson = JSON.stringify(DEFAULT_FORMAT_OPTIONS);
 
-    render(<WidgetRenderer widget={makeWidget({ type: "Text", title: "A note", content: "hello" })} />);
+describe("WidgetRenderer", () => {
+  it("renders a Text widget without needing a result", () => {
+    render(<WidgetRenderer widget={makeWidget({ type: "Text", title: "A note", content: "hello" })} result={null} />);
 
     expect(screen.getByText("hello")).toBeInTheDocument();
   });
 
   it("shows an info state for a data-driven widget with no binding yet", () => {
-    vi.spyOn(useDatasetExecuteModule, "useDatasetExecute").mockReturnValue({ data: null, loading: false, error: null });
+    render(<WidgetRenderer widget={makeWidget({ type: "Kpi", binding: null })} result={null} />);
 
-    render(<WidgetRenderer widget={makeWidget({ type: "Kpi", binding: null })} />);
-
-    expect(screen.getByText("Not bound to a Dataset yet.")).toBeInTheDocument();
+    expect(screen.getByText("Not bound to a field yet.")).toBeInTheDocument();
   });
 
   it("shows the stale-binding warning when a bound field no longer exists", () => {
-    vi.spyOn(useDatasetExecuteModule, "useDatasetExecute").mockReturnValue({
-      data: { columns: [{ name: "Id", nativeType: "int" }], rows: [[1]] },
-      loading: false,
-      error: null,
-    });
+    const result: QueryResult = { columns: [{ name: "Id", nativeType: "int" }], rows: [[1]] };
 
     render(
       <WidgetRenderer
-        widget={makeWidget({ type: "Kpi", binding: { datasetId: 1, categoryField: null, valueFields: ["Revenue"] } })}
+        widget={makeWidget({ type: "Kpi", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
+        result={result}
       />,
     );
 
-    expect(screen.getByText(/no longer exists in this Dataset/)).toBeInTheDocument();
+    expect(screen.getByText(/no longer exists in this report's query/)).toBeInTheDocument();
   });
 
-  it("shows the finish-configuring info state for a Kpi bound to a Dataset with no fields chosen yet", () => {
-    vi.spyOn(useDatasetExecuteModule, "useDatasetExecute").mockReturnValue({
-      data: { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] },
-      loading: false,
-      error: null,
-    });
+  it("shows the finish-configuring info state for a Kpi with no fields chosen yet", () => {
+    const result: QueryResult = { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] };
 
     render(
       <WidgetRenderer
-        widget={makeWidget({ type: "Kpi", title: "Total Revenue", binding: { datasetId: 1, categoryField: null, valueFields: [] } })}
+        widget={makeWidget({ type: "Kpi", title: "Total Revenue", binding: { categoryField: null, valueFields: [], formatOptions: formatOptionsJson } })}
+        result={result}
       />,
     );
 
@@ -70,15 +63,12 @@ describe("WidgetRenderer", () => {
   });
 
   it("renders a Kpi value when the binding is valid", () => {
-    vi.spyOn(useDatasetExecuteModule, "useDatasetExecute").mockReturnValue({
-      data: { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] },
-      loading: false,
-      error: null,
-    });
+    const result: QueryResult = { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] };
 
     render(
       <WidgetRenderer
-        widget={makeWidget({ type: "Kpi", title: "Total Revenue", binding: { datasetId: 1, categoryField: null, valueFields: ["Revenue"] } })}
+        widget={makeWidget({ type: "Kpi", title: "Total Revenue", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
+        result={result}
       />,
     );
 

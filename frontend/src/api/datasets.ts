@@ -14,6 +14,7 @@ export interface DatasetSummary {
   description: string | null;
   mode: DatasetMode;
   rowLimit: number | null;
+  isSaved: boolean;
   columns: ColumnDescriptor[];
   createdAtUtc: string;
   updatedAtUtc: string;
@@ -52,5 +53,14 @@ export async function discoverDatasetColumns(id: number): Promise<ColumnDescript
 
 export async function executeDataset(id: number): Promise<QueryResult> {
   const res = await api.post<QueryResult>(`/datasets/${id}/execute`);
+  return res.data;
+}
+
+export async function deleteDataset(id: number): Promise<void> {
+  await api.delete(`/datasets/${id}`);
+}
+
+export async function promoteDataset(id: number, name: string): Promise<DatasetSummary> {
+  const res = await api.post<DatasetSummary>(`/datasets/${id}/promote`, { name });
   return res.data;
 }

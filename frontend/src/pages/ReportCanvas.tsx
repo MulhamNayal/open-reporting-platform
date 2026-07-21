@@ -4,7 +4,10 @@ import { Alert, Box, Button, Container, MenuItem, TextField, Typography } from "
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 import axios from "axios";
-import { getWidgets, saveWidgets, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
+import { getReport } from "../api/reports";
+import { executeDataset, type QueryResult } from "../api/datasets";
+import { getWidgets, saveWidgets, DEFAULT_FORMAT_OPTIONS, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
+import { getReportPages } from "../api/reportPages";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
 import WidgetRenderer from "../widgets/WidgetRenderer";
 import WidgetBindingEditor from "../widgets/WidgetBindingEditor";
@@ -17,22 +20,40 @@ function ReportCanvas() {
   const { id } = useParams<{ id: string }>();
   const reportId = Number(id);
 
+  const [reportPageId, setReportPageId] = useState<number | null>(null);
+  const [result, setResult] = useState<QueryResult | null>(null);
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    getWidgets(reportId)
-      .then((summaries) =>
-        dispatch({
-          type: "loaded",
-          widgets: summaries.map((s) => ({
-            id: s.id, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h, title: s.title, content: s.content, binding: s.binding,
-          })),
-        }),
-      )
-      .catch(() => setError("Could not load this report's widgets."));
+    async function load() {
+      const report = await getReport(reportId);
+      if (report.datasetId !== null) {
+        setResult(await executeDataset(report.datasetId));
+      }
+
+      const pages = await getReportPages(reportId);
+      const firstPageId = pages[0]?.id ?? null;
+      setReportPageId(firstPageId);
+      if (firstPageId === null) {
+        return;
+      }
+
+      const summaries = await getWidgets(firstPageId);
+      dispatch({
+        type: "loaded",
+        widgets: summaries.map((s) => ({
+          id: s.id, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h, title: s.title, content: s.content,
+          binding: s.binding
+            ? { categoryField: s.binding.categoryField, valueFields: s.binding.valueFields, formatOptions: DEFAULT_FORMAT_OPTIONS }
+            : null,
+        })),
+      });
+    }
+
+    load().catch(() => setError("Could not load this report."));
   }, [reportId]);
 
   const widgetIds = widgets.map((w) => w.id).join(",");
@@ -85,13 +106,20 @@ function ReportCanvas() {
   }
 
   async function handleSave() {
+    if (reportPageId === null) {
+      return;
+    }
+
     setError(null);
     const payload: SaveWidgetRequest[] = widgets.map((w) => ({
-      type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content, binding: w.binding,
+      type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
+      binding: w.binding
+        ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
+        : null,
     }));
 
     try {
-      await saveWidgets(reportId, payload);
+      await saveWidgets(reportPageId, payload);
       navigate(`/reports/${reportId}`);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
@@ -147,8 +175,16 @@ function ReportCanvas() {
                   sx={{ mb: 1 }}
                 />
               )}
-              <WidgetBindingEditor widget={w} onChange={(binding) => dispatch({ type: "bindingChanged", id: w.id, binding })} />
-              <WidgetRenderer widget={w} />
+              <WidgetBindingEditor widget={w} columns={result?.columns ?? []} onChange={(binding) => dispatch({ type: "bindingChanged", id: w.id, binding })} />
+              <WidgetRenderer
+                widget={{
+                  id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
+                  binding: w.binding
+                    ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
+                    : null,
+                }}
+                result={result}
+              />
             </div>
           </div>
         ))}

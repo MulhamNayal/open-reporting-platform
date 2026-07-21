@@ -1,9 +1,9 @@
-import type { WidgetType } from "../api/widgets";
+import type { WidgetFormatOptions, WidgetType } from "../api/widgets";
 
 export interface WidgetBindingDraft {
-  datasetId: number;
   categoryField: string | null;
   valueFields: string[];
+  formatOptions: WidgetFormatOptions;
 }
 
 export interface WidgetDraft {
@@ -25,7 +25,8 @@ export type WidgetDraftAction =
   | { type: "positionsChanged"; changes: Array<{ id: number; x: number; y: number; w: number; h: number }> }
   | { type: "titleChanged"; id: number; title: string }
   | { type: "contentChanged"; id: number; content: string }
-  | { type: "bindingChanged"; id: number; binding: WidgetBindingDraft | null };
+  | { type: "bindingChanged"; id: number; binding: WidgetBindingDraft | null }
+  | { type: "typeChanged"; id: number; newType: WidgetType; binding: WidgetBindingDraft | null };
 
 export function widgetDraftReducer(state: WidgetDraft[], action: WidgetDraftAction): WidgetDraft[] {
   switch (action.type) {
@@ -46,6 +47,10 @@ export function widgetDraftReducer(state: WidgetDraft[], action: WidgetDraftActi
       return state.map((widget) => (widget.id === action.id ? { ...widget, content: action.content } : widget));
     case "bindingChanged":
       return state.map((widget) => (widget.id === action.id ? { ...widget, binding: action.binding } : widget));
+    case "typeChanged":
+      return state.map((widget) =>
+        widget.id === action.id ? { ...widget, type: action.newType, binding: action.binding } : widget,
+      );
     default:
       return state;
   }
