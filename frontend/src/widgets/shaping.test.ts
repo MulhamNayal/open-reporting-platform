@@ -36,11 +36,12 @@ describe("shapeTableRows", () => {
 describe("shapeBarOption", () => {
   it("builds one series per value field sharing the category axis", () => {
     const option = shapeBarOption(result, "Month", ["Revenue", "Cost"]);
+    const series = option.series as Array<{ name: string; type: string; data: number[] }>;
 
     expect(option.xAxis).toMatchObject({ type: "category", data: ["Jan", "Feb"] });
-    expect(option.series).toHaveLength(2);
-    expect(option.series![0]).toMatchObject({ name: "Revenue", type: "bar", data: [100, 150] });
-    expect(option.series![1]).toMatchObject({ name: "Cost", type: "bar", data: [40, 60] });
+    expect(series).toHaveLength(2);
+    expect(series[0]).toMatchObject({ name: "Revenue", type: "bar", data: [100, 150] });
+    expect(series[1]).toMatchObject({ name: "Cost", type: "bar", data: [40, 60] });
   });
 });
 
