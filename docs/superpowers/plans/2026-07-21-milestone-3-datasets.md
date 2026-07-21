@@ -613,7 +613,8 @@ This task adds a new member to `IDataSourceProvider`, which both concrete provid
           return;
       }
 
-      var credentials = JsonSerializer.Deserialize<RestCredentials>(connection.EncryptedCredentials);
+      var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+      var credentials = JsonSerializer.Deserialize<RestCredentials>(connection.EncryptedCredentials, options);
       if (!string.IsNullOrWhiteSpace(credentials?.Token))
       {
           request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credentials.Token);
@@ -672,7 +673,7 @@ This task adds a new member to `IDataSourceProvider`, which both concrete provid
 
   private record RestCredentials(string? Token);
   ```
-  `AttachCredentials`/`RestCredentials` are the concrete implementation of the design's "attach the connection's stored credentials as `Authorization: Bearer <token>`" decision. `InferDataType` already exists in this file from Milestone 2 (used by `DiscoverSchemaAsync`) — reuse it as-is here, don't duplicate it; `ParseQueryResult` is new (Milestone 2's schema discovery never needed to extract row values, only field shapes).
+  `AttachCredentials`/`RestCredentials` are the concrete implementation of the design's "attach the connection's stored credentials as `Authorization: Bearer <token>`" decision. `InferDataType` already exists in this file from Milestone 2 (used by `DiscoverSchemaAsync`) — reuse it as-is here, don't duplicate it; `ParseQueryResult` is new (Milestone 2's schema discovery never needed to extract row values, only field shapes). Note `AttachCredentials`'s `PropertyNameCaseInsensitive = true` — the established REST credential shape is lowercase JSON (`{"token": "..."}`), matching `SqlServerProvider.ParseCredentials`'s own case-insensitive deserialization a few files over; without it, `System.Text.Json`'s default case-sensitive matching would silently fail to populate `RestCredentials.Token` and the Bearer header would never get attached — no exception, just a missing header.
 
 - [ ] Step 6: Run the tests again to confirm they pass:
   ```
