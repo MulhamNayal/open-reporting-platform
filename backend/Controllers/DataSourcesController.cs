@@ -40,12 +40,30 @@ public class DataSourcesController : ControllerBase
     [HttpPost("{id}/test")]
     public async Task<ActionResult<ConnectionTestResult>> Test(int id)
     {
-        return Ok(await _service.TestAsync(id));
+        try
+        {
+            return Ok(await _service.TestAsync(id));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
     }
 
     [HttpGet("{id}/schema")]
     public async Task<ActionResult<SchemaDescriptor>> Schema(int id)
     {
-        return Ok(await _service.DiscoverSchemaAsync(id));
+        try
+        {
+            return Ok(await _service.DiscoverSchemaAsync(id));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway);
+        }
     }
 }
