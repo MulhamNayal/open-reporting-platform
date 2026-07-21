@@ -11,10 +11,16 @@ Dataset
   Id
   DataSourceConnectionId   (FK -> DataSourceConnection)
   Name
+  Description   (nullable string)
   Mode          (enum: TableQuery | RawSql | StoredProcedure | RestQuery)
   Definition    (JSON blob, shape depends on Mode — see below)
   RowLimit      (nullable int; per-Dataset override of the default execution cap)
+  Columns       (JSON blob, ColumnDescriptor[] — a cached snapshot of the last
+                 known discovered/executed result shape, NOT re-derived live on
+                 every read; refreshed only when the user re-runs discovery or
+                 execution via the "Run/Preview" action — see Column Snapshot below)
   CreatedAtUtc
+  UpdatedAtUtc
 ```
 
 `Mode` is a single discriminator across every Dataset row regardless of connection type — not a SqlServer-only field with an implicit special case for REST. `TableQuery`/`RawSql`/`StoredProcedure` are only valid for a `DataSourceConnection` of `Type == SqlServer`; `RestQuery` is only valid for `Type == RestApi`. The service layer enforces this pairing with a simple guard clause at Dataset-creation time (the same style as `DataSourcesController`'s existing blank Name/Host checks) — no separate validation framework needed for a two-provider system.
@@ -38,6 +44,10 @@ SelectQuery
 ```
 
 `Top` is a query-shaping choice the user makes deliberately (e.g. "top 10 highest-value deals"), distinct from `Dataset.RowLimit`, which is a safety cap enforced regardless of mode — see Row Limits.
+
+### Column Snapshot
+
+`Dataset.Columns` caches the shape (`ColumnDescriptor[]`) discovered the last time the Dataset was previewed, executed, or created — it is not recomputed on every read of the Dataset (e.g. a list view). It's written whenever discovery or execution runs (both go through the same shape-reading code path) and simply overwritten with the latest result. This exists so a Dataset list/detail view can show its known columns without an extra live round-trip to the source on every page load; it is explicitly a snapshot, not a live guarantee — if the underlying table/proc/endpoint shape changes between runs, the snapshot is stale until the user re-runs Preview.
 
 ## Provider Extension
 
@@ -72,12 +82,14 @@ No coarse type category (categorical/numeric/temporal) is stored anywhere. Colla
 
 A `RestQuery` Dataset appends a path suffix and/or query parameters onto the connection's `Host` — never a fully independent URL. This mirrors the SQL Server side (connection = *where*, Dataset = *what specifically*) and means a Dataset can never redirect the connection's stored credentials to an unregistered host.
 
+**Credential attachment (resolves a gap left open earlier in this design):** unlike Milestone 2's schema discovery, which hits REST connections unauthenticated, Dataset-level execution and discovery attach the connection's stored credentials — decrypted transiently by `DataSourceService`, exactly like the SqlServer path, and handed to `RestApiProvider` as a plaintext token. Given Milestone 2's frontend already collects REST credentials as `{"token": "..."}`, the provider attaches it as `Authorization: Bearer <token>` on the request. This is the natural, no-new-concept mapping for the one credential shape that already exists; nothing more elaborate (custom header names, API-key-in-query-param, OAuth flows) is being built for this milestone.
+
 ## Schema / Column Discovery Per Mode
 
 - **TableQuery:** columns come straight from the connection's already-discovered schema (Milestone 2's `DiscoverSchemaAsync`), filtered to the selected table + columns. No new query needed.
 - **RawSql:** wrap as `SELECT TOP 0 * FROM (<SqlText>) AS x` and read the resulting reader's schema metadata (name + `GetDataTypeName()`) without materializing rows. Known gotcha: SQL Server rejects a trailing `ORDER BY` inside a derived table unless paired with `TOP`/`OFFSET`. No auto-stripping of user SQL (too fragile) — catch that specific error and surface a clear message that column preview requires removing a trailing `ORDER BY` (execution itself is unaffected, since real execution runs the SQL text directly, not wrapped).
 - **StoredProcedure:** no static-metadata shortcut is reliable enough (`sp_describe_first_result_set` breaks on temp tables/dynamic SQL/branching), so discovery runs the procedure once with its defined parameter values and reads the resulting reader's schema. This means proc discovery causes one real invocation — acceptable for a personal tool, worth being aware of for procs with side effects.
-- **RestQuery:** unchanged from Milestone 2 (shape inferred from the JSON response), now invoked against the Dataset's full appended path/params rather than only the bare connection `Host`.
+- **RestQuery:** reuses Milestone 2's JSON-shape inference logic, but invoked against the Dataset's full appended path/params (not the bare connection `Host`) and, unlike Milestone 2's discovery, with the connection's decrypted credentials attached (see "Credential attachment" above) — since a real Dataset is far more likely to hit an endpoint that actually requires auth than the bare unauthenticated schema-probe Milestone 2 does.
 
 ## Row Limits
 
@@ -106,7 +118,7 @@ Fixed at Dataset-definition time. Values are set once when the Dataset is saved;
 
 ## Frontend Implications (high level)
 
-- A "New Dataset" entry point reachable from `/datasources` (e.g. a per-connection action, or a new `/datasets` list page with a connection-picker as the first step).
+- A "New Dataset" entry point reachable from `/datasources` (e.g. a per-connection action, or a new `/datasets` list page with a connection-picker as the first step). Name is required; Description is an optional free-text field.
 - Dataset creation branches by connection type: SqlServer connections choose a Mode (Table Query / Raw SQL / Stored Procedure) first; RestApi connections go straight to a single path + query-params form (`RestQuery` mode, chosen automatically).
 - Table Query mode: table dropdown (from cached schema), column checkboxes, a simple filter-row builder (field/operator/value, ANDed), sort field + direction, Top N, and a row-limit override field.
 - Raw SQL mode: a SQL textarea with a "Preview Columns" action that hits the discovery-by-execution endpoint and displays the resulting column list (surfacing the `ORDER BY` limitation clearly if it's hit).
