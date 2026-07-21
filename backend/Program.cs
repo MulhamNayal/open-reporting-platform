@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Backend.Data;
 using Backend.Services;
 using Backend.Services.DataSources;
@@ -5,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -14,6 +16,7 @@ builder.Services.AddDbContext<ReportingDbContext>(options =>
 builder.Services.AddScoped<IReportRepository, EfReportRepository>();
 
 builder.Services.AddHttpClient();
+builder.Services.AddDataProtection();
 builder.Services.AddScoped<ICredentialProtector, CredentialProtector>();
 builder.Services.AddScoped<IDataSourceProvider, SqlServerProvider>();
 builder.Services.AddScoped<IDataSourceProvider, RestApiProvider>();
