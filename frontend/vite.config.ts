@@ -8,5 +8,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
+    server: {
+      deps: {
+        // Inline echarts so its ESM named exports are spy-able (vi.spyOn) in tests.
+        inline: ['echarts'],
+      },
+    },
   },
 })
