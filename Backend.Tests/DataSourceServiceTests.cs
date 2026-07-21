@@ -16,6 +16,8 @@ public class DataSourceServiceTests
 
     private class StubSqlServerProvider : IDataSourceProvider
     {
+        public DataSourceType SupportedType => DataSourceType.SqlServer;
+
         public Task<ConnectionTestResult> TestConnectionAsync(DataSourceConnection connection) =>
             Task.FromResult(new ConnectionTestResult(true, null));
 

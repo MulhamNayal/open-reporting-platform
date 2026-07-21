@@ -12,6 +12,8 @@ public class RestApiProvider : IDataSourceProvider
         _httpClientFactory = httpClientFactory;
     }
 
+    public DataSourceType SupportedType => DataSourceType.RestApi;
+
     public async Task<ConnectionTestResult> TestConnectionAsync(DataSourceConnection connection)
     {
         try

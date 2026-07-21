@@ -68,19 +68,13 @@ public class DataSourceService : IDataSourceService
 
     private IDataSourceProvider ResolveProvider(DataSourceType type)
     {
-        var matchingProvider = type switch
-        {
-            DataSourceType.SqlServer => _providers.FirstOrDefault(p => p.GetType().Name.Contains("SqlServer")),
-            DataSourceType.RestApi => _providers.FirstOrDefault(p => p.GetType().Name.Contains("RestApi")),
-            _ => null
-        };
-
-        if (matchingProvider is null)
+        var provider = _providers.FirstOrDefault(p => p.SupportedType == type);
+        if (provider is null)
         {
             throw new InvalidOperationException($"No provider registered for data source type {type}.");
         }
 
-        return matchingProvider;
+        return provider;
     }
 
     // Providers never call ICredentialProtector themselves (see design). This builds a transient,

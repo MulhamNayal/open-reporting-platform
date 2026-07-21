@@ -6,6 +6,8 @@ namespace Backend.Services.DataSources;
 
 public class SqlServerProvider : IDataSourceProvider
 {
+    public DataSourceType SupportedType => DataSourceType.SqlServer;
+
     public string BuildConnectionString(DataSourceConnection connection)
     {
         var credentials = ParseCredentials(connection.EncryptedCredentials);
