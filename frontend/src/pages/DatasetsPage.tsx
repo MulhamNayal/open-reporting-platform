@@ -3,7 +3,9 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Container,
+  FormControlLabel,
   MenuItem,
   Paper,
   Table,
@@ -16,16 +18,31 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
-import { getDataSources, type DataSourceConnectionSummary } from "../api/datasources";
-import { createDataset, getDatasets, type DatasetSummary } from "../api/datasets";
+import { getDataSources, getDataSourceSchema, type DataSourceConnectionSummary } from "../api/datasources";
+import {
+  createDataset,
+  discoverDatasetColumns,
+  executeDataset,
+  getDatasets,
+  type DatasetSummary,
+  type QueryResult,
+} from "../api/datasets";
+import QueryResultGrid from "../components/QueryResultGrid";
 
 function DatasetsPage() {
   const [connections, setConnections] = useState<DataSourceConnectionSummary[]>([]);
   const [selectedConnectionId, setSelectedConnectionId] = useState<number | "">("");
   const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
+  const [tables, setTables] = useState<{ name: string; fields: { name: string }[] }[]>([]);
+
   const [name, setName] = useState("");
-  const [tableName, setTableName] = useState("");
+  const [description, setDescription] = useState("");
+  const [selectedTable, setSelectedTable] = useState("");
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [rowLimit, setRowLimit] = useState("");
+
   const [error, setError] = useState<string | null>(null);
+  const [previewResult, setPreviewResult] = useState<QueryResult | null>(null);
 
   useEffect(() => {
     getDataSources()
@@ -38,36 +55,58 @@ function DatasetsPage() {
   }
 
   useEffect(() => {
-    if (typeof selectedConnectionId === "number") {
-      refreshDatasets(selectedConnectionId).catch(() => setError("Could not load datasets for this connection."));
-    } else {
+    if (typeof selectedConnectionId !== "number") {
       setDatasets([]);
+      setTables([]);
+      return;
     }
+
+    refreshDatasets(selectedConnectionId).catch(() => setError("Could not load datasets for this connection."));
+    getDataSourceSchema(selectedConnectionId)
+      .then((schema) => setTables(schema.tables))
+      .catch(() => setError("Could not load the connection's schema."));
   }, [selectedConnectionId]);
+
+  function toggleColumn(fieldName: string) {
+    setSelectedColumns((prev) =>
+      prev.includes(fieldName) ? prev.filter((c) => c !== fieldName) : [...prev, fieldName]
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setPreviewResult(null);
     if (typeof selectedConnectionId !== "number") {
       return;
     }
 
     try {
       const definitionJson = JSON.stringify({
-        query: { table: tableName, columns: [], filters: [], sort: null, top: null },
+        query: {
+          table: selectedTable,
+          columns: selectedColumns,
+          filters: [],
+          sort: null,
+          top: null,
+        },
       });
 
-      await createDataset({
+      const created = await createDataset({
         dataSourceConnectionId: selectedConnectionId,
         name,
-        description: null,
+        description: description === "" ? null : description,
         mode: "TableQuery",
         definitionJson,
-        rowLimit: null,
+        rowLimit: rowLimit === "" ? null : Number(rowLimit),
       });
 
+      await discoverDatasetColumns(created.id);
       setName("");
-      setTableName("");
+      setDescription("");
+      setSelectedTable("");
+      setSelectedColumns([]);
+      setRowLimit("");
       await refreshDatasets(selectedConnectionId);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
@@ -77,6 +116,17 @@ function DatasetsPage() {
       }
     }
   }
+
+  async function handlePreview(datasetId: number) {
+    setError(null);
+    try {
+      setPreviewResult(await executeDataset(datasetId));
+    } catch {
+      setError("Could not run this dataset.");
+    }
+  }
+
+  const selectedTableFields = tables.find((t) => t.name === selectedTable)?.fields ?? [];
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -97,15 +147,44 @@ function DatasetsPage() {
 
       {typeof selectedConnectionId === "number" && (
         <>
-          <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", gap: 2, mb: 3 }}>
-            <TextField label="Dataset Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
-            <TextField label="Table Name" size="small" value={tableName} onChange={(e) => setTableName(e.target.value)} />
-            <Button type="submit" variant="contained">Add (Table Query)</Button>
+          <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+              <TextField label="Dataset Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
+              <TextField label="Description (optional)" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
+              <TextField
+                select
+                label="Table"
+                size="small"
+                value={selectedTable}
+                onChange={(e) => { setSelectedTable(e.target.value); setSelectedColumns([]); }}
+                sx={{ minWidth: 180 }}
+              >
+                {tables.map((t) => (
+                  <MenuItem key={t.name} value={t.name}>{t.name}</MenuItem>
+                ))}
+              </TextField>
+              <TextField label="Row Limit" size="small" value={rowLimit} onChange={(e) => setRowLimit(e.target.value)} />
+            </Box>
+            {selectedTableFields.length > 0 && (
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+                {selectedTableFields.map((f) => (
+                  <FormControlLabel
+                    key={f.name}
+                    control={<Checkbox checked={selectedColumns.includes(f.name)} onChange={() => toggleColumn(f.name)} />}
+                    label={f.name}
+                  />
+                ))}
+              </Box>
+            )}
+            <Button type="submit" variant="contained" disabled={!selectedTable || selectedColumns.length === 0}>
+              Add Dataset
+            </Button>
           </Box>
-          <TableContainer component={Paper}>
+
+          <TableContainer component={Paper} sx={{ mb: 3 }}>
             <Table size="small">
               <TableHead>
-                <TableRow><TableCell>Name</TableCell><TableCell>Mode</TableCell><TableCell>Row Limit</TableCell></TableRow>
+                <TableRow><TableCell>Name</TableCell><TableCell>Mode</TableCell><TableCell>Row Limit</TableCell><TableCell>Preview</TableCell></TableRow>
               </TableHead>
               <TableBody>
                 {datasets.map((d) => (
@@ -113,11 +192,16 @@ function DatasetsPage() {
                     <TableCell>{d.name}</TableCell>
                     <TableCell>{d.mode}</TableCell>
                     <TableCell>{d.rowLimit ?? "default"}</TableCell>
+                    <TableCell>
+                      <Button size="small" variant="outlined" onClick={() => handlePreview(d.id)}>Run</Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
+
+          <QueryResultGrid result={previewResult} />
         </>
       )}
     </Container>

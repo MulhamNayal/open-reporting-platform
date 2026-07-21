@@ -40,3 +40,22 @@ export async function testDataSource(id: number): Promise<ConnectionTestResult> 
   const res = await api.post<ConnectionTestResult>(`/datasources/${id}/test`);
   return res.data;
 }
+
+export interface FieldDescriptor {
+  name: string;
+  dataType: string;
+}
+
+export interface TableDescriptor {
+  name: string;
+  fields: FieldDescriptor[];
+}
+
+export interface SchemaDescriptor {
+  tables: TableDescriptor[];
+}
+
+export async function getDataSourceSchema(id: number): Promise<SchemaDescriptor> {
+  const res = await api.get<SchemaDescriptor>(`/datasources/${id}/schema`);
+  return res.data;
+}
