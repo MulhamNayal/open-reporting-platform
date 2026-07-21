@@ -1,25 +1,29 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Alert, Box, Button, Container, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Dialog, DialogContent, DialogTitle } from "@mui/material";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 import axios from "axios";
 import { getWidgets, saveWidgets, parseFormatOptions, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
+import { renameReport, setReportDataset } from "../api/reports";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
 import WidgetRenderer from "../widgets/WidgetRenderer";
 import WidgetBindingEditor from "../widgets/WidgetBindingEditor";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
+import Ribbon from "../reportEditor/Ribbon";
+import QueryDefinitionForm from "./QueryDefinitionForm";
+import "../reportEditor/reportEditor.css";
 
 let tempIdCounter = -1;
 
-const WIDGET_TYPES: WidgetType[] = ["Table", "Bar", "Line", "Pie", "Kpi", "Text"];
-
 function ReportCanvasInner() {
   const navigate = useNavigate();
-  const { reportId, reportPageId, filteredResult, loading: queryLoading } = useReportQuery();
+  const { reportId, reportPageId, filteredResult, loading: queryLoading, refresh } = useReportQuery();
 
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
+  const [reportName, setReportName] = useState("Report");
+  const [changeSourceOpen, setChangeSourceOpen] = useState(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -106,7 +110,6 @@ function ReportCanvasInner() {
 
     try {
       await saveWidgets(reportPageId, payload);
-      navigate(`/reports/${reportId}`);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
         setError(typeof err.response.data === "string" ? err.response.data : "Could not save this report's widgets.");
@@ -116,70 +119,107 @@ function ReportCanvasInner() {
     }
   }
 
+  async function handleRename() {
+    const next = window.prompt("Rename report", reportName);
+    if (next && next.trim() !== "") {
+      await renameReport(reportId, next.trim());
+      setReportName(next.trim());
+    }
+  }
+
   if (queryLoading) {
-    return <Container maxWidth="lg" sx={{ py: 4 }}><Typography>Loading…</Typography></Container>;
+    return <div>Loading…</div>;
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>Edit Report</Typography>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-        <TextField
-          select
-          label="Add widget"
-          size="small"
-          value=""
-          onChange={(e) => addWidget(e.target.value as WidgetType)}
-          sx={{ minWidth: 160 }}
-        >
-          {WIDGET_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-        </TextField>
-        <Button variant="contained" onClick={handleSave}>Save</Button>
-      </Box>
-      <div className="grid-stack" ref={gridRef}>
-        {widgets.map((w) => (
-          <div
-            key={w.id}
-            className="grid-stack-item"
-            {...({ "gs-id": String(w.id), "gs-x": w.x, "gs-y": w.y, "gs-w": w.w, "gs-h": w.h } as Record<string, unknown>)}
-          >
-            <div className="grid-stack-item-content">
-              <Button size="small" onClick={() => removeWidget(w.id)}>Remove</Button>
-              <TextField
-                size="small"
-                label="Title"
-                value={w.title}
-                onChange={(e) => dispatch({ type: "titleChanged", id: w.id, title: e.target.value })}
-                sx={{ display: "block", mb: 1, mt: 1 }}
-              />
-              {w.type === "Text" && (
-                <TextField
-                  size="small"
-                  label="Content"
-                  multiline
-                  minRows={2}
-                  fullWidth
-                  value={w.content ?? ""}
-                  onChange={(e) => dispatch({ type: "contentChanged", id: w.id, content: e.target.value })}
-                  sx={{ mb: 1 }}
-                />
+    <div className="app" style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw" }}>
+      <Ribbon
+        reportName={reportName}
+        onRename={handleRename}
+        onChangeDataSource={() => setChangeSourceOpen(true)}
+        onBackToReports={() => navigate("/reports")}
+        onAddText={() => addWidget("Text")}
+        onToggleFilters={() => {}}
+        onRefresh={refresh}
+        onSave={handleSave}
+      />
+      {error && <Alert severity="error">{error}</Alert>}
+      <div className="body">
+        <div className="rail">
+          <button className="rbtn active" title="Report">▦</button>
+          <button className="rbtn" title="Data table">☰</button>
+        </div>
+        <div className="stage">
+          <div className="stagebar">
+            <span>{widgets.length} widget{widgets.length === 1 ? "" : "s"}</span>
+          </div>
+          <div className="scroll">
+            <div className="canvas" ref={gridRef} data-testid="gridstack-canvas">
+              {widgets.length === 0 && (
+                <div className="canvas-empty">
+                  <b>Build your report</b>
+                  <div>Pick a visual from the right, or drag a field onto the canvas.</div>
+                </div>
               )}
-              <WidgetBindingEditor widget={w} columns={filteredResult?.columns ?? []} onChange={(binding) => dispatch({ type: "bindingChanged", id: w.id, binding })} />
-              <WidgetRenderer
-                widget={{
-                  id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
-                  binding: w.binding
-                    ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
-                    : null,
-                }}
-                result={filteredResult}
-              />
+              <div className="grid-stack">
+                {widgets.map((w) => (
+                  <div
+                    key={w.id}
+                    className="grid-stack-item"
+                    {...({ "gs-id": String(w.id), "gs-x": w.x, "gs-y": w.y, "gs-w": w.w, "gs-h": w.h } as Record<string, unknown>)}
+                  >
+                    <div className="grid-stack-item-content">
+                      <button onClick={() => removeWidget(w.id)}>Remove</button>
+                      <input
+                        value={w.title}
+                        onChange={(e) => dispatch({ type: "titleChanged", id: w.id, title: e.target.value })}
+                      />
+                      {w.type === "Text" && (
+                        <textarea
+                          value={w.content ?? ""}
+                          onChange={(e) => dispatch({ type: "contentChanged", id: w.id, content: e.target.value })}
+                        />
+                      )}
+                      <WidgetBindingEditor widget={w} columns={filteredResult?.columns ?? []} onChange={(binding) => dispatch({ type: "bindingChanged", id: w.id, binding })} />
+                      <WidgetRenderer
+                        widget={{
+                          id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
+                          binding: w.binding
+                            ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
+                            : null,
+                        }}
+                        result={filteredResult}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        ))}
+        </div>
       </div>
-    </Container>
+      <div className="pagetabs">
+        <button className="ptab active">Page 1</button>
+      </div>
+
+      <Dialog open={changeSourceOpen} maxWidth="sm" fullWidth onClose={() => setChangeSourceOpen(false)}>
+        <DialogTitle>Change data source</DialogTitle>
+        <DialogContent>
+          <QueryDefinitionForm
+            onRun={async (value) => {
+              const updated = await setReportDataset(reportId, value);
+              const { executeDataset } = await import("../api/datasets");
+              return executeDataset(updated.datasetId!);
+            }}
+            onSubmit={async (value) => {
+              await setReportDataset(reportId, value);
+              setChangeSourceOpen(false);
+              await refresh();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
