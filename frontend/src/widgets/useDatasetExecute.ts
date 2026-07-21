@@ -16,6 +16,7 @@ export function useDatasetExecute(datasetId: number | null): UseDatasetExecuteRe
     if (datasetId === null) {
       setData(null);
       setError(null);
+      setLoading(false);
       return;
     }
 

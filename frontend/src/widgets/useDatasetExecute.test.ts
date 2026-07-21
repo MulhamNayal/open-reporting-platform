@@ -31,4 +31,20 @@ describe("useDatasetExecute", () => {
     expect(result.current.data).toBeNull();
     expect(result.current.error).not.toBeNull();
   });
+
+  it("resets loading to false when datasetId clears while a fetch is still in flight", async () => {
+    vi.spyOn(datasetsApi, "executeDataset").mockReturnValue(new Promise(() => {}));
+
+    const { result, rerender } = renderHook(({ datasetId }) => useDatasetExecute(datasetId), {
+      initialProps: { datasetId: 1 as number | null },
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(true));
+
+    rerender({ datasetId: null });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
 });
