@@ -3,6 +3,8 @@ import { createBrowserRouter, Link, RouterProvider, useLocation } from "react-ro
 import DataSourcesPage from "./pages/DataSourcesPage";
 import ReportsPage from "./pages/ReportsPage";
 import DatasetsPage from "./pages/DatasetsPage";
+import ReportCanvas from "./pages/ReportCanvas";
+import ReportView from "./pages/ReportView";
 
 function TopNav() {
   const location = useLocation();
@@ -39,6 +41,8 @@ function Layout({ children }: { children: React.ReactNode }) {
 const router = createBrowserRouter([
   { path: "/", element: <Layout><ReportsPage /></Layout> },
   { path: "/reports", element: <Layout><ReportsPage /></Layout> },
+  { path: "/reports/:id", element: <Layout><ReportView /></Layout> },
+  { path: "/reports/:id/edit", element: <Layout><ReportCanvas /></Layout> },
   { path: "/datasources", element: <Layout><DataSourcesPage /></Layout> },
   { path: "/datasets", element: <Layout><DatasetsPage /></Layout> },
 ]);

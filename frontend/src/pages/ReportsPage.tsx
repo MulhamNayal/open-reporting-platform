@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
+import { Link as RouterLink } from "react-router-dom";
 import { createReport, getReports, type Report } from "../api/reports";
 
 function ReportsPage() {
@@ -60,11 +61,19 @@ function ReportsPage() {
       <TableContainer component={Paper}>
         <Table size="small">
           <TableHead>
-            <TableRow><TableCell>ID</TableCell><TableCell>Name</TableCell><TableCell>Description</TableCell></TableRow>
+            <TableRow><TableCell>ID</TableCell><TableCell>Name</TableCell><TableCell>Description</TableCell><TableCell>Designer</TableCell></TableRow>
           </TableHead>
           <TableBody>
             {reports.map((r) => (
-              <TableRow key={r.id}><TableCell>{r.id}</TableCell><TableCell>{r.name}</TableCell><TableCell>{r.description}</TableCell></TableRow>
+              <TableRow key={r.id}>
+                <TableCell>{r.id}</TableCell>
+                <TableCell>{r.name}</TableCell>
+                <TableCell>{r.description}</TableCell>
+                <TableCell>
+                  <Button size="small" component={RouterLink} to={`/reports/${r.id}`}>View</Button>
+                  <Button size="small" component={RouterLink} to={`/reports/${r.id}/edit`}>Edit</Button>
+                </TableCell>
+              </TableRow>
             ))}
           </TableBody>
         </Table>
