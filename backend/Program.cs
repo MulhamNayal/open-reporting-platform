@@ -3,6 +3,7 @@ using Backend.Data;
 using Backend.Services;
 using Backend.Services.DataSources;
 using Backend.Services.Datasets;
+using Backend.Services.Widgets;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,6 +27,8 @@ builder.Services.AddScoped<IDataSourceProvider, SqlServerProvider>();
 builder.Services.AddScoped<IDataSourceProvider, RestApiProvider>();
 builder.Services.AddScoped<IDataSourceService, DataSourceService>();
 builder.Services.AddScoped<IDatasetService, DatasetService>();
+builder.Services.AddScoped<IWidgetBindingValidator, WidgetBindingValidator>();
+builder.Services.AddScoped<IWidgetService, WidgetService>();
 
 builder.Services.AddCors(options =>
 {
