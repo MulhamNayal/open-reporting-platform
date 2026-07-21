@@ -13,6 +13,8 @@ public class ReportingDbContext : DbContext
 
     public DbSet<DataSourceConnection> DataSourceConnections => Set<DataSourceConnection>();
 
+    public DbSet<Dataset> Datasets => Set<Dataset>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
