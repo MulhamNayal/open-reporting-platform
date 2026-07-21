@@ -107,7 +107,8 @@ public class RestApiProvider : IDataSourceProvider
             return;
         }
 
-        var credentials = JsonSerializer.Deserialize<RestCredentials>(connection.EncryptedCredentials);
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var credentials = JsonSerializer.Deserialize<RestCredentials>(connection.EncryptedCredentials, options);
         if (!string.IsNullOrWhiteSpace(credentials?.Token))
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credentials.Token);
