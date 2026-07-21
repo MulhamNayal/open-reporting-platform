@@ -180,6 +180,10 @@ public class SqlServerProvider : IDataSourceProvider
                 sql = rawSqlDefinition.SqlText;
                 parameters = Array.Empty<SqlParameter>();
                 break;
+            case DatasetMode.StoredProcedure:
+                var storedProcedureDefinition = JsonSerializer.Deserialize<StoredProcedureDefinition>(dataset.Definition)!;
+                (sql, parameters) = BuildStoredProcedureCommand(storedProcedureDefinition.RoutineName, storedProcedureDefinition.Parameters);
+                break;
             default:
                 throw new NotSupportedException($"SqlServerProvider.ExecuteQueryAsync does not yet support mode {dataset.Mode}.");
         }
@@ -216,6 +220,45 @@ public class SqlServerProvider : IDataSourceProvider
         }
 
         return new QueryResult(columns, rows);
+    }
+
+    public (string Sql, IReadOnlyList<SqlParameter> Parameters) BuildStoredProcedureCommand(string routineName, IReadOnlyList<StoredProcedureParameter> parameters)
+    {
+        var sqlParameters = parameters
+            .Select(p => new SqlParameter($"@{p.Name}", p.Value))
+            .ToList();
+
+        var parameterNames = string.Join(", ", sqlParameters.Select(p => p.ParameterName));
+        var sql = parameterNames.Length > 0
+            ? $"EXEC [{routineName}] {parameterNames}"
+            : $"EXEC [{routineName}]";
+
+        return (sql, sqlParameters);
+    }
+
+    public async Task<IReadOnlyList<ColumnDescriptor>> DiscoverStoredProcedureColumnsAsync(DataSourceConnection connection, string routineName, IReadOnlyList<StoredProcedureParameter> parameters, CancellationToken cancellationToken)
+    {
+        var connectionString = BuildConnectionString(connection);
+        await using var sqlConnection = new SqlConnection(connectionString);
+        await sqlConnection.OpenAsync(cancellationToken);
+
+        var (sql, sqlParameters) = BuildStoredProcedureCommand(routineName, parameters);
+
+        await using var command = new SqlCommand(sql, sqlConnection);
+        foreach (var parameter in sqlParameters)
+        {
+            command.Parameters.Add(parameter);
+        }
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        var columns = new List<ColumnDescriptor>();
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            columns.Add(new ColumnDescriptor(reader.GetName(i), reader.GetDataTypeName(i)));
+        }
+
+        return columns;
     }
 
     private static SqlCredentials ParseCredentials(string credentialsJson)
