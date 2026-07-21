@@ -4,57 +4,43 @@ import { Alert, Box, Button, Container, MenuItem, TextField, Typography } from "
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 import axios from "axios";
-import { getReport } from "../api/reports";
-import { executeDataset, type QueryResult } from "../api/datasets";
-import { getWidgets, saveWidgets, DEFAULT_FORMAT_OPTIONS, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
-import { getReportPages } from "../api/reportPages";
+import { getWidgets, saveWidgets, parseFormatOptions, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
 import WidgetRenderer from "../widgets/WidgetRenderer";
 import WidgetBindingEditor from "../widgets/WidgetBindingEditor";
+import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
 
 let tempIdCounter = -1;
 
 const WIDGET_TYPES: WidgetType[] = ["Table", "Bar", "Line", "Pie", "Kpi", "Text"];
 
-function ReportCanvas() {
-  const { id } = useParams<{ id: string }>();
-  const reportId = Number(id);
+function ReportCanvasInner() {
+  const navigate = useNavigate();
+  const { reportId, reportPageId, filteredResult, loading: queryLoading } = useReportQuery();
 
-  const [reportPageId, setReportPageId] = useState<number | null>(null);
-  const [result, setResult] = useState<QueryResult | null>(null);
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    async function load() {
-      const report = await getReport(reportId);
-      if (report.datasetId !== null) {
-        setResult(await executeDataset(report.datasetId));
-      }
-
-      const pages = await getReportPages(reportId);
-      const firstPageId = pages[0]?.id ?? null;
-      setReportPageId(firstPageId);
-      if (firstPageId === null) {
-        return;
-      }
-
-      const summaries = await getWidgets(firstPageId);
-      dispatch({
-        type: "loaded",
-        widgets: summaries.map((s) => ({
-          id: s.id, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h, title: s.title, content: s.content,
-          binding: s.binding
-            ? { categoryField: s.binding.categoryField, valueFields: s.binding.valueFields, formatOptions: DEFAULT_FORMAT_OPTIONS }
-            : null,
-        })),
-      });
+    if (reportPageId === null) {
+      return;
     }
 
-    load().catch(() => setError("Could not load this report."));
-  }, [reportId]);
+    getWidgets(reportPageId)
+      .then((summaries) =>
+        dispatch({
+          type: "loaded",
+          widgets: summaries.map((s) => ({
+            id: s.id, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h, title: s.title, content: s.content,
+            binding: s.binding
+              ? { categoryField: s.binding.categoryField, valueFields: s.binding.valueFields, formatOptions: parseFormatOptions(s.binding.formatOptions) }
+              : null,
+          })),
+        }),
+      )
+      .catch(() => setError("Could not load this report's widgets."));
+  }, [reportPageId]);
 
   const widgetIds = widgets.map((w) => w.id).join(",");
 
@@ -130,6 +116,10 @@ function ReportCanvas() {
     }
   }
 
+  if (queryLoading) {
+    return <Container maxWidth="lg" sx={{ py: 4 }}><Typography>Loading…</Typography></Container>;
+  }
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>Edit Report</Typography>
@@ -175,7 +165,7 @@ function ReportCanvas() {
                   sx={{ mb: 1 }}
                 />
               )}
-              <WidgetBindingEditor widget={w} columns={result?.columns ?? []} onChange={(binding) => dispatch({ type: "bindingChanged", id: w.id, binding })} />
+              <WidgetBindingEditor widget={w} columns={filteredResult?.columns ?? []} onChange={(binding) => dispatch({ type: "bindingChanged", id: w.id, binding })} />
               <WidgetRenderer
                 widget={{
                   id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
@@ -183,13 +173,24 @@ function ReportCanvas() {
                     ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
                     : null,
                 }}
-                result={result}
+                result={filteredResult}
               />
             </div>
           </div>
         ))}
       </div>
     </Container>
+  );
+}
+
+function ReportCanvas() {
+  const { id } = useParams<{ id: string }>();
+  const reportId = Number(id);
+
+  return (
+    <ReportQueryProvider reportId={reportId}>
+      <ReportCanvasInner />
+    </ReportQueryProvider>
   );
 }
 
