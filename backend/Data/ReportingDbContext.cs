@@ -15,6 +15,10 @@ public class ReportingDbContext : DbContext
 
     public DbSet<Dataset> Datasets => Set<Dataset>();
 
+    public DbSet<Widget> Widgets => Set<Widget>();
+
+    public DbSet<WidgetBinding> WidgetBindings => Set<WidgetBinding>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -24,6 +28,11 @@ public class ReportingDbContext : DbContext
             new Report(2, "Top Agents", "Agents ranked by closed deals"),
             new Report(3, "Pipeline Overview", "Open deals by stage")
         );
+
+        modelBuilder.Entity<Widget>()
+            .HasOne(w => w.Binding)
+            .WithOne()
+            .HasForeignKey<WidgetBinding>(b => b.WidgetId);
     }
 }
 
