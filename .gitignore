@@ -16,3 +16,6 @@ npm-debug.log*
 .vscode/
 .idea/
 .DS_Store
+
+# Superpowers scratch (SDD ledgers, brainstorm mockups)
+.superpowers/
