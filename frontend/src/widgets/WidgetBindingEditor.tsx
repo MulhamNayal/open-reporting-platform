@@ -12,10 +12,12 @@ function WidgetBindingEditor({
   const [columns, setColumns] = useState<ColumnDescriptor[]>([]);
 
   useEffect(() => {
-    getDataSources().then(async (connections) => {
-      const perConnection = await Promise.all(connections.map((c) => getDatasets(c.id)));
-      setDatasets(perConnection.flat());
-    });
+    getDataSources()
+      .then(async (connections) => {
+        const perConnection = await Promise.all(connections.map((c) => getDatasets(c.id)));
+        setDatasets(perConnection.flat());
+      })
+      .catch(() => setDatasets([]));
   }, []);
 
   const datasetId = widget.binding?.datasetId ?? null;
