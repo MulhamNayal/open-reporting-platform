@@ -1,28 +1,21 @@
 import { useEffect, useState } from "react";
 import {
-  Alert,
-  Box,
-  Button,
-  Container,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
+  Alert, Box, Button, Container, Dialog, DialogContent, DialogTitle, Paper, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import axios from "axios";
-import { Link as RouterLink } from "react-router-dom";
-import { createReport, getReports, type Report } from "../api/reports";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { createReport, getReports, setReportDataset, type Report } from "../api/reports";
+import { executeDataset, type QueryResult } from "../api/datasets";
+import QueryDefinitionForm, { type QueryDefinitionValue } from "./QueryDefinitionForm";
 
 function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pendingReport, setPendingReport] = useState<Report | null>(null);
+  const navigate = useNavigate();
 
   async function refresh() {
     setReports(await getReports());
@@ -36,10 +29,11 @@ function ReportsPage() {
     e.preventDefault();
     setError(null);
     try {
-      await createReport(name, description);
+      const created = await createReport(name, description);
       setName("");
       setDescription("");
       await refresh();
+      setPendingReport(created);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
         setError(typeof err.response.data === "string" ? err.response.data : "Invalid input.");
@@ -47,6 +41,32 @@ function ReportsPage() {
         setError("Something went wrong talking to the backend.");
       }
     }
+  }
+
+  async function handleRunQuery(value: QueryDefinitionValue): Promise<QueryResult> {
+    // A dry run just to show a preview — doesn't persist anything. Reuses the connection's
+    // own execute-style preview by temporarily wiring the Dataset via the report itself is
+    // unnecessary here: the simplest, side-effect-free preview is running the same query
+    // definition against the connection directly is out of scope for this form (Milestone 3
+    // didn't build a connection-level ad-hoc preview endpoint either) — so "Run" here previews
+    // by provisionally setting the report's dataset, same as "Use this query" would. This is a
+    // deliberate simplification: there's no separate "preview without saving" endpoint.
+    if (!pendingReport) {
+      throw new Error("No pending report");
+    }
+    const updated = await setReportDataset(pendingReport.id, value);
+    setPendingReport(updated);
+    return executeDataset(updated.datasetId!);
+  }
+
+  async function handleUseQuery(value: QueryDefinitionValue) {
+    if (!pendingReport) {
+      return;
+    }
+    await setReportDataset(pendingReport.id, value);
+    const reportId = pendingReport.id;
+    setPendingReport(null);
+    navigate(`/reports/${reportId}/edit`);
   }
 
   return (
@@ -78,6 +98,13 @@ function ReportsPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={pendingReport !== null} maxWidth="sm" fullWidth onClose={() => {}}>
+        <DialogTitle>Define this report's query</DialogTitle>
+        <DialogContent>
+          <QueryDefinitionForm onRun={handleRunQuery} onSubmit={handleUseQuery} />
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }
