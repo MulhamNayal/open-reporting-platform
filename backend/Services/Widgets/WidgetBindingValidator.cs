@@ -22,8 +22,13 @@ public class WidgetBindingValidator : IWidgetBindingValidator
         {
             WidgetType.Kpi => ValidateKpi(binding),
             WidgetType.Pie => ValidatePie(binding),
+            WidgetType.Donut => ValidatePie(binding),
             WidgetType.Bar => ValidateCategoryPlusValues(binding),
+            WidgetType.ClusteredBar => ValidateCategoryPlusValues(binding),
+            WidgetType.StackedColumn => ValidateCategoryPlusValues(binding),
             WidgetType.Line => ValidateCategoryPlusValues(binding),
+            WidgetType.Area => ValidateCategoryPlusValues(binding),
+            WidgetType.Scatter => ValidateScatter(binding),
             WidgetType.Table => WidgetBindingValidationResult.Success(),
             _ => WidgetBindingValidationResult.Failure($"Unknown widget type '{type}'.")
         };
@@ -69,6 +74,16 @@ public class WidgetBindingValidator : IWidgetBindingValidator
         if (binding.ValueFields.Count == 0)
         {
             return WidgetBindingValidationResult.Failure("This widget type requires at least one ValueField.");
+        }
+
+        return WidgetBindingValidationResult.Success();
+    }
+
+    private static WidgetBindingValidationResult ValidateScatter(SaveWidgetBindingRequest binding)
+    {
+        if (binding.ValueFields.Count != 2)
+        {
+            return WidgetBindingValidationResult.Failure("Scatter widgets must have exactly two ValueFields (X then Y).");
         }
 
         return WidgetBindingValidationResult.Success();

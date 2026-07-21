@@ -132,16 +132,88 @@ public class WidgetBindingValidatorTests
     }
 
     [Fact]
-    public void Validate_StillUnroutedNewWidgetType_FailsAsUnknown()
+    public void Validate_StackedColumnWithNoCategoryField_Fails()
     {
-        // StackedColumn/ClusteredBar/Area/Donut/Scatter aren't routed to their own cardinality
-        // rule yet — that's Task 6. Until then they must fall through the validator's existing
-        // default arm rather than crash, proving the enum addition alone didn't break anything.
-        var binding = new SaveWidgetBindingRequest("Month", new List<string> { "Revenue" }, null);
+        var binding = new SaveWidgetBindingRequest(null, new List<string> { "Revenue" }, null);
+
+        var result = _validator.Validate(WidgetType.StackedColumn, binding);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("This widget type requires a CategoryField.", result.Error);
+    }
+
+    [Fact]
+    public void Validate_ClusteredBarWithCategoryAndValues_Succeeds()
+    {
+        var binding = new SaveWidgetBindingRequest("Region", new List<string> { "Revenue" }, null);
+
+        var result = _validator.Validate(WidgetType.ClusteredBar, binding);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Validate_AreaWithNoValueFields_Fails()
+    {
+        var binding = new SaveWidgetBindingRequest("Month", new List<string>(), null);
+
+        var result = _validator.Validate(WidgetType.Area, binding);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("This widget type requires at least one ValueField.", result.Error);
+    }
+
+    [Fact]
+    public void Validate_DonutWithTwoValueFields_Fails()
+    {
+        var binding = new SaveWidgetBindingRequest("Region", new List<string> { "Revenue", "Cost" }, null);
+
+        var result = _validator.Validate(WidgetType.Donut, binding);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("Pie widgets must have exactly one ValueField.", result.Error);
+    }
+
+    [Fact]
+    public void Validate_ScatterWithExactlyTwoValueFieldsAndNoCategory_Succeeds()
+    {
+        var binding = new SaveWidgetBindingRequest(null, new List<string> { "Sales", "Profit" }, null);
+
+        var result = _validator.Validate(WidgetType.Scatter, binding);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Validate_ScatterWithCategoryField_StillSucceeds()
+    {
+        // CategoryField is optional for Scatter — a "Details" grouping field, not a shared axis.
+        var binding = new SaveWidgetBindingRequest("Segment", new List<string> { "Sales", "Profit" }, null);
+
+        var result = _validator.Validate(WidgetType.Scatter, binding);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Validate_ScatterWithOneValueField_Fails()
+    {
+        var binding = new SaveWidgetBindingRequest(null, new List<string> { "Sales" }, null);
 
         var result = _validator.Validate(WidgetType.Scatter, binding);
 
         Assert.False(result.IsValid);
-        Assert.Equal("Unknown widget type 'Scatter'.", result.Error);
+        Assert.Equal("Scatter widgets must have exactly two ValueFields (X then Y).", result.Error);
+    }
+
+    [Fact]
+    public void Validate_ScatterWithThreeValueFields_Fails()
+    {
+        var binding = new SaveWidgetBindingRequest(null, new List<string> { "Sales", "Profit", "Units" }, null);
+
+        var result = _validator.Validate(WidgetType.Scatter, binding);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("Scatter widgets must have exactly two ValueFields (X then Y).", result.Error);
     }
 }
