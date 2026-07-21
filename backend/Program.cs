@@ -3,6 +3,7 @@ using Backend.Data;
 using Backend.Services;
 using Backend.Services.DataSources;
 using Backend.Services.Datasets;
+using Backend.Services.ReportPages;
 using Backend.Services.Widgets;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,6 +30,7 @@ builder.Services.AddScoped<IDataSourceService, DataSourceService>();
 builder.Services.AddScoped<IDatasetService, DatasetService>();
 builder.Services.AddScoped<IWidgetBindingValidator, WidgetBindingValidator>();
 builder.Services.AddScoped<IWidgetService, WidgetService>();
+builder.Services.AddScoped<IReportPageService, ReportPageService>();
 
 builder.Services.AddCors(options =>
 {
