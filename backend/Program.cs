@@ -2,12 +2,16 @@ using System.Text.Json.Serialization;
 using Backend.Data;
 using Backend.Services;
 using Backend.Services.DataSources;
+using Backend.Services.Datasets;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers().AddJsonOptions(options =>
-    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.JsonSerializerOptions.Converters.Add(new DecimalAsStringJsonConverter());
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -21,6 +25,7 @@ builder.Services.AddScoped<ICredentialProtector, CredentialProtector>();
 builder.Services.AddScoped<IDataSourceProvider, SqlServerProvider>();
 builder.Services.AddScoped<IDataSourceProvider, RestApiProvider>();
 builder.Services.AddScoped<IDataSourceService, DataSourceService>();
+builder.Services.AddScoped<IDatasetService, DatasetService>();
 
 builder.Services.AddCors(options =>
 {
