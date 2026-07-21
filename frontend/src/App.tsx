@@ -1,105 +1,43 @@
-import { useEffect, useState } from "react";
-import {
-  Alert,
-  Box,
-  Button,
-  Container,
-  CssBaseline,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from "@mui/material";
-import axios from "axios";
-import { createReport, getReports, type Report } from "./api/reports";
+import { AppBar, Box, CssBaseline, Tab, Tabs, Toolbar, Typography } from "@mui/material";
+import { createBrowserRouter, Link, RouterProvider, useLocation } from "react-router-dom";
+import DataSourcesPage from "./pages/DataSourcesPage";
+import ReportsPage from "./pages/ReportsPage";
 
-function App() {
-  const [reports, setReports] = useState<Report[]>([]);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [error, setError] = useState<string | null>(null);
+function TopNav() {
+  const location = useLocation();
+  const currentTab = location.pathname.startsWith("/datasources") ? "/datasources" : "/reports";
 
-  async function refresh() {
-    setReports(await getReports());
-  }
+  return (
+    <AppBar position="static">
+      <Toolbar>
+        <Typography variant="h6" sx={{ mr: 4 }}>Open Reporting Platform</Typography>
+        <Tabs value={currentTab} textColor="inherit" indicatorColor="secondary">
+          <Tab label="Reports" value="/reports" component={Link} to="/reports" />
+          <Tab label="Data Sources" value="/datasources" component={Link} to="/datasources" />
+        </Tabs>
+      </Toolbar>
+    </AppBar>
+  );
+}
 
-  useEffect(() => {
-    refresh().catch(() => setError("Could not load reports — is the backend running on :5198?"));
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    try {
-      await createReport(name, description);
-      setName("");
-      setDescription("");
-      await refresh();
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 400) {
-        setError(typeof err.response.data === "string" ? err.response.data : "Invalid input.");
-      } else {
-        setError("Something went wrong talking to the backend.");
-      }
-    }
-  }
-
+function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CssBaseline />
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Reports
-        </Typography>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", gap: 2, mb: 3 }}>
-          <TextField label="Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
-          <TextField
-            label="Description"
-            size="small"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            sx={{ flexGrow: 1 }}
-          />
-          <Button type="submit" variant="contained">
-            Add
-          </Button>
-        </Box>
-
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Description</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {reports.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>{r.id}</TableCell>
-                  <TableCell>{r.name}</TableCell>
-                  <TableCell>{r.description}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Container>
+      <TopNav />
+      <Box>{children}</Box>
     </>
   );
+}
+
+const router = createBrowserRouter([
+  { path: "/", element: <Layout><ReportsPage /></Layout> },
+  { path: "/reports", element: <Layout><ReportsPage /></Layout> },
+  { path: "/datasources", element: <Layout><DataSourcesPage /></Layout> },
+]);
+
+function App() {
+  return <RouterProvider router={router} />;
 }
 
 export default App;
