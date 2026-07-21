@@ -23,6 +23,9 @@ public class DataSourceServiceTests
 
         public Task<SchemaDescriptor> DiscoverSchemaAsync(DataSourceConnection connection) =>
             Task.FromResult(new SchemaDescriptor(new List<TableDescriptor>()));
+
+        public Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken) =>
+            Task.FromResult(new QueryResult(new List<ColumnDescriptor>(), new List<object?[]>()));
     }
 
     private static (IDataSourceService Service, ReportingDbContext Context) CreateService(string databaseName)

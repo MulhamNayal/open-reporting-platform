@@ -1,11 +1,15 @@
 using System.Text.Json;
 using Backend.Models;
+using Backend.Services.Datasets;
 using Microsoft.Data.SqlClient;
 
 namespace Backend.Services.DataSources;
 
 public class SqlServerProvider : IDataSourceProvider
 {
+    private static readonly HashSet<string> AllowedOperators = new() { "=", "!=", ">", "<", ">=", "<=", "LIKE" };
+    private static readonly HashSet<string> AllowedSortDirections = new() { "ASC", "DESC" };
+
     public DataSourceType SupportedType => DataSourceType.SqlServer;
 
     public string BuildConnectionString(DataSourceConnection connection)
@@ -80,6 +84,99 @@ public class SqlServerProvider : IDataSourceProvider
             .ToList();
 
         return new SchemaDescriptor(tables);
+    }
+
+    public (string Sql, IReadOnlyList<SqlParameter> Parameters) BuildTableQuerySql(SelectQuery query, int rowLimit)
+    {
+        var effectiveTop = query.Top.HasValue ? Math.Min(query.Top.Value, rowLimit) : rowLimit;
+        var columnList = string.Join(", ", query.Columns.Select(c => $"[{c}]"));
+
+        var parameters = new List<SqlParameter>();
+        var whereClauses = new List<string>();
+
+        foreach (var filter in query.Filters)
+        {
+            if (!AllowedOperators.Contains(filter.Operator))
+            {
+                throw new InvalidOperationException($"Unsupported filter operator: {filter.Operator}");
+            }
+
+            var parameterName = $"@p{parameters.Count}";
+            whereClauses.Add($"[{filter.Field}] {filter.Operator} {parameterName}");
+            parameters.Add(new SqlParameter(parameterName, filter.Value));
+        }
+
+        var sql = $"SELECT TOP ({effectiveTop}) {columnList} FROM [{query.Table}]";
+
+        if (whereClauses.Count > 0)
+        {
+            sql += " WHERE " + string.Join(" AND ", whereClauses);
+        }
+
+        if (query.Sort is not null)
+        {
+            if (!AllowedSortDirections.Contains(query.Sort.Direction))
+            {
+                throw new InvalidOperationException($"Unsupported sort direction: {query.Sort.Direction}");
+            }
+
+            sql += $" ORDER BY [{query.Sort.Field}] {query.Sort.Direction}";
+        }
+
+        return (sql, parameters);
+    }
+
+    public async Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken)
+    {
+        var connectionString = BuildConnectionString(connection);
+        await using var sqlConnection = new SqlConnection(connectionString);
+        await sqlConnection.OpenAsync(cancellationToken);
+
+        string sql;
+        IReadOnlyList<SqlParameter> parameters;
+
+        switch (dataset.Mode)
+        {
+            case DatasetMode.TableQuery:
+                var tableQueryDefinition = JsonSerializer.Deserialize<TableQueryDefinition>(dataset.Definition)!;
+                (sql, parameters) = BuildTableQuerySql(tableQueryDefinition.Query, rowLimit);
+                break;
+            default:
+                throw new NotSupportedException($"SqlServerProvider.ExecuteQueryAsync does not yet support mode {dataset.Mode}.");
+        }
+
+        await using var command = new SqlCommand(sql, sqlConnection);
+        foreach (var parameter in parameters)
+        {
+            command.Parameters.Add(parameter);
+        }
+
+        return await ReadQueryResultAsync(command, rowLimit, cancellationToken);
+    }
+
+    private static async Task<QueryResult> ReadQueryResultAsync(SqlCommand command, int rowLimit, CancellationToken cancellationToken)
+    {
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        var columns = new List<ColumnDescriptor>();
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            columns.Add(new ColumnDescriptor(reader.GetName(i), reader.GetDataTypeName(i)));
+        }
+
+        var rows = new List<object?[]>();
+        while (rows.Count < rowLimit && await reader.ReadAsync(cancellationToken))
+        {
+            var row = new object?[reader.FieldCount];
+            for (var i = 0; i < reader.FieldCount; i++)
+            {
+                row[i] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+            }
+
+            rows.Add(row);
+        }
+
+        return new QueryResult(columns, rows);
     }
 
     private static SqlCredentials ParseCredentials(string credentialsJson)
