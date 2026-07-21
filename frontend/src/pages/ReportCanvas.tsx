@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Box, Button, Container, MenuItem, TextField, Typography } from "@mui/material";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
+import axios from "axios";
 import { getWidgets, saveWidgets, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
 import WidgetRenderer from "../widgets/WidgetRenderer";
@@ -92,8 +93,12 @@ function ReportCanvas() {
     try {
       await saveWidgets(reportId, payload);
       navigate(`/reports/${reportId}`);
-    } catch {
-      setError("Could not save this report's widgets.");
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 400) {
+        setError(typeof err.response.data === "string" ? err.response.data : "Could not save this report's widgets.");
+      } else {
+        setError("Could not save this report's widgets.");
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 import { Alert, Paper, Typography } from "@mui/material";
 import type { WidgetSummary } from "../api/widgets";
 import { useDatasetExecute } from "./useDatasetExecute";
-import { findMissingFields } from "./staleBindingCheck";
+import { findMissingFields, isBindingComplete } from "./staleBindingCheck";
 import TableWidget from "./TableWidget";
 import BarWidget from "./BarWidget";
 import LineWidget from "./LineWidget";
@@ -52,6 +52,15 @@ function WidgetRenderer({ widget }: { widget: WidgetSummary }) {
         <Alert severity="warning" sx={{ mt: 1 }}>
           Field {missingFields.join(", ")} no longer exists in this Dataset — edit the binding to fix.
         </Alert>
+      </Paper>
+    );
+  }
+
+  if (!isBindingComplete(widget.type, widget.binding.categoryField, widget.binding.valueFields)) {
+    return (
+      <Paper sx={{ p: 2, height: "100%" }}>
+        <Typography variant="subtitle2">{widget.title}</Typography>
+        <Alert severity="info" sx={{ mt: 1 }}>Finish configuring this widget's fields to see a preview.</Alert>
       </Paper>
     );
   }

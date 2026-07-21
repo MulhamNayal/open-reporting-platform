@@ -52,6 +52,23 @@ describe("WidgetRenderer", () => {
     expect(screen.getByText(/no longer exists in this Dataset/)).toBeInTheDocument();
   });
 
+  it("shows the finish-configuring info state for a Kpi bound to a Dataset with no fields chosen yet", () => {
+    vi.spyOn(useDatasetExecuteModule, "useDatasetExecute").mockReturnValue({
+      data: { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] },
+      loading: false,
+      error: null,
+    });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Kpi", title: "Total Revenue", binding: { datasetId: 1, categoryField: null, valueFields: [] } })}
+      />,
+    );
+
+    expect(screen.getByText("Finish configuring this widget's fields to see a preview.")).toBeInTheDocument();
+    expect(screen.queryByText("NaN")).not.toBeInTheDocument();
+  });
+
   it("renders a Kpi value when the binding is valid", () => {
     vi.spyOn(useDatasetExecuteModule, "useDatasetExecute").mockReturnValue({
       data: { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] },
