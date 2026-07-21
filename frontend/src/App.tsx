@@ -1,50 +1,31 @@
-import { AppBar, Box, CssBaseline, Tab, Tabs, Toolbar, Typography } from "@mui/material";
-import { createBrowserRouter, Link, RouterProvider, useLocation } from "react-router-dom";
+import { Box, CssBaseline } from "@mui/material";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import DataSourcesPage from "./pages/DataSourcesPage";
 import ReportsPage from "./pages/ReportsPage";
 import DatasetsPage from "./pages/DatasetsPage";
 import ReportCanvas from "./pages/ReportCanvas";
 import ReportView from "./pages/ReportView";
+import AppSidebar from "./components/AppSidebar";
 
-function TopNav() {
-  const location = useLocation();
-  const currentTab = location.pathname.startsWith("/datasources")
-    ? "/datasources"
-    : location.pathname.startsWith("/datasets")
-      ? "/datasets"
-      : "/reports";
-
-  return (
-    <AppBar position="static">
-      <Toolbar>
-        <Typography variant="h6" sx={{ mr: 4 }}>Open Reporting Platform</Typography>
-        <Tabs value={currentTab} textColor="inherit" indicatorColor="secondary">
-          <Tab label="Reports" value="/reports" component={Link} to="/reports" />
-          <Tab label="Data Sources" value="/datasources" component={Link} to="/datasources" />
-          <Tab label="Datasets" value="/datasets" component={Link} to="/datasets" />
-        </Tabs>
-      </Toolbar>
-    </AppBar>
-  );
-}
-
-function Layout({ children }: { children: React.ReactNode }) {
+function AppShellLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CssBaseline />
-      <TopNav />
-      <Box>{children}</Box>
+      <Box sx={{ display: "flex", minHeight: "100vh" }}>
+        <AppSidebar />
+        <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+      </Box>
     </>
   );
 }
 
 const router = createBrowserRouter([
-  { path: "/", element: <Layout><ReportsPage /></Layout> },
-  { path: "/reports", element: <Layout><ReportsPage /></Layout> },
-  { path: "/reports/:id", element: <Layout><ReportView /></Layout> },
-  { path: "/reports/:id/edit", element: <Layout><ReportCanvas /></Layout> },
-  { path: "/datasources", element: <Layout><DataSourcesPage /></Layout> },
-  { path: "/datasets", element: <Layout><DatasetsPage /></Layout> },
+  { path: "/", element: <AppShellLayout><ReportsPage /></AppShellLayout> },
+  { path: "/reports", element: <AppShellLayout><ReportsPage /></AppShellLayout> },
+  { path: "/reports/:id", element: <><CssBaseline /><ReportView /></> },
+  { path: "/reports/:id/edit", element: <><CssBaseline /><ReportCanvas /></> },
+  { path: "/datasources", element: <AppShellLayout><DataSourcesPage /></AppShellLayout> },
+  { path: "/datasets", element: <AppShellLayout><DatasetsPage /></AppShellLayout> },
 ]);
 
 function App() {
