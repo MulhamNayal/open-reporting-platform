@@ -7,6 +7,10 @@ namespace Backend.Services.DataSources;
 
 public class SqlServerProvider : IDataSourceProvider
 {
+    // See DatasetService.CaseInsensitiveJson for why this is needed: definitionJson is submitted
+    // as ordinary camelCase JSON, but the record types it deserializes into are PascalCase.
+    private static readonly JsonSerializerOptions CaseInsensitiveJson = new() { PropertyNameCaseInsensitive = true };
+
     private static readonly HashSet<string> AllowedOperators = new() { "=", "!=", ">", "<", ">=", "<=", "LIKE" };
     private static readonly HashSet<string> AllowedSortDirections = new() { "ASC", "DESC" };
 
@@ -172,16 +176,16 @@ public class SqlServerProvider : IDataSourceProvider
         switch (dataset.Mode)
         {
             case DatasetMode.TableQuery:
-                var tableQueryDefinition = JsonSerializer.Deserialize<TableQueryDefinition>(dataset.Definition)!;
+                var tableQueryDefinition = JsonSerializer.Deserialize<TableQueryDefinition>(dataset.Definition, CaseInsensitiveJson)!;
                 (sql, parameters) = BuildTableQuerySql(tableQueryDefinition.Query, rowLimit);
                 break;
             case DatasetMode.RawSql:
-                var rawSqlDefinition = JsonSerializer.Deserialize<RawSqlDefinition>(dataset.Definition)!;
+                var rawSqlDefinition = JsonSerializer.Deserialize<RawSqlDefinition>(dataset.Definition, CaseInsensitiveJson)!;
                 sql = rawSqlDefinition.SqlText;
                 parameters = Array.Empty<SqlParameter>();
                 break;
             case DatasetMode.StoredProcedure:
-                var storedProcedureDefinition = JsonSerializer.Deserialize<StoredProcedureDefinition>(dataset.Definition)!;
+                var storedProcedureDefinition = JsonSerializer.Deserialize<StoredProcedureDefinition>(dataset.Definition, CaseInsensitiveJson)!;
                 (sql, parameters) = BuildStoredProcedureCommand(storedProcedureDefinition.RoutineName, storedProcedureDefinition.Parameters);
                 break;
             default:
@@ -265,8 +269,7 @@ public class SqlServerProvider : IDataSourceProvider
     {
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var credentials = JsonSerializer.Deserialize<SqlCredentials>(credentialsJson, options);
+            var credentials = JsonSerializer.Deserialize<SqlCredentials>(credentialsJson, CaseInsensitiveJson);
             if (credentials is null)
             {
                 throw new InvalidOperationException("SQL Server credentials JSON deserialized to null.");

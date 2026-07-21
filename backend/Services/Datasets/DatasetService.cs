@@ -10,6 +10,13 @@ public class DatasetService : IDatasetService
 {
     private const int DefaultRowLimit = 1000;
 
+    // Client-submitted definitionJson (and any other free-form JSON persisted alongside a Dataset)
+    // uses ordinary camelCase, same as every other JSON body this API accepts. The record types in
+    // DatasetDefinitions.cs/SelectQuery.cs are plain PascalCase, so deserializing them needs the same
+    // case-insensitive behavior ASP.NET Core's model binder already applies to controller-bound
+    // requests — JsonSerializer.Deserialize does not do this by default.
+    private static readonly JsonSerializerOptions CaseInsensitiveJson = new() { PropertyNameCaseInsensitive = true };
+
     private readonly ReportingDbContext _context;
     private readonly ICredentialProtector _credentialProtector;
     private readonly IReadOnlyList<IDataSourceProvider> _providers;
@@ -97,7 +104,7 @@ public class DatasetService : IDatasetService
     {
         var provider = ResolveProvider(connection.Type);
         var schema = await provider.DiscoverSchemaAsync(connection);
-        var definition = JsonSerializer.Deserialize<TableQueryDefinition>(dataset.Definition)!;
+        var definition = JsonSerializer.Deserialize<TableQueryDefinition>(dataset.Definition, CaseInsensitiveJson)!;
 
         var table = schema.Tables.FirstOrDefault(t => t.Name == definition.Query.Table);
         if (table is null)
@@ -114,21 +121,21 @@ public class DatasetService : IDatasetService
     private async Task<IReadOnlyList<ColumnDescriptor>> DiscoverRawSqlColumnsAsync(DataSourceConnection connection, Dataset dataset)
     {
         var sqlServerProvider = (SqlServerProvider)ResolveProvider(connection.Type);
-        var definition = JsonSerializer.Deserialize<RawSqlDefinition>(dataset.Definition)!;
+        var definition = JsonSerializer.Deserialize<RawSqlDefinition>(dataset.Definition, CaseInsensitiveJson)!;
         return await sqlServerProvider.DiscoverRawSqlColumnsAsync(connection, definition.SqlText, CancellationToken.None);
     }
 
     private async Task<IReadOnlyList<ColumnDescriptor>> DiscoverStoredProcedureColumnsAsync(DataSourceConnection connection, Dataset dataset)
     {
         var sqlServerProvider = (SqlServerProvider)ResolveProvider(connection.Type);
-        var definition = JsonSerializer.Deserialize<StoredProcedureDefinition>(dataset.Definition)!;
+        var definition = JsonSerializer.Deserialize<StoredProcedureDefinition>(dataset.Definition, CaseInsensitiveJson)!;
         return await sqlServerProvider.DiscoverStoredProcedureColumnsAsync(connection, definition.RoutineName, definition.Parameters, CancellationToken.None);
     }
 
     private async Task<IReadOnlyList<ColumnDescriptor>> DiscoverRestQueryColumnsAsync(DataSourceConnection connection, Dataset dataset)
     {
         var restApiProvider = (RestApiProvider)ResolveProvider(connection.Type);
-        var definition = JsonSerializer.Deserialize<RestQueryDefinition>(dataset.Definition)!;
+        var definition = JsonSerializer.Deserialize<RestQueryDefinition>(dataset.Definition, CaseInsensitiveJson)!;
         return await restApiProvider.DiscoverRestQueryColumnsAsync(connection, definition.PathSuffix, definition.QueryParams, CancellationToken.None);
     }
 

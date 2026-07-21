@@ -7,6 +7,11 @@ namespace Backend.Services.DataSources;
 
 public class RestApiProvider : IDataSourceProvider
 {
+    // See DatasetService.CaseInsensitiveJson for why this is needed: definitionJson (and the
+    // connection's credentialsJson) are submitted as ordinary camelCase JSON, but the record types
+    // they deserialize into are PascalCase.
+    private static readonly JsonSerializerOptions CaseInsensitiveJson = new() { PropertyNameCaseInsensitive = true };
+
     private readonly IHttpClientFactory _httpClientFactory;
 
     public RestApiProvider(IHttpClientFactory httpClientFactory)
@@ -78,7 +83,7 @@ public class RestApiProvider : IDataSourceProvider
             throw new NotSupportedException($"RestApiProvider.ExecuteQueryAsync does not support mode {dataset.Mode}.");
         }
 
-        var definition = JsonSerializer.Deserialize<RestQueryDefinition>(dataset.Definition)!;
+        var definition = JsonSerializer.Deserialize<RestQueryDefinition>(dataset.Definition, CaseInsensitiveJson)!;
         var client = _httpClientFactory.CreateClient(nameof(RestApiProvider));
 
         var url = BuildUrl(connection.Host, definition.PathSuffix, definition.QueryParams);
@@ -131,8 +136,7 @@ public class RestApiProvider : IDataSourceProvider
             return;
         }
 
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var credentials = JsonSerializer.Deserialize<RestCredentials>(connection.EncryptedCredentials, options);
+        var credentials = JsonSerializer.Deserialize<RestCredentials>(connection.EncryptedCredentials, CaseInsensitiveJson);
         if (!string.IsNullOrWhiteSpace(credentials?.Token))
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credentials.Token);
