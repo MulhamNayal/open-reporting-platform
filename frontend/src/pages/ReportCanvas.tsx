@@ -1,11 +1,12 @@
 import { useEffect, useReducer, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Box, Button, Container, MenuItem, TextField, Typography } from "@mui/material";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
-import { getWidgets, type WidgetType } from "../api/widgets";
+import { getWidgets, saveWidgets, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
 import WidgetRenderer from "../widgets/WidgetRenderer";
+import WidgetBindingEditor from "../widgets/WidgetBindingEditor";
 
 let tempIdCounter = -1;
 
@@ -17,6 +18,7 @@ function ReportCanvas() {
 
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -81,6 +83,20 @@ function ReportCanvas() {
     dispatch({ type: "removed", id: widgetId });
   }
 
+  async function handleSave() {
+    setError(null);
+    const payload: SaveWidgetRequest[] = widgets.map((w) => ({
+      type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content, binding: w.binding,
+    }));
+
+    try {
+      await saveWidgets(reportId, payload);
+      navigate(`/reports/${reportId}`);
+    } catch {
+      setError("Could not save this report's widgets.");
+    }
+  }
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>Edit Report</Typography>
@@ -96,6 +112,7 @@ function ReportCanvas() {
         >
           {WIDGET_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
         </TextField>
+        <Button variant="contained" onClick={handleSave}>Save</Button>
       </Box>
       <div className="grid-stack" ref={gridRef}>
         {widgets.map((w) => (
@@ -106,6 +123,26 @@ function ReportCanvas() {
           >
             <div className="grid-stack-item-content">
               <Button size="small" onClick={() => removeWidget(w.id)}>Remove</Button>
+              <TextField
+                size="small"
+                label="Title"
+                value={w.title}
+                onChange={(e) => dispatch({ type: "titleChanged", id: w.id, title: e.target.value })}
+                sx={{ display: "block", mb: 1, mt: 1 }}
+              />
+              {w.type === "Text" && (
+                <TextField
+                  size="small"
+                  label="Content"
+                  multiline
+                  minRows={2}
+                  fullWidth
+                  value={w.content ?? ""}
+                  onChange={(e) => dispatch({ type: "contentChanged", id: w.id, content: e.target.value })}
+                  sx={{ mb: 1 }}
+                />
+              )}
+              <WidgetBindingEditor widget={w} onChange={(binding) => dispatch({ type: "bindingChanged", id: w.id, binding })} />
               <WidgetRenderer widget={w} />
             </div>
           </div>
