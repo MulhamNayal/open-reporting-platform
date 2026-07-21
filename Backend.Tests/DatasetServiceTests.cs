@@ -186,4 +186,69 @@ public class DatasetServiceTests
         // Verify that "Name" column is NOT included
         Assert.DoesNotContain(columns, c => c.Name == "Name");
     }
+
+    [Fact]
+    public async Task ListAsync_ExcludesUnsavedDatasets()
+    {
+        var (service, _) = CreateService(Guid.NewGuid().ToString());
+        await service.CreateAsync(new CreateDatasetRequest(1, "Saved One", null, DatasetMode.TableQuery, TableQueryDefinitionJson(), null, IsSaved: true));
+        await service.CreateAsync(new CreateDatasetRequest(1, "", null, DatasetMode.TableQuery, TableQueryDefinitionJson(), null, IsSaved: false));
+
+        var datasets = await service.ListAsync(1);
+
+        var dataset = Assert.Single(datasets);
+        Assert.Equal("Saved One", dataset.Name);
+        Assert.True(dataset.IsSaved);
+    }
+
+    [Fact]
+    public async Task CreateAsync_UnsavedDataset_PersistsIsSavedFalse()
+    {
+        var (service, context) = CreateService(Guid.NewGuid().ToString());
+
+        var summary = await service.CreateAsync(new CreateDatasetRequest(1, "", null, DatasetMode.TableQuery, TableQueryDefinitionJson(), null, IsSaved: false));
+
+        Assert.False(summary.IsSaved);
+        var stored = await context.Datasets.FirstAsync(d => d.Id == summary.Id);
+        Assert.False(stored.IsSaved);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RemovesTheDataset()
+    {
+        var (service, context) = CreateService(Guid.NewGuid().ToString());
+        var created = await service.CreateAsync(new CreateDatasetRequest(1, "Reports Table", null, DatasetMode.TableQuery, TableQueryDefinitionJson(), null));
+
+        await service.DeleteAsync(created.Id);
+
+        Assert.Equal(0, await context.Datasets.CountAsync(d => d.Id == created.Id));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_NotFound_Throws()
+    {
+        var (service, _) = CreateService(Guid.NewGuid().ToString());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteAsync(999));
+    }
+
+    [Fact]
+    public async Task PromoteAsync_SetsNameAndFlipsIsSavedToTrue()
+    {
+        var (service, _) = CreateService(Guid.NewGuid().ToString());
+        var created = await service.CreateAsync(new CreateDatasetRequest(1, "", null, DatasetMode.TableQuery, TableQueryDefinitionJson(), null, IsSaved: false));
+
+        var promoted = await service.PromoteAsync(created.Id, "Quarterly Sales");
+
+        Assert.Equal("Quarterly Sales", promoted.Name);
+        Assert.True(promoted.IsSaved);
+    }
+
+    [Fact]
+    public async Task PromoteAsync_NotFound_Throws()
+    {
+        var (service, _) = CreateService(Guid.NewGuid().ToString());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.PromoteAsync(999, "Name"));
+    }
 }

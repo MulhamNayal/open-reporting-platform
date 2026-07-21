@@ -8,4 +8,5 @@ public record CreateDatasetRequest(
     string? Description,
     DatasetMode Mode,
     string DefinitionJson,
-    int? RowLimit);
+    int? RowLimit,
+    bool IsSaved = true);

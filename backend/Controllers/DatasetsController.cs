@@ -31,12 +31,44 @@ public class DatasetsController : ControllerBase
 
         try
         {
-            var summary = await _service.CreateAsync(request);
+            var summary = await _service.CreateAsync(request with { IsSaved = true });
             return Created($"/api/datasets/{summary.Id}", summary);
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        try
+        {
+            await _service.DeleteAsync(id);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
+    [HttpPost("{id}/promote")]
+    public async Task<ActionResult<DatasetSummary>> Promote(int id, PromoteDatasetRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return BadRequest("Name is required.");
+        }
+
+        try
+        {
+            return Ok(await _service.PromoteAsync(id, request.Name!));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ex.Message);
         }
     }
 

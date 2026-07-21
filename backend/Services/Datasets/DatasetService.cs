@@ -8,7 +8,7 @@ namespace Backend.Services.Datasets;
 
 public class DatasetService : IDatasetService
 {
-    private const int DefaultRowLimit = 1000;
+    private const int DefaultRowLimit = 10000;
 
     // Client-submitted definitionJson (and any other free-form JSON persisted alongside a Dataset)
     // uses ordinary camelCase, same as every other JSON body this API accepts. The record types in
@@ -42,6 +42,7 @@ public class DatasetService : IDatasetService
             Mode = request.Mode,
             Definition = request.DefinitionJson,
             RowLimit = request.RowLimit,
+            IsSaved = request.IsSaved,
             Columns = "[]",
             CreatedAtUtc = now,
             UpdatedAtUtc = now
@@ -56,10 +57,28 @@ public class DatasetService : IDatasetService
     public async Task<IReadOnlyList<DatasetSummary>> ListAsync(int connectionId)
     {
         var datasets = await _context.Datasets
-            .Where(d => d.DataSourceConnectionId == connectionId)
+            .Where(d => d.DataSourceConnectionId == connectionId && d.IsSaved)
             .ToListAsync();
 
         return datasets.Select(ToSummary).ToList();
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        var dataset = await GetDatasetAsync(id);
+        _context.Datasets.Remove(dataset);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<DatasetSummary> PromoteAsync(int id, string name)
+    {
+        var dataset = await GetDatasetAsync(id);
+        dataset.Name = name;
+        dataset.IsSaved = true;
+        dataset.UpdatedAtUtc = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return ToSummary(dataset);
     }
 
     public async Task<IReadOnlyList<ColumnDescriptor>> DiscoverColumnsAsync(int datasetId)
@@ -208,6 +227,7 @@ public class DatasetService : IDatasetService
             dataset.Description,
             dataset.Mode,
             dataset.RowLimit,
+            dataset.IsSaved,
             columns,
             dataset.CreatedAtUtc,
             dataset.UpdatedAtUtc);

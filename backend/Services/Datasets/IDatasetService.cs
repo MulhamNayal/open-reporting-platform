@@ -11,4 +11,8 @@ public interface IDatasetService
     Task<IReadOnlyList<ColumnDescriptor>> DiscoverColumnsAsync(int datasetId);
 
     Task<QueryResult> ExecuteAsync(int datasetId);
+
+    Task DeleteAsync(int id);
+
+    Task<DatasetSummary> PromoteAsync(int id, string name);
 }

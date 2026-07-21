@@ -10,6 +10,7 @@ public record DatasetSummary(
     string? Description,
     DatasetMode Mode,
     int? RowLimit,
+    bool IsSaved,
     IReadOnlyList<ColumnDescriptor> Columns,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc);
