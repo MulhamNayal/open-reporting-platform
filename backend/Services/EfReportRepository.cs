@@ -19,7 +19,7 @@ public class EfReportRepository : IReportRepository
 
     public Report Add(string name, string description)
     {
-        var report = new Report(0, name, description);
+        var report = new Report { Name = name, Description = description };
         _context.Reports.Add(report);
         _context.SaveChanges();
         return report;

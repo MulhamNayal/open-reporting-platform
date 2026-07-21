@@ -16,21 +16,21 @@ public class WidgetService : IWidgetService
         _validator = validator;
     }
 
-    public async Task<IReadOnlyList<WidgetSummary>> GetWidgetsAsync(int reportId)
+    public async Task<IReadOnlyList<WidgetSummary>> GetWidgetsAsync(int reportPageId)
     {
-        await EnsureReportExistsAsync(reportId);
+        await EnsureReportPageExistsAsync(reportPageId);
 
         var widgets = await _context.Widgets
             .Include(w => w.Binding)
-            .Where(w => w.ReportId == reportId)
+            .Where(w => w.ReportPageId == reportPageId)
             .ToListAsync();
 
         return widgets.Select(ToSummary).ToList();
     }
 
-    public async Task<IReadOnlyList<WidgetSummary>> SaveWidgetsAsync(int reportId, SaveWidgetsRequest request)
+    public async Task<IReadOnlyList<WidgetSummary>> SaveWidgetsAsync(int reportPageId, SaveWidgetsRequest request)
     {
-        await EnsureReportExistsAsync(reportId);
+        await EnsureReportPageExistsAsync(reportPageId);
 
         foreach (var widgetRequest in request.Widgets)
         {
@@ -41,7 +41,7 @@ public class WidgetService : IWidgetService
             }
         }
 
-        var existingWidgets = await _context.Widgets.Where(w => w.ReportId == reportId).ToListAsync();
+        var existingWidgets = await _context.Widgets.Where(w => w.ReportPageId == reportPageId).ToListAsync();
         var existingWidgetIds = existingWidgets.Select(w => w.Id).ToList();
         var existingBindings = await _context.WidgetBindings.Where(b => existingWidgetIds.Contains(b.WidgetId)).ToListAsync();
 
@@ -52,7 +52,7 @@ public class WidgetService : IWidgetService
         {
             var widget = new Widget
             {
-                ReportId = reportId,
+                ReportPageId = reportPageId,
                 Type = widgetRequest.Type,
                 X = widgetRequest.X,
                 Y = widgetRequest.Y,
@@ -68,9 +68,9 @@ public class WidgetService : IWidgetService
             {
                 widget.Binding = new WidgetBinding
                 {
-                    DatasetId = widgetRequest.Binding.DatasetId,
                     CategoryField = widgetRequest.Binding.CategoryField,
-                    ValueFields = JsonSerializer.Serialize(widgetRequest.Binding.ValueFields)
+                    ValueFields = JsonSerializer.Serialize(widgetRequest.Binding.ValueFields),
+                    FormatOptions = widgetRequest.Binding.FormatOptions ?? "{}"
                 };
             }
 
@@ -79,15 +79,15 @@ public class WidgetService : IWidgetService
 
         await _context.SaveChangesAsync();
 
-        return await GetWidgetsAsync(reportId);
+        return await GetWidgetsAsync(reportPageId);
     }
 
-    private async Task EnsureReportExistsAsync(int reportId)
+    private async Task EnsureReportPageExistsAsync(int reportPageId)
     {
-        var exists = await _context.Reports.AnyAsync(r => r.Id == reportId);
+        var exists = await _context.ReportPages.AnyAsync(p => p.Id == reportPageId);
         if (!exists)
         {
-            throw new InvalidOperationException($"No report found with id {reportId}.");
+            throw new InvalidOperationException($"No report page found with id {reportPageId}.");
         }
     }
 
@@ -97,7 +97,7 @@ public class WidgetService : IWidgetService
         if (widget.Binding != null)
         {
             var valueFields = JsonSerializer.Deserialize<List<string>>(widget.Binding.ValueFields) ?? new List<string>();
-            bindingSummary = new WidgetBindingSummary(widget.Binding.DatasetId, widget.Binding.CategoryField, valueFields);
+            bindingSummary = new WidgetBindingSummary(widget.Binding.CategoryField, valueFields, widget.Binding.FormatOptions);
         }
 
         return new WidgetSummary(widget.Id, widget.Type, widget.X, widget.Y, widget.W, widget.H, widget.Title, widget.Content, bindingSummary);

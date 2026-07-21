@@ -18,13 +18,15 @@ public class WidgetsControllerTests
 
         var context = new ReportingDbContext(options);
         context.Database.EnsureCreated();
+        context.ReportPages.Add(new ReportPage { Id = 1, ReportId = 1, Name = "Page 1", SortOrder = 0, FilterState = "{}" });
+        context.SaveChanges();
 
         var service = new WidgetService(context, new WidgetBindingValidator());
         return new WidgetsController(service);
     }
 
     [Fact]
-    public async Task GetWidgets_ReportNotFound_Returns404()
+    public async Task GetWidgets_ReportPageNotFound_Returns404()
     {
         var controller = CreateController(Guid.NewGuid().ToString());
 
@@ -34,7 +36,7 @@ public class WidgetsControllerTests
     }
 
     [Fact]
-    public async Task GetWidgets_ReportWithNoWidgets_ReturnsEmptyOk()
+    public async Task GetWidgets_ReportPageWithNoWidgets_ReturnsEmptyOk()
     {
         var controller = CreateController(Guid.NewGuid().ToString());
 
@@ -51,7 +53,7 @@ public class WidgetsControllerTests
         var controller = CreateController(Guid.NewGuid().ToString());
         var badWidget = new SaveWidgetRequest(
             WidgetType.Pie, 0, 0, 4, 3, "Bad Pie", null,
-            new SaveWidgetBindingRequest(1, "Region", new List<string> { "A", "B" }));
+            new SaveWidgetBindingRequest("Region", new List<string> { "A", "B" }, null));
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { badWidget });
 
         var result = await controller.SaveWidgets(1, request);
@@ -60,7 +62,7 @@ public class WidgetsControllerTests
     }
 
     [Fact]
-    public async Task SaveWidgets_ReportNotFound_Returns404()
+    public async Task SaveWidgets_ReportPageNotFound_Returns404()
     {
         var controller = CreateController(Guid.NewGuid().ToString());
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest>());
@@ -92,7 +94,7 @@ public class WidgetsControllerTests
         var controller = CreateController(Guid.NewGuid().ToString());
         var kpiWidget = new SaveWidgetRequest(
             WidgetType.Kpi, 0, 0, 2, 2, "Total Revenue", null,
-            new SaveWidgetBindingRequest(1, null, new List<string> { "Revenue" }));
+            new SaveWidgetBindingRequest(null, new List<string> { "Revenue" }, null));
         await controller.SaveWidgets(1, new SaveWidgetsRequest(new List<SaveWidgetRequest> { kpiWidget }));
 
         var result = await controller.GetWidgets(1);

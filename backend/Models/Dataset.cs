@@ -16,6 +16,8 @@ public class Dataset
 
     public int? RowLimit { get; set; }
 
+    public bool IsSaved { get; set; } = true;
+
     public string Columns { get; set; } = "[]";
 
     public DateTime CreatedAtUtc { get; set; }

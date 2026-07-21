@@ -11,6 +11,8 @@ public class ReportingDbContext : DbContext
 
     public DbSet<Report> Reports => Set<Report>();
 
+    public DbSet<ReportPage> ReportPages => Set<ReportPage>();
+
     public DbSet<DataSourceConnection> DataSourceConnections => Set<DataSourceConnection>();
 
     public DbSet<Dataset> Datasets => Set<Dataset>();
@@ -24,9 +26,9 @@ public class ReportingDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<Report>().HasData(
-            new Report(1, "Monthly Sales", "Sales totals grouped by month"),
-            new Report(2, "Top Agents", "Agents ranked by closed deals"),
-            new Report(3, "Pipeline Overview", "Open deals by stage")
+            new Report { Id = 1, Name = "Monthly Sales", Description = "Sales totals grouped by month", DatasetId = null },
+            new Report { Id = 2, Name = "Top Agents", Description = "Agents ranked by closed deals", DatasetId = null },
+            new Report { Id = 3, Name = "Pipeline Overview", Description = "Open deals by stage", DatasetId = null }
         );
 
         modelBuilder.Entity<Widget>()
@@ -35,4 +37,3 @@ public class ReportingDbContext : DbContext
             .HasForeignKey<WidgetBinding>(b => b.WidgetId);
     }
 }
-

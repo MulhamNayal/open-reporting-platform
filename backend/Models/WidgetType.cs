@@ -2,10 +2,15 @@ namespace Backend.Models;
 
 public enum WidgetType
 {
-    Table,
     Bar,
+    ClusteredBar,
+    StackedColumn,
     Line,
+    Area,
     Pie,
+    Donut,
+    Scatter,
     Kpi,
+    Table,
     Text
 }

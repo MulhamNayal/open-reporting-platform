@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Backend.Controllers;
 
 [ApiController]
-[Route("api/reports/{reportId}/widgets")]
+[Route("api/reportpages/{reportPageId}/widgets")]
 public class WidgetsController : ControllerBase
 {
     private readonly IWidgetService _service;
@@ -15,11 +15,11 @@ public class WidgetsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<WidgetSummary>>> GetWidgets(int reportId)
+    public async Task<ActionResult<IReadOnlyList<WidgetSummary>>> GetWidgets(int reportPageId)
     {
         try
         {
-            return Ok(await _service.GetWidgetsAsync(reportId));
+            return Ok(await _service.GetWidgetsAsync(reportPageId));
         }
         catch (InvalidOperationException ex)
         {
@@ -28,11 +28,11 @@ public class WidgetsController : ControllerBase
     }
 
     [HttpPut]
-    public async Task<ActionResult<IReadOnlyList<WidgetSummary>>> SaveWidgets(int reportId, SaveWidgetsRequest request)
+    public async Task<ActionResult<IReadOnlyList<WidgetSummary>>> SaveWidgets(int reportPageId, SaveWidgetsRequest request)
     {
         try
         {
-            return Ok(await _service.SaveWidgetsAsync(reportId, request));
+            return Ok(await _service.SaveWidgetsAsync(reportPageId, request));
         }
         catch (WidgetValidationException ex)
         {

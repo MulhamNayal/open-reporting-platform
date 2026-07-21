@@ -1,3 +1,12 @@
 namespace Backend.Models;
 
-public record Report(int Id, string Name, string Description);
+public class Report
+{
+    public int Id { get; set; }
+
+    public string Name { get; set; } = "";
+
+    public string Description { get; set; } = "";
+
+    public int? DatasetId { get; set; }
+}

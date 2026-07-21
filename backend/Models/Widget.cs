@@ -4,7 +4,7 @@ public class Widget
 {
     public int Id { get; set; }
 
-    public int ReportId { get; set; }
+    public int ReportPageId { get; set; }
 
     public WidgetType Type { get; set; }
 

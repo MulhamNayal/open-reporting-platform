@@ -6,9 +6,9 @@ public class WidgetBinding
 
     public int WidgetId { get; set; }
 
-    public int DatasetId { get; set; }
-
     public string? CategoryField { get; set; }
 
     public string ValueFields { get; set; } = "[]";
+
+    public string FormatOptions { get; set; } = "{}";
 }
