@@ -1,5 +1,6 @@
 using Backend.Data;
 using Backend.Services;
+using Backend.Services.DataSources;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +12,12 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ReportingDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ReportingDatabase")));
 builder.Services.AddScoped<IReportRepository, EfReportRepository>();
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<ICredentialProtector, CredentialProtector>();
+builder.Services.AddScoped<IDataSourceProvider, SqlServerProvider>();
+builder.Services.AddScoped<IDataSourceProvider, RestApiProvider>();
+builder.Services.AddScoped<IDataSourceService, DataSourceService>();
 
 builder.Services.AddCors(options =>
 {
