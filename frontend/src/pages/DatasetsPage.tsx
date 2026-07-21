@@ -43,17 +43,26 @@ function DatasetsPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [previewResult, setPreviewResult] = useState<QueryResult | null>(null);
-  const [mode, setMode] = useState<"TableQuery" | "RawSql" | "StoredProcedure">("TableQuery");
+  const [mode, setMode] = useState<"TableQuery" | "RawSql" | "StoredProcedure" | "RestQuery">("TableQuery");
   const [sqlText, setSqlText] = useState("");
   const [routineName, setRoutineName] = useState("");
   const [procParams, setProcParams] = useState<{ name: string; value: string }[]>([{ name: "", value: "" }]);
   const [columnPreviewError, setColumnPreviewError] = useState<string | null>(null);
+  const [pathSuffix, setPathSuffix] = useState("");
+  const [queryParams, setQueryParams] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
+
+  const selectedConnection = connections.find((c) => c.id === selectedConnectionId);
+  const isRestConnection = selectedConnection?.type === "RestApi";
 
   useEffect(() => {
     getDataSources()
       .then(setConnections)
       .catch(() => setError("Could not load data source connections — is the backend running on :5198?"));
   }, []);
+
+  useEffect(() => {
+    setMode(isRestConnection ? "RestQuery" : "TableQuery");
+  }, [selectedConnectionId]);
 
   async function refreshDatasets(connectionId: number) {
     setDatasets(await getDatasets(connectionId));
@@ -93,10 +102,15 @@ function DatasetsPage() {
       });
     } else if (mode === "RawSql") {
       definitionJson = JSON.stringify({ sqlText });
-    } else {
+    } else if (mode === "StoredProcedure") {
       definitionJson = JSON.stringify({
         routineName,
         parameters: procParams.filter((p) => p.name !== ""),
+      });
+    } else {
+      definitionJson = JSON.stringify({
+        pathSuffix: pathSuffix === "" ? null : pathSuffix,
+        queryParams: queryParams.filter((p) => p.key !== ""),
       });
     }
 
@@ -170,18 +184,20 @@ function DatasetsPage() {
 
       {typeof selectedConnectionId === "number" && (
         <>
-          <TextField
-            select
-            label="Mode"
-            size="small"
-            value={mode}
-            onChange={(e) => setMode(e.target.value as typeof mode)}
-            sx={{ minWidth: 180, mb: 3 }}
-          >
-            <MenuItem value="TableQuery">Table Query</MenuItem>
-            <MenuItem value="RawSql">Raw SQL</MenuItem>
-            <MenuItem value="StoredProcedure">Stored Procedure</MenuItem>
-          </TextField>
+          {!isRestConnection && (
+            <TextField
+              select
+              label="Mode"
+              size="small"
+              value={mode}
+              onChange={(e) => setMode(e.target.value as typeof mode)}
+              sx={{ minWidth: 180, mb: 3 }}
+            >
+              <MenuItem value="TableQuery">Table Query</MenuItem>
+              <MenuItem value="RawSql">Raw SQL</MenuItem>
+              <MenuItem value="StoredProcedure">Stored Procedure</MenuItem>
+            </TextField>
+          )}
         </>
       )}
 
@@ -273,10 +289,51 @@ function DatasetsPage() {
               </Box>
             )}
 
+            {mode === "RestQuery" && (
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  label="Path Suffix (optional)"
+                  size="small"
+                  placeholder="/users"
+                  value={pathSuffix}
+                  onChange={(e) => setPathSuffix(e.target.value)}
+                  sx={{ mb: 1, display: "block" }}
+                />
+                {queryParams.map((p, i) => (
+                  <Box key={i} sx={{ display: "flex", gap: 1, mb: 1 }}>
+                    <TextField
+                      label="Param Key"
+                      size="small"
+                      value={p.key}
+                      onChange={(e) => {
+                        const next = [...queryParams];
+                        next[i] = { ...next[i], key: e.target.value };
+                        setQueryParams(next);
+                      }}
+                    />
+                    <TextField
+                      label="Param Value"
+                      size="small"
+                      value={p.value}
+                      onChange={(e) => {
+                        const next = [...queryParams];
+                        next[i] = { ...next[i], value: e.target.value };
+                        setQueryParams(next);
+                      }}
+                    />
+                  </Box>
+                ))}
+                <Button size="small" onClick={() => setQueryParams([...queryParams, { key: "", value: "" }])}>
+                  Add Query Param
+                </Button>
+              </Box>
+            )}
+
             <Button type="submit" variant="contained" disabled={
               (mode === "TableQuery" && (!selectedTable || selectedColumns.length === 0)) ||
               (mode === "RawSql" && sqlText.trim() === "") ||
-              (mode === "StoredProcedure" && routineName.trim() === "")
+              (mode === "StoredProcedure" && routineName.trim() === "") ||
+              name.trim() === ""
             }>
               Add Dataset
             </Button>
