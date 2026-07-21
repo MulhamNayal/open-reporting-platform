@@ -4,6 +4,7 @@ using Backend.Services;
 using Backend.Services.DataSources;
 using Backend.Services.Datasets;
 using Backend.Services.ReportPages;
+using Backend.Services.Reports;
 using Backend.Services.Widgets;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,7 +20,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<ReportingDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ReportingDatabase")));
-builder.Services.AddScoped<IReportRepository, EfReportRepository>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddDataProtection();
