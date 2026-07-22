@@ -12,6 +12,8 @@ import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQuery
 import Ribbon from "../reportEditor/Ribbon";
 import VisualizationsPane from "../reportEditor/VisualizationsPane";
 import BuildTab from "../reportEditor/BuildTab";
+import DataPane from "../reportEditor/DataPane";
+import { smartAdd } from "../reportEditor/fieldAssignment";
 import QueryDefinitionForm from "./QueryDefinitionForm";
 import "../reportEditor/reportEditor.css";
 
@@ -223,6 +225,20 @@ function ReportCanvasInner() {
               : <div>format tab content — Task 16</div>
           }
         </VisualizationsPane>
+        <DataPane
+          columns={filteredResult?.columns ?? []}
+          selectedWidget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
+          onSmartAdd={(fieldName, fieldKind) => {
+            if (selectedWidgetId === null) {
+              return;
+            }
+            const widget = widgets.find((w) => w.id === selectedWidgetId);
+            if (!widget?.binding) {
+              return;
+            }
+            dispatch({ type: "bindingChanged", id: selectedWidgetId, binding: smartAdd(widget.binding, widget.type, fieldName, fieldKind) });
+          }}
+        />
       </div>
       <div className="pagetabs">
         <button className="ptab active">Page 1</button>
