@@ -97,14 +97,20 @@ function ReportCanvasInner() {
     };
   }, [widgetIds]);
 
+  function nextWidgetPosition(): { x: number; y: number } {
+    if (widgets.length === 0) {
+      return { x: 0, y: 0 };
+    }
+    return { x: 0, y: Math.max(...widgets.map((w) => w.y + w.h)) };
+  }
+
   function addWidget(type: WidgetType) {
     dispatch({
       type: "added",
       widget: {
         id: tempIdCounter--,
         type,
-        x: 0,
-        y: 0,
+        ...nextWidgetPosition(),
         w: 4,
         h: 3,
         title: `New ${type} widget`,
@@ -291,7 +297,7 @@ function ReportCanvasInner() {
               );
               dispatch({
                 type: "added",
-                widget: { id: newId, type: "Bar", x: 0, y: 0, w: 4, h: 3, title: "New Bar widget", content: null, binding },
+                widget: { id: newId, type: "Bar", ...nextWidgetPosition(), w: 4, h: 3, title: "New Bar widget", content: null, binding },
               });
               setSelectedWidgetId(newId);
               return;
