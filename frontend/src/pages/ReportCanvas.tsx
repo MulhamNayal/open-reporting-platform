@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Dialog, DialogContent, DialogTitle } from "@mui/material";
 import { GridStack } from "gridstack";
@@ -38,6 +38,7 @@ function ReportCanvasInner() {
   const [selectedWidgetId, setSelectedWidgetId] = useState<number | null>(null);
   const [filtersVisible, setFiltersVisible] = useState(true);
   const [railView, setRailView] = useState<"Report" | "Data table">("Report");
+  const [widgetsLoaded, setWidgetsLoaded] = useState(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   // Seed the ribbon title from the fetched report name once. Guarded so an
@@ -51,11 +52,13 @@ function ReportCanvasInner() {
 
   useEffect(() => {
     if (reportPageId === null) {
+      setWidgetsLoaded(true);
       return;
     }
 
+    setWidgetsLoaded(false);
     getWidgets(reportPageId)
-      .then((summaries) =>
+      .then((summaries) => {
         dispatch({
           type: "loaded",
           widgets: summaries.map((s) => ({
@@ -64,16 +67,42 @@ function ReportCanvasInner() {
               ? { categoryField: s.binding.categoryField, valueFields: s.binding.valueFields, formatOptions: parseFormatOptions(s.binding.formatOptions) }
               : null,
           })),
-        }),
-      )
-      .catch(() => setError("Could not load this report's widgets."));
+        });
+        setWidgetsLoaded(true);
+      })
+      .catch(() => {
+        setError("Could not load this report's widgets.");
+        setWidgetsLoaded(true);
+      });
   }, [reportPageId]);
 
   const widgetIds = widgets.map((w) => w.id).join(",");
 
-  useEffect(() => {
-    if (!gridRef.current) {
+  // Gated on widgetsLoaded so the very first GridStack.init() call happens once,
+  // directly against the real widget list — not once on an empty grid and again
+  // moments later once the fetch resolves. That throwaway first init left widgets
+  // loaded from the backend permanently unregistered with GridStack (no computed
+  // size, no resize handles, no drag), while widgets added interactively after the
+  // page had already settled were unaffected.
+  // useLayoutEffect (not useEffect): GridStack scans the container's DOM children
+  // synchronously during construction, so this needs to run before paint.
+  //
+  // gridRef.current can still be transiently null on the render that first
+  // supplies real widget data: React (under StrictMode's simulated dev-mode
+  // unmount/remount of this effect) can momentarily detach the ref around
+  // that exact commit. Since nothing else changes afterward, a plain effect
+  // never gets a second chance to run — so retry on the next animation frame
+  // instead of silently giving up, until the ref is actually attached.
+  const [gridRetryTick, setGridRetryTick] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!widgetsLoaded) {
       return;
+    }
+
+    if (!gridRef.current) {
+      const raf = requestAnimationFrame(() => setGridRetryTick((t) => t + 1));
+      return () => cancelAnimationFrame(raf);
     }
 
     const grid = GridStack.init({ column: 12, cellHeight: 80 }, gridRef.current);
@@ -95,7 +124,7 @@ function ReportCanvasInner() {
     return () => {
       grid.destroy(false);
     };
-  }, [widgetIds]);
+  }, [widgetIds, widgetsLoaded, gridRetryTick]);
 
   function nextWidgetPosition(): { x: number; y: number } {
     if (widgets.length === 0) {
