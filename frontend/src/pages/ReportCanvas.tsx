@@ -4,7 +4,7 @@ import { Alert, Dialog, DialogContent, DialogTitle } from "@mui/material";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 import axios from "axios";
-import { getWidgets, saveWidgets, parseFormatOptions, DEFAULT_FORMAT_OPTIONS, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
+import { getWidgets, saveWidgets, parseFormatOptions, DEFAULT_FORMAT_OPTIONS, type SaveWidgetRequest, type WidgetSummary, type WidgetType } from "../api/widgets";
 import { renameReport, setReportDataset } from "../api/reports";
 import { createReportPage, deleteReportPage, updateReportPage } from "../api/reportPages";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
@@ -25,6 +25,15 @@ import QueryDefinitionForm from "./QueryDefinitionForm";
 import "../reportEditor/reportEditor.css";
 
 let tempIdCounter = -1;
+
+function toWidgetDrafts(summaries: WidgetSummary[]): WidgetDraft[] {
+  return summaries.map((s) => ({
+    id: s.id, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h, title: s.title, content: s.content,
+    binding: s.binding
+      ? { categoryField: s.binding.categoryField, valueFields: s.binding.valueFields, formatOptions: parseFormatOptions(s.binding.formatOptions) }
+      : null,
+  }));
+}
 
 function ReportCanvasInner() {
   const navigate = useNavigate();
@@ -59,15 +68,7 @@ function ReportCanvasInner() {
     setWidgetsLoaded(false);
     getWidgets(reportPageId)
       .then((summaries) => {
-        dispatch({
-          type: "loaded",
-          widgets: summaries.map((s) => ({
-            id: s.id, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h, title: s.title, content: s.content,
-            binding: s.binding
-              ? { categoryField: s.binding.categoryField, valueFields: s.binding.valueFields, formatOptions: parseFormatOptions(s.binding.formatOptions) }
-              : null,
-          })),
-        });
+        dispatch({ type: "loaded", widgets: toWidgetDrafts(summaries) });
         setWidgetsLoaded(true);
       })
       .catch(() => {
@@ -177,7 +178,14 @@ function ReportCanvasInner() {
     }));
 
     try {
-      await saveWidgets(reportPageId, payload);
+      const saved = await saveWidgets(reportPageId, payload);
+      // Delete-then-insert on the backend means every widget gets a fresh real
+      // id on every save, so the client's temp/stale ids never match. Refresh
+      // from the response rather than leaving local state pointing at ids that
+      // no longer exist; clear selection rather than guess a remapping, since
+      // the response isn't guaranteed to preserve request order.
+      dispatch({ type: "loaded", widgets: toWidgetDrafts(saved) });
+      setSelectedWidgetId(null);
       await saveFilterState();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
