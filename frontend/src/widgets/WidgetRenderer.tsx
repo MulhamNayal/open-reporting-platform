@@ -67,7 +67,7 @@ function WidgetRenderer({
 
   switch (widget.type) {
     case "Table":
-      return <TableWidget title={widget.title} result={result} valueFields={widget.binding.valueFields} />;
+      return <TableWidget title={chartTitle} result={result} valueFields={widget.binding.valueFields} />;
     case "Bar":
       return <BarWidget title={chartTitle} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} format={format} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "StackedColumn":
@@ -83,7 +83,7 @@ function WidgetRenderer({
     case "Donut":
       return <PieWidget title={chartTitle} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} donut format={format} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Kpi":
-      return <KpiWidget title={widget.title} result={result} valueField={widget.binding.valueFields[0]} />;
+      return <KpiWidget title={chartTitle} result={result} valueField={widget.binding.valueFields[0]} />;
     case "Scatter":
       return (
         <ScatterWidget

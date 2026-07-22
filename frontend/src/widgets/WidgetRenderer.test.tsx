@@ -207,6 +207,76 @@ describe("WidgetRenderer", () => {
     expect(screen.queryByText("Widget")).not.toBeInTheDocument();
   });
 
+  it("renders a Kpi with a format-overridden title instead of the widget's own", () => {
+    const result: QueryResult = { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] };
+    const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, title: "Total revenue" });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Kpi", title: "Widget", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.getByText("Total revenue")).toBeInTheDocument();
+    expect(screen.queryByText("Widget")).not.toBeInTheDocument();
+  });
+
+  it("suppresses a Kpi's title entirely when format.showTitle is false", () => {
+    const result: QueryResult = { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] };
+    const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, showTitle: false, title: "Total revenue" });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Kpi", title: "Widget", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    // The value still renders; only the title is suppressed.
+    expect(screen.getByText("500")).toBeInTheDocument();
+    expect(screen.queryByText("Total revenue")).not.toBeInTheDocument();
+    expect(screen.queryByText("Widget")).not.toBeInTheDocument();
+  });
+
+  it("renders a Table with a format-overridden title instead of the widget's own", () => {
+    const result: QueryResult = {
+      columns: [{ name: "Region", nativeType: "nvarchar(20)" }],
+      rows: [["North"]],
+    };
+    const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, title: "Sales breakdown" });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Table", title: "Widget", binding: { categoryField: null, valueFields: ["Region"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.getByText("Sales breakdown")).toBeInTheDocument();
+    expect(screen.queryByText("Widget")).not.toBeInTheDocument();
+  });
+
+  it("suppresses a Table's title entirely when format.showTitle is false", () => {
+    const result: QueryResult = {
+      columns: [{ name: "Region", nativeType: "nvarchar(20)" }],
+      rows: [["North"]],
+    };
+    const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, showTitle: false, title: "Sales breakdown" });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Table", title: "Widget", binding: { categoryField: null, valueFields: ["Region"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    // The table body still renders; only the title is suppressed.
+    expect(screen.getByText("North")).toBeInTheDocument();
+    expect(screen.queryByText("Sales breakdown")).not.toBeInTheDocument();
+    expect(screen.queryByText("Widget")).not.toBeInTheDocument();
+  });
+
   it("renders a Scatter widget, using valueFields[0]/[1] positionally as X/Y", () => {
     const result: QueryResult = {
       columns: [
