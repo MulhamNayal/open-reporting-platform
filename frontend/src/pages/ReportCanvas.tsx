@@ -109,7 +109,10 @@ function ReportCanvasInner() {
         h: 3,
         title: `New ${type} widget`,
         content: type === "Text" ? "" : null,
-        binding: null,
+        // Table's empty ValueFields is a valid, complete binding ("show every column"),
+        // so it should render immediately with no field configuration required. Every
+        // other bindable type genuinely needs the user to pick fields first.
+        binding: type === "Table" ? { categoryField: null, valueFields: [], formatOptions: DEFAULT_FORMAT_OPTIONS } : null,
       },
     });
   }
@@ -208,11 +211,8 @@ function ReportCanvasInner() {
                         selected={selectedWidgetId === w.id}
                         onDuplicate={() => duplicateWidget(w)}
                         onDelete={() => removeWidget(w.id)}
+                        onRename={(title) => dispatch({ type: "titleChanged", id: w.id, title })}
                       >
-                        <input
-                          value={w.title}
-                          onChange={(e) => dispatch({ type: "titleChanged", id: w.id, title: e.target.value })}
-                        />
                         {w.type === "Text" && (
                           <textarea
                             value={w.content ?? ""}
