@@ -16,6 +16,7 @@ import FormatTab from "../reportEditor/FormatTab";
 import DataPane from "../reportEditor/DataPane";
 import FiltersPane from "../reportEditor/FiltersPane";
 import { smartAdd } from "../reportEditor/fieldAssignment";
+import { toggleCrossFilterValue } from "../reportEditor/clickToCrossFilter";
 import QueryDefinitionForm from "./QueryDefinitionForm";
 import "../reportEditor/reportEditor.css";
 
@@ -197,6 +198,7 @@ function ReportCanvasInner() {
                             : null,
                         }}
                         result={filteredResult}
+                        onDataPointClick={(field, value) => setFilterState(toggleCrossFilterValue(filterState, field, value))}
                       />
                     </div>
                   </div>

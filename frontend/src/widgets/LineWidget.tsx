@@ -5,10 +5,17 @@ import { shapeLineOption } from "./shaping";
 import { useECharts } from "./useECharts";
 
 function LineWidget({
-  title, result, categoryField, valueFields, area = false,
-}: { title: string; result: QueryResult; categoryField: string; valueFields: string[]; area?: boolean }) {
+  title, result, categoryField, valueFields, area = false, onDataPointClick,
+}: {
+  title: string;
+  result: QueryResult;
+  categoryField: string;
+  valueFields: string[];
+  area?: boolean;
+  onDataPointClick?: (categoryValue: string) => void;
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  useECharts(containerRef, shapeLineOption(result, categoryField, valueFields, { area }));
+  useECharts(containerRef, shapeLineOption(result, categoryField, valueFields, { area }), onDataPointClick);
 
   return (
     <Paper sx={{ p: 2, height: "100%" }}>

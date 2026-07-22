@@ -10,7 +10,13 @@ import KpiWidget from "./KpiWidget";
 import ScatterWidget from "./ScatterWidget";
 import TextWidget from "./TextWidget";
 
-function WidgetRenderer({ widget, result }: { widget: WidgetSummary; result: QueryResult | null }) {
+function WidgetRenderer({
+  widget, result, onDataPointClick,
+}: {
+  widget: WidgetSummary;
+  result: QueryResult | null;
+  onDataPointClick?: (field: string, value: string) => void;
+}) {
   if (widget.type === "Text") {
     return <TextWidget title={widget.title} content={widget.content} />;
   }
@@ -58,19 +64,19 @@ function WidgetRenderer({ widget, result }: { widget: WidgetSummary; result: Que
     case "Table":
       return <TableWidget title={widget.title} result={result} valueFields={widget.binding.valueFields} />;
     case "Bar":
-      return <BarWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} />;
+      return <BarWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "StackedColumn":
-      return <BarWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} stacked />;
+      return <BarWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} stacked onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "ClusteredBar":
-      return <BarWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} horizontal />;
+      return <BarWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} horizontal onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Line":
-      return <LineWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} />;
+      return <LineWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Pie":
-      return <PieWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} />;
+      return <PieWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Area":
-      return <LineWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} area />;
+      return <LineWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} area onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Donut":
-      return <PieWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} donut />;
+      return <PieWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} donut onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Kpi":
       return <KpiWidget title={widget.title} result={result} valueField={widget.binding.valueFields[0]} />;
     case "Scatter":
@@ -81,6 +87,7 @@ function WidgetRenderer({ widget, result }: { widget: WidgetSummary; result: Que
           xField={widget.binding.valueFields[0]}
           yField={widget.binding.valueFields[1]}
           detailsField={widget.binding.categoryField}
+          onDataPointClick={onDataPointClick && widget.binding.categoryField ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined}
         />
       );
     default:

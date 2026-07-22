@@ -5,7 +5,7 @@ import { shapeBarOption } from "./shaping";
 import { useECharts } from "./useECharts";
 
 function BarWidget({
-  title, result, categoryField, valueFields, stacked = false, horizontal = false,
+  title, result, categoryField, valueFields, stacked = false, horizontal = false, onDataPointClick,
 }: {
   title: string;
   result: QueryResult;
@@ -13,9 +13,10 @@ function BarWidget({
   valueFields: string[];
   stacked?: boolean;
   horizontal?: boolean;
+  onDataPointClick?: (categoryValue: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  useECharts(containerRef, shapeBarOption(result, categoryField, valueFields, { stacked, horizontal }));
+  useECharts(containerRef, shapeBarOption(result, categoryField, valueFields, { stacked, horizontal }), onDataPointClick);
 
   return (
     <Paper sx={{ p: 2, height: "100%" }}>

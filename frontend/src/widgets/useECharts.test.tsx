@@ -10,6 +10,14 @@ function TestComponent({ option }: { option: echarts.EChartsOption | null }) {
   return <div ref={ref} />;
 }
 
+function TestComponentWithClick({
+  option, onDataPointClick,
+}: { option: echarts.EChartsOption | null; onDataPointClick: (categoryValue: string) => void }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useECharts(ref, option, onDataPointClick);
+  return <div ref={ref} />;
+}
+
 describe("useECharts", () => {
   it("initializes and disposes the chart with the container's lifecycle", () => {
     const disposeSpy = vi.fn();
@@ -27,5 +35,22 @@ describe("useECharts", () => {
     unmount();
 
     expect(disposeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("wires an onDataPointClick callback to the chart's native click event, receiving the clicked category value", () => {
+    const clickHandlers: Record<string, (params: { name: string }) => void> = {};
+    vi.spyOn(echarts, "init").mockReturnValue({
+      setOption: vi.fn(),
+      dispose: vi.fn(),
+      on: vi.fn((event: string, handler: (params: { name: string }) => void) => { clickHandlers[event] = handler; }),
+      off: vi.fn(),
+    } as unknown as echarts.ECharts);
+
+    const onDataPointClick = vi.fn();
+    render(<TestComponentWithClick option={{ series: [] }} onDataPointClick={onDataPointClick} />);
+
+    clickHandlers["click"]({ name: "North" });
+
+    expect(onDataPointClick).toHaveBeenCalledWith("North");
   });
 });

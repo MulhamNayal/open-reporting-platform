@@ -5,10 +5,17 @@ import { shapeScatterOption } from "./shaping";
 import { useECharts } from "./useECharts";
 
 function ScatterWidget({
-  title, result, xField, yField, detailsField,
-}: { title: string; result: QueryResult; xField: string; yField: string; detailsField: string | null }) {
+  title, result, xField, yField, detailsField, onDataPointClick,
+}: {
+  title: string;
+  result: QueryResult;
+  xField: string;
+  yField: string;
+  detailsField: string | null;
+  onDataPointClick?: (categoryValue: string) => void;
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  useECharts(containerRef, shapeScatterOption(result, xField, yField, detailsField));
+  useECharts(containerRef, shapeScatterOption(result, xField, yField, detailsField), onDataPointClick);
 
   return (
     <Paper sx={{ p: 2, height: "100%" }}>
