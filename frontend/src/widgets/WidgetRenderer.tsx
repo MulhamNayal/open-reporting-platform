@@ -7,6 +7,7 @@ import BarWidget from "./BarWidget";
 import LineWidget from "./LineWidget";
 import PieWidget from "./PieWidget";
 import KpiWidget from "./KpiWidget";
+import ScatterWidget from "./ScatterWidget";
 import TextWidget from "./TextWidget";
 
 function WidgetRenderer({ widget, result }: { widget: WidgetSummary; result: QueryResult | null }) {
@@ -72,6 +73,16 @@ function WidgetRenderer({ widget, result }: { widget: WidgetSummary; result: Que
       return <PieWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} donut />;
     case "Kpi":
       return <KpiWidget title={widget.title} result={result} valueField={widget.binding.valueFields[0]} />;
+    case "Scatter":
+      return (
+        <ScatterWidget
+          title={widget.title}
+          result={result}
+          xField={widget.binding.valueFields[0]}
+          yField={widget.binding.valueFields[1]}
+          detailsField={widget.binding.categoryField}
+        />
+      );
     default:
       return null;
   }

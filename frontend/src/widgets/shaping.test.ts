@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { QueryResult } from "../api/datasets";
-import { shapeBarOption, shapeKpiValue, shapeLineOption, shapePieOption, shapeTableRows } from "./shaping";
+import { shapeBarOption, shapeKpiValue, shapeLineOption, shapePieOption, shapeScatterOption, shapeTableRows } from "./shaping";
 
 const result: QueryResult = {
   columns: [
@@ -141,6 +141,45 @@ describe("shapePieOption donut option", () => {
 
     const series = option.series as Array<{ radius?: string[] }>;
     expect(series[0].radius).toBeUndefined();
+  });
+});
+
+describe("shapeScatterOption", () => {
+  const scatterResult: QueryResult = {
+    columns: [
+      { name: "Segment", nativeType: "nvarchar(20)" },
+      { name: "Sales", nativeType: "decimal(18,2)" },
+      { name: "Profit", nativeType: "decimal(18,2)" },
+    ],
+    rows: [
+      ["Consumer", 100, 20],
+      ["Corporate", 200, 50],
+    ],
+  };
+
+  it("builds one point per row, using valueFields[0] as X and valueFields[1] as Y positionally", () => {
+    const option = shapeScatterOption(scatterResult, "Sales", "Profit", null);
+
+    const series = option.series as Array<{ data: Array<[number, number]> }>;
+    expect(series[0].data).toEqual([[100, 20], [200, 50]]);
+  });
+
+  it("groups points into one series per distinct value of the details field when provided", () => {
+    const option = shapeScatterOption(scatterResult, "Sales", "Profit", "Segment");
+
+    const series = option.series as Array<{ name: string; data: Array<[number, number]> }>;
+    expect(series).toHaveLength(2);
+    expect(series.map((s) => s.name).sort()).toEqual(["Consumer", "Corporate"]);
+  });
+
+  it("swapping the field order swaps which axis each measure lands on", () => {
+    const optionA = shapeScatterOption(scatterResult, "Sales", "Profit", null);
+    const optionB = shapeScatterOption(scatterResult, "Profit", "Sales", null);
+
+    const seriesA = optionA.series as Array<{ data: Array<[number, number]> }>;
+    const seriesB = optionB.series as Array<{ data: Array<[number, number]> }>;
+    expect(seriesA[0].data[0]).toEqual([100, 20]);
+    expect(seriesB[0].data[0]).toEqual([20, 100]);
   });
 });
 

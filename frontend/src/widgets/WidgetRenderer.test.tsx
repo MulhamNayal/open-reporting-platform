@@ -164,4 +164,24 @@ describe("WidgetRenderer", () => {
 
     expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
   });
+
+  it("renders a Scatter widget, using valueFields[0]/[1] positionally as X/Y", () => {
+    const result: QueryResult = {
+      columns: [
+        { name: "Sales", nativeType: "decimal(18,2)" },
+        { name: "Profit", nativeType: "decimal(18,2)" },
+      ],
+      rows: [[100, 20]],
+    };
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Scatter", binding: { categoryField: null, valueFields: ["Sales", "Profit"], formatOptions: formatOptionsJson } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Finish configuring/)).not.toBeInTheDocument();
+  });
 });

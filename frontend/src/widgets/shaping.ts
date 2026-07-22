@@ -133,3 +133,36 @@ export function shapeKpiValue(result: QueryResult, valueField: string): number |
   const value = result.rows[0][valueIndex];
   return typeof value === "number" ? value : Number(value);
 }
+
+export function shapeScatterOption(
+  result: QueryResult,
+  xField: string,
+  yField: string,
+  detailsField: string | null,
+): EChartsOption {
+  const xIndex = columnIndex(result, xField);
+  const yIndex = columnIndex(result, yField);
+
+  if (!detailsField) {
+    return {
+      xAxis: { type: "value", name: xField },
+      yAxis: { type: "value", name: yField },
+      series: [{ type: "scatter", data: result.rows.map((row) => [Number(row[xIndex]), Number(row[yIndex])]) }],
+    };
+  }
+
+  const detailsIndex = columnIndex(result, detailsField);
+  const groups = new Map<string, Array<[number, number]>>();
+  for (const row of result.rows) {
+    const key = String(row[detailsIndex]);
+    const points = groups.get(key) ?? [];
+    points.push([Number(row[xIndex]), Number(row[yIndex])]);
+    groups.set(key, points);
+  }
+
+  return {
+    xAxis: { type: "value", name: xField },
+    yAxis: { type: "value", name: yField },
+    series: [...groups.entries()].map(([name, data]) => ({ type: "scatter", name, data })),
+  };
+}
