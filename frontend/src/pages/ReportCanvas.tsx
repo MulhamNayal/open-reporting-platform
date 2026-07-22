@@ -298,10 +298,11 @@ function ReportCanvasInner() {
             }
 
             const widget = widgets.find((w) => w.id === selectedWidgetId);
-            if (!widget?.binding) {
+            if (!widget || widget.type === "Text") {
               return;
             }
-            dispatch({ type: "bindingChanged", id: selectedWidgetId, binding: smartAdd(widget.binding, widget.type, fieldName, fieldKind) });
+            const currentBinding = widget.binding ?? { categoryField: null, valueFields: [], formatOptions: DEFAULT_FORMAT_OPTIONS };
+            dispatch({ type: "bindingChanged", id: selectedWidgetId, binding: smartAdd(currentBinding, widget.type, fieldName, fieldKind) });
           }}
         />
       </div>
