@@ -1,10 +1,11 @@
 import type { QueryResult } from "../api/datasets";
 import { classify } from "../widgets/fieldClassification";
+import { normalizeCell } from "./crossFilter";
 import "./reportEditor.css";
 
 function distinctValues(result: QueryResult, field: string): string[] {
   const index = result.columns.findIndex((c) => c.name === field);
-  const values = new Set(result.rows.map((row) => String(row[index])));
+  const values = new Set(result.rows.map((row) => normalizeCell(row[index])));
   return [...values].sort();
 }
 

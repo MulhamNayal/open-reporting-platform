@@ -50,4 +50,25 @@ describe("FiltersPane", () => {
 
     expect(screen.getByText(/no data to filter yet/i)).toBeInTheDocument();
   });
+
+  it("normalizes null cells to \"\" so the checkbox value matches applyFilters (not the literal \"null\")", async () => {
+    const withNull: QueryResult = {
+      columns: [
+        { name: "Region", nativeType: "nvarchar(20)" },
+        { name: "Revenue", nativeType: "decimal(18,2)" },
+      ],
+      rows: [["North", 100], [null, 50]],
+    };
+    const onChange = vi.fn();
+    render(<FiltersPane visible rawResult={withNull} filterState={{}} onChange={onChange} />);
+
+    // The null cell must not surface as the literal string "null".
+    expect(screen.queryByText("null")).not.toBeInTheDocument();
+
+    // distinctValues sorts alphabetically, so the normalized "" sorts before "North".
+    const checkboxes = screen.getAllByRole("checkbox");
+    await userEvent.click(checkboxes[0]);
+
+    expect(onChange).toHaveBeenCalledWith({ Region: [""] });
+  });
 });

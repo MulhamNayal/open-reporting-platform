@@ -1,5 +1,11 @@
 import type { QueryResult } from "../api/datasets";
 
+// Canonical string form of a cell for filter matching. Null/undefined collapse
+// to "" so the Filters pane checkbox values and applyFilters use identical keys.
+export function normalizeCell(cell: unknown): string {
+  return cell === null || cell === undefined ? "" : String(cell);
+}
+
 export function applyFilters(result: QueryResult, filterState: Record<string, string[]>): QueryResult {
   const activeFilters = Object.entries(filterState).filter(([field, values]) => {
     const columnExists = result.columns.some((c) => c.name === field);
@@ -15,8 +21,7 @@ export function applyFilters(result: QueryResult, filterState: Record<string, st
   const rows = result.rows.filter((row) =>
     activeFilters.every(([field, values]) => {
       const index = columnIndex(field);
-      const cell = row[index];
-      return values.includes(cell === null || cell === undefined ? "" : String(cell));
+      return values.includes(normalizeCell(row[index]));
     }),
   );
 

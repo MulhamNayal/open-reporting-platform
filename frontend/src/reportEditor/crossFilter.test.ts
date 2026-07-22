@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { QueryResult } from "../api/datasets";
-import { applyFilters } from "./crossFilter";
+import { applyFilters, normalizeCell } from "./crossFilter";
 
 const result: QueryResult = {
   columns: [
@@ -41,5 +41,28 @@ describe("applyFilters", () => {
     const filtered = applyFilters(result, { Segment: ["Consumer"] });
 
     expect(filtered.rows).toEqual(result.rows);
+  });
+
+  it("matches null/undefined cells via the empty-string key (same normalization the Filters pane uses)", () => {
+    const withNulls: QueryResult = {
+      columns: [{ name: "Region", nativeType: "nvarchar(20)" }, { name: "Revenue", nativeType: "decimal(18,2)" }],
+      rows: [["North", 100], [null, 50], [undefined, 75]],
+    };
+
+    const filtered = applyFilters(withNulls, { Region: [""] });
+
+    expect(filtered.rows).toEqual([[null, 50], [undefined, 75]]);
+  });
+});
+
+describe("normalizeCell", () => {
+  it("collapses null and undefined to the empty string", () => {
+    expect(normalizeCell(null)).toBe("");
+    expect(normalizeCell(undefined)).toBe("");
+  });
+
+  it("stringifies other values", () => {
+    expect(normalizeCell("North")).toBe("North");
+    expect(normalizeCell(100)).toBe("100");
   });
 });
