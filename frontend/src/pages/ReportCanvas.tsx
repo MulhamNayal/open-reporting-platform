@@ -191,14 +191,14 @@ function ReportCanvasInner() {
             <span>{widgets.length} widget{widgets.length === 1 ? "" : "s"}</span>
           </div>
           <div className="scroll">
-            <div className="canvas" ref={gridRef} data-testid="gridstack-canvas">
+            <div className="canvas">
               {widgets.length === 0 && (
                 <div className="canvas-empty">
                   <b>Build your report</b>
                   <div>Pick a visual from the right, or drag a field onto the canvas.</div>
                 </div>
               )}
-              <div className="grid-stack">
+              <div className="grid-stack" ref={gridRef} data-testid="gridstack-canvas">
                 {widgets.map((w) => (
                   <div
                     key={w.id}
