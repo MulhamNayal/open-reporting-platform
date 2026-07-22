@@ -12,6 +12,7 @@ import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQuery
 import Ribbon from "../reportEditor/Ribbon";
 import VisualizationsPane from "../reportEditor/VisualizationsPane";
 import BuildTab from "../reportEditor/BuildTab";
+import FormatTab from "../reportEditor/FormatTab";
 import DataPane from "../reportEditor/DataPane";
 import { smartAdd } from "../reportEditor/fieldAssignment";
 import QueryDefinitionForm from "./QueryDefinitionForm";
@@ -222,7 +223,16 @@ function ReportCanvasInner() {
                   }}
                 />
               )
-              : <div>format tab content — Task 16</div>
+              : (
+                <FormatTab
+                  widget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
+                  onChange={(binding) => {
+                    if (selectedWidgetId !== null) {
+                      dispatch({ type: "bindingChanged", id: selectedWidgetId, binding });
+                    }
+                  }}
+                />
+              )
           }
         </VisualizationsPane>
         <DataPane

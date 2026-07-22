@@ -45,6 +45,37 @@ describe("shapeBarOption", () => {
   });
 });
 
+describe("shapeBarOption sort/data-labels options", () => {
+  it("sorts series data ascending by value when sortDirection is asc", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], { sortDirection: "asc" });
+
+    expect(option.xAxis).toMatchObject({ data: ["Jan", "Feb"] });
+    const series = option.series as Array<{ data: number[] }>;
+    expect(series[0].data).toEqual([100, 150]);
+  });
+
+  it("sorts series data descending by value when sortDirection is desc", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], { sortDirection: "desc" });
+
+    expect(option.xAxis).toMatchObject({ data: ["Feb", "Jan"] });
+  });
+
+  it("enables data labels on every series when dataLabels is true", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], { dataLabels: true });
+
+    const series = option.series as Array<{ label?: { show: boolean } }>;
+    expect(series[0].label).toMatchObject({ show: true });
+  });
+
+  it("leaves data unsorted and labels off by default", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"]);
+
+    expect(option.xAxis).toMatchObject({ data: ["Jan", "Feb"] });
+    const series = option.series as Array<{ label?: { show: boolean } }>;
+    expect(series[0].label).toBeUndefined();
+  });
+});
+
 describe("shapePieOption", () => {
   it("builds one slice per category row", () => {
     const option = shapePieOption(result, "Month", "Revenue");

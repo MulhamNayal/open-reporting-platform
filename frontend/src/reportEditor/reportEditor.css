@@ -444,3 +444,62 @@
   white-space: nowrap;
   font-size: 12.5px;
 }
+
+.format {
+  padding: 12px;
+}
+.fgroup {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 9px;
+  overflow: hidden;
+}
+.fgroup > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 11px;
+  font-weight: 600;
+  background: var(--panel-2);
+}
+.fgroup > summary::-webkit-details-marker {
+  display: none;
+}
+.fbody {
+  padding: 11px;
+}
+.frow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+.frow:last-child {
+  margin-bottom: 0;
+}
+.frow label {
+  color: var(--text);
+  font-size: 12.5px;
+}
+.text-in {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-family: inherit;
+  font-size: 12.5px;
+}
+.swatches {
+  display: flex;
+  gap: 6px;
+}
+.swatch {
+  width: 26px;
+  height: 22px;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.swatch.active {
+  border-color: var(--text);
+}
