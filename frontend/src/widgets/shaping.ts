@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import type { QueryResult } from "../api/datasets";
+import type { WidgetFormatOptions } from "../api/widgets";
 
 export interface ShapedTableRows {
   columns: string[];
@@ -12,6 +13,38 @@ export interface CategorySeriesOptions {
   stacked?: boolean;
   horizontal?: boolean;
   area?: boolean;
+  showLegend?: boolean;
+  grid?: boolean;
+  palette?: string;
+}
+
+// Named colour themes selectable in the Format tab. The first entry of each
+// array is the palette's swatch colour shown in FormatTab.
+export const PALETTES: Record<string, string[]> = {
+  meridian: ["#5b4fe6", "#8b7ff0", "#b3a9f7", "#7c6ff2", "#4a3fd0", "#c9c2fa"],
+  ocean: ["#0ea5e9", "#38bdf8", "#0284c7", "#7dd3fc", "#0369a1", "#bae6fd"],
+  sunset: ["#f5a524", "#fb923c", "#f97316", "#fbbf24", "#ea580c", "#fed7aa"],
+  forest: ["#46a758", "#65b874", "#2f8f43", "#86c98f", "#227d38", "#b7e0bd"],
+};
+
+function paletteColors(name: string | undefined): string[] | undefined {
+  return name ? PALETTES[name] : undefined;
+}
+
+// Maps the persisted WidgetFormatOptions onto the subset of shaping options the
+// chart builders understand. Type-derived flags (stacked/horizontal/area/donut)
+// are supplied separately by each widget component.
+export function formatToSeriesOptions(format?: WidgetFormatOptions): CategorySeriesOptions {
+  if (!format) {
+    return {};
+  }
+  return {
+    sortDirection: format.sortDirection,
+    dataLabels: format.dataLabels,
+    showLegend: format.showLegend,
+    grid: format.grid,
+    palette: format.palette,
+  };
 }
 
 function columnIndex(result: QueryResult, name: string): number {
@@ -73,11 +106,22 @@ function buildCategorySeriesOption(
   }));
 
   const categoryAxis = { type: "category" as const, data: categories };
-  const valueAxis = { type: "value" as const };
+  const valueAxis = {
+    type: "value" as const,
+    ...(options?.grid !== undefined ? { splitLine: { show: options.grid } } : {}),
+  };
 
-  return options?.horizontal
-    ? { yAxis: categoryAxis, xAxis: valueAxis, series }
-    : { xAxis: categoryAxis, yAxis: valueAxis, series };
+  const colors = paletteColors(options?.palette);
+  const axes = options?.horizontal
+    ? { yAxis: categoryAxis, xAxis: valueAxis }
+    : { xAxis: categoryAxis, yAxis: valueAxis };
+
+  return {
+    ...axes,
+    series,
+    ...(options?.showLegend ? { legend: { show: true } } : {}),
+    ...(colors ? { color: colors } : {}),
+  };
 }
 
 export function shapeBarOption(
@@ -112,6 +156,8 @@ export function shapePieOption(
     data = [...data].sort((a, b) => (options.sortDirection === "asc" ? a.value - b.value : b.value - a.value));
   }
 
+  const colors = paletteColors(options?.palette);
+
   return {
     series: [
       {
@@ -121,6 +167,8 @@ export function shapePieOption(
         ...(options?.dataLabels ? { label: { show: true } } : { label: { show: false } }),
       },
     ],
+    ...(options?.showLegend ? { legend: { show: true } } : {}),
+    ...(colors ? { color: colors } : {}),
   };
 }
 
@@ -139,15 +187,28 @@ export function shapeScatterOption(
   xField: string,
   yField: string,
   detailsField: string | null,
+  options?: CategorySeriesOptions,
 ): EChartsOption {
   const xIndex = columnIndex(result, xField);
   const yIndex = columnIndex(result, yField);
 
+  const splitLine = options?.grid !== undefined ? { splitLine: { show: options.grid } } : {};
+  const xAxis = { type: "value" as const, name: xField, ...splitLine };
+  const yAxis = { type: "value" as const, name: yField, ...splitLine };
+  const colors = paletteColors(options?.palette);
+  const label = options?.dataLabels ? { label: { show: true } } : {};
+
+  const seriesTail = {
+    ...(options?.showLegend ? { legend: { show: true } } : {}),
+    ...(colors ? { color: colors } : {}),
+  };
+
   if (!detailsField) {
     return {
-      xAxis: { type: "value", name: xField },
-      yAxis: { type: "value", name: yField },
-      series: [{ type: "scatter", data: result.rows.map((row) => [Number(row[xIndex]), Number(row[yIndex])]) }],
+      xAxis,
+      yAxis,
+      series: [{ type: "scatter", data: result.rows.map((row) => [Number(row[xIndex]), Number(row[yIndex])]), ...label }],
+      ...seriesTail,
     };
   }
 
@@ -161,8 +222,9 @@ export function shapeScatterOption(
   }
 
   return {
-    xAxis: { type: "value", name: xField },
-    yAxis: { type: "value", name: yField },
-    series: [...groups.entries()].map(([name, data]) => ({ type: "scatter", name, data })),
+    xAxis,
+    yAxis,
+    series: [...groups.entries()].map(([name, data]) => ({ type: "scatter", name, data, ...label })),
+    ...seriesTail,
   };
 }

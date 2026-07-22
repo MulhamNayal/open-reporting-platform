@@ -165,6 +165,48 @@ describe("WidgetRenderer", () => {
     expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
   });
 
+  it("renders a format-overridden title instead of the widget's own when format.title is set", () => {
+    const result: QueryResult = {
+      columns: [
+        { name: "Month", nativeType: "nvarchar(20)" },
+        { name: "Revenue", nativeType: "decimal(18,2)" },
+      ],
+      rows: [["Jan", 100]],
+    };
+    const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, title: "Quarterly revenue" });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Bar", title: "Widget", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.getByText("Quarterly revenue")).toBeInTheDocument();
+    expect(screen.queryByText("Widget")).not.toBeInTheDocument();
+  });
+
+  it("suppresses the title entirely when format.showTitle is false", () => {
+    const result: QueryResult = {
+      columns: [
+        { name: "Month", nativeType: "nvarchar(20)" },
+        { name: "Revenue", nativeType: "decimal(18,2)" },
+      ],
+      rows: [["Jan", 100]],
+    };
+    const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, showTitle: false, title: "Quarterly revenue" });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Bar", title: "Widget", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.queryByText("Quarterly revenue")).not.toBeInTheDocument();
+    expect(screen.queryByText("Widget")).not.toBeInTheDocument();
+  });
+
   it("renders a Scatter widget, using valueFields[0]/[1] positionally as X/Y", () => {
     const result: QueryResult = {
       columns: [

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { QueryResult } from "../api/datasets";
-import { shapeBarOption, shapeKpiValue, shapeLineOption, shapePieOption, shapeScatterOption, shapeTableRows } from "./shaping";
+import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
+import { formatToSeriesOptions, PALETTES, shapeBarOption, shapeKpiValue, shapeLineOption, shapePieOption, shapeScatterOption, shapeTableRows } from "./shaping";
 
 const result: QueryResult = {
   columns: [
@@ -100,6 +101,33 @@ describe("shapeBarOption stacked/horizontal options", () => {
   });
 });
 
+describe("shapeBarOption legend/grid/palette options", () => {
+  it("emits a legend block only when showLegend is true", () => {
+    expect(shapeBarOption(result, "Month", ["Revenue"], { showLegend: true }).legend).toBeDefined();
+    expect(shapeBarOption(result, "Month", ["Revenue"], { showLegend: false }).legend).toBeUndefined();
+    expect(shapeBarOption(result, "Month", ["Revenue"]).legend).toBeUndefined();
+  });
+
+  it("toggles value-axis gridlines via splitLine.show when grid is set", () => {
+    const on = shapeBarOption(result, "Month", ["Revenue"], { grid: true });
+    const off = shapeBarOption(result, "Month", ["Revenue"], { grid: false });
+
+    expect((on.yAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: true });
+    expect((off.yAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: false });
+    // Unset by default so ECharts' own default gridlines stand.
+    expect((shapeBarOption(result, "Month", ["Revenue"]).yAxis as { splitLine?: unknown }).splitLine).toBeUndefined();
+  });
+
+  it("feeds the named palette's colors into ECharts' color array", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], { palette: "ocean" });
+
+    expect(option.color).toEqual(PALETTES.ocean);
+    // A different palette produces a different color array — proving it is load-bearing.
+    expect(shapeBarOption(result, "Month", ["Revenue"], { palette: "forest" }).color).toEqual(PALETTES.forest);
+    expect(shapeBarOption(result, "Month", ["Revenue"]).color).toBeUndefined();
+  });
+});
+
 describe("shapePieOption", () => {
   it("builds one slice per category row", () => {
     const option = shapePieOption(result, "Month", "Revenue");
@@ -144,6 +172,34 @@ describe("shapePieOption donut option", () => {
   });
 });
 
+describe("shapePieOption legend/palette options", () => {
+  it("emits a legend block and palette colors when requested", () => {
+    const option = shapePieOption(result, "Month", "Revenue", { showLegend: true, palette: "sunset" });
+
+    expect(option.legend).toBeDefined();
+    expect(option.color).toEqual(PALETTES.sunset);
+  });
+
+  it("omits legend and color by default", () => {
+    const option = shapePieOption(result, "Month", "Revenue");
+
+    expect(option.legend).toBeUndefined();
+    expect(option.color).toBeUndefined();
+  });
+});
+
+describe("formatToSeriesOptions", () => {
+  it("maps the persisted format options onto shaping options", () => {
+    const mapped = formatToSeriesOptions({ ...DEFAULT_FORMAT_OPTIONS, sortDirection: "desc", dataLabels: true, showLegend: false, grid: false, palette: "forest" });
+
+    expect(mapped).toMatchObject({ sortDirection: "desc", dataLabels: true, showLegend: false, grid: false, palette: "forest" });
+  });
+
+  it("returns an empty object when no format is given", () => {
+    expect(formatToSeriesOptions(undefined)).toEqual({});
+  });
+});
+
 describe("shapeScatterOption", () => {
   const scatterResult: QueryResult = {
     columns: [
@@ -180,6 +236,23 @@ describe("shapeScatterOption", () => {
     const seriesB = optionB.series as Array<{ data: Array<[number, number]> }>;
     expect(seriesA[0].data[0]).toEqual([100, 20]);
     expect(seriesB[0].data[0]).toEqual([20, 100]);
+  });
+
+  it("threads legend, palette, and gridline toggles through the format options", () => {
+    const option = shapeScatterOption(scatterResult, "Sales", "Profit", "Segment", { showLegend: true, palette: "meridian", grid: false });
+
+    expect(option.legend).toBeDefined();
+    expect(option.color).toEqual(PALETTES.meridian);
+    expect((option.xAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: false });
+    expect((option.yAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: false });
+  });
+
+  it("omits legend/color and leaves gridlines at ECharts defaults when no options are given", () => {
+    const option = shapeScatterOption(scatterResult, "Sales", "Profit", null);
+
+    expect(option.legend).toBeUndefined();
+    expect(option.color).toBeUndefined();
+    expect((option.xAxis as { splitLine?: unknown }).splitLine).toBeUndefined();
   });
 });
 

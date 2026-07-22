@@ -1,11 +1,12 @@
 import { useRef } from "react";
 import { Paper, Typography } from "@mui/material";
 import type { QueryResult } from "../api/datasets";
-import { shapeBarOption } from "./shaping";
+import type { WidgetFormatOptions } from "../api/widgets";
+import { formatToSeriesOptions, shapeBarOption } from "./shaping";
 import { useECharts } from "./useECharts";
 
 function BarWidget({
-  title, result, categoryField, valueFields, stacked = false, horizontal = false, onDataPointClick,
+  title, result, categoryField, valueFields, stacked = false, horizontal = false, format, onDataPointClick,
 }: {
   title: string;
   result: QueryResult;
@@ -13,10 +14,11 @@ function BarWidget({
   valueFields: string[];
   stacked?: boolean;
   horizontal?: boolean;
+  format?: WidgetFormatOptions;
   onDataPointClick?: (categoryValue: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  useECharts(containerRef, shapeBarOption(result, categoryField, valueFields, { stacked, horizontal }), onDataPointClick);
+  useECharts(containerRef, shapeBarOption(result, categoryField, valueFields, { ...formatToSeriesOptions(format), stacked, horizontal }), onDataPointClick);
 
   return (
     <Paper sx={{ p: 2, height: "100%" }}>
