@@ -102,3 +102,34 @@ describe("ReportQueryProvider saveFilterState", () => {
     expect(updateSpy).toHaveBeenCalledWith(1, 10, { filterState: JSON.stringify({ Region: ["North"] }) });
   });
 });
+
+describe("ReportQueryProvider setReportPageId", () => {
+  it("loads the newly-selected page's own FilterState instead of keeping the previous page's", async () => {
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: null });
+    vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([
+      { id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{\"Region\":[\"North\"]}" },
+      { id: 11, reportId: 1, name: "Page 2", sortOrder: 1, filterState: "{\"Region\":[\"South\"]}" },
+    ]);
+
+    function Probe3() {
+      const { setReportPageId, filterState } = useReportQuery();
+      return (
+        <div>
+          <button onClick={() => setReportPageId(11)}>go to page 2</button>
+          <div>filters: {JSON.stringify(filterState)}</div>
+        </div>
+      );
+    }
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <Probe3 />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText('filters: {"Region":["North"]}')).toBeInTheDocument());
+    await userEvent.setup().click(screen.getByText("go to page 2"));
+
+    expect(await screen.findByText('filters: {"Region":["South"]}')).toBeInTheDocument();
+  });
+});

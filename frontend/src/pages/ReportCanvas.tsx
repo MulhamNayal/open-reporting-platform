@@ -6,6 +6,7 @@ import "gridstack/dist/gridstack.min.css";
 import axios from "axios";
 import { getWidgets, saveWidgets, parseFormatOptions, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
 import { renameReport, setReportDataset } from "../api/reports";
+import { createReportPage, deleteReportPage, updateReportPage } from "../api/reportPages";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
 import WidgetRenderer from "../widgets/WidgetRenderer";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
@@ -15,6 +16,7 @@ import BuildTab from "../reportEditor/BuildTab";
 import FormatTab from "../reportEditor/FormatTab";
 import DataPane from "../reportEditor/DataPane";
 import FiltersPane from "../reportEditor/FiltersPane";
+import PageTabsBar from "../reportEditor/PageTabsBar";
 import { smartAdd } from "../reportEditor/fieldAssignment";
 import { toggleCrossFilterValue } from "../reportEditor/clickToCrossFilter";
 import QueryDefinitionForm from "./QueryDefinitionForm";
@@ -24,7 +26,7 @@ let tempIdCounter = -1;
 
 function ReportCanvasInner() {
   const navigate = useNavigate();
-  const { reportId, reportPageId, filteredResult, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
+  const { reportId, reportPages, reportPageId, setReportPageId, filteredResult, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
 
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
@@ -257,7 +259,30 @@ function ReportCanvasInner() {
         />
       </div>
       <div className="pagetabs">
-        <button className="ptab active">Page 1</button>
+        <PageTabsBar
+          pages={reportPages}
+          activePageId={reportPageId}
+          onSelect={setReportPageId}
+          onAdd={async () => {
+            const created = await createReportPage(reportId, null);
+            await refresh();
+            setReportPageId(created.id);
+          }}
+          onRename={async (pageId, name) => {
+            await updateReportPage(reportId, pageId, { name });
+            await refresh();
+          }}
+          onDelete={async (pageId) => {
+            try {
+              await deleteReportPage(reportId, pageId);
+              await refresh();
+            } catch (err) {
+              if (axios.isAxiosError(err) && err.response?.status === 409) {
+                window.alert(typeof err.response.data === "string" ? err.response.data : "A report needs at least one page.");
+              }
+            }
+          }}
+        />
       </div>
 
       <Dialog open={changeSourceOpen} maxWidth="sm" fullWidth onClose={() => setChangeSourceOpen(false)}>

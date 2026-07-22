@@ -24,7 +24,7 @@ const ReportQueryContext = createContext<ReportQueryContextValue | null>(null);
 
 export function ReportQueryProvider({ reportId, children }: { reportId: number; children: ReactNode }) {
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
-  const [reportPageId, setReportPageId] = useState<number | null>(null);
+  const [reportPageId, setReportPageIdState] = useState<number | null>(null);
   const [rawResult, setRawResult] = useState<QueryResult | null>(null);
   const [filterState, setFilterState] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
       const pages = await getReportPages(reportId);
       setReportPages(pages);
       const firstPageId = pages[0]?.id ?? null;
-      setReportPageId(firstPageId);
+      setReportPageIdState(firstPageId);
       setFilterState(firstPageId !== null ? JSON.parse(pages[0].filterState || "{}") : {});
 
       if (report.datasetId !== null) {
@@ -59,6 +59,12 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     }
     await updateReportPage(reportId, reportPageId, { filterState: JSON.stringify(filterState) });
   }, [reportId, reportPageId, filterState]);
+
+  const setReportPageId = useCallback((id: number) => {
+    setReportPageIdState(id);
+    const page = reportPages.find((p) => p.id === id);
+    setFilterState(page ? JSON.parse(page.filterState || "{}") : {});
+  }, [reportPages]);
 
   useEffect(() => {
     load();

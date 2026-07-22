@@ -553,3 +553,18 @@
   padding: 12px;
   line-height: 1.5;
 }
+.addpage {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px dashed var(--line-strong);
+  background: none;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.addpage:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
