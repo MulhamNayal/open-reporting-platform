@@ -298,3 +298,99 @@
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
+.wells {
+  padding: 10px;
+}
+.no-visual {
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 16px 12px;
+  text-align: center;
+}
+.well {
+  margin-bottom: 10px;
+}
+.well-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 0 0 5px;
+}
+.well-box {
+  min-height: 36px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 7px;
+  padding: 5px;
+  background: var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.well-box.drop-hot {
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--accent-soft);
+}
+.well-box .hint {
+  color: var(--faint);
+  font-size: 11.5px;
+  padding: 5px 6px;
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 7px;
+  font-size: 12px;
+  box-shadow: var(--sh-sm);
+}
+.pill .gl {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+}
+.gl.dim {
+  background: #e4f4f1;
+  color: #0f8b7d;
+}
+.gl.measure {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.gl.date {
+  background: #fdeede;
+  color: #c9701e;
+}
+.pill .pname {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pill .x {
+  border: 0;
+  background: none;
+  color: var(--faint);
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.pill .x:hover {
+  background: var(--groove);
+  color: var(--text);
+}

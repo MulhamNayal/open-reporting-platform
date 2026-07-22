@@ -8,10 +8,10 @@ import { getWidgets, saveWidgets, parseFormatOptions, type SaveWidgetRequest, ty
 import { renameReport, setReportDataset } from "../api/reports";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
 import WidgetRenderer from "../widgets/WidgetRenderer";
-import WidgetBindingEditor from "../widgets/WidgetBindingEditor";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
 import Ribbon from "../reportEditor/Ribbon";
 import VisualizationsPane from "../reportEditor/VisualizationsPane";
+import BuildTab from "../reportEditor/BuildTab";
 import QueryDefinitionForm from "./QueryDefinitionForm";
 import "../reportEditor/reportEditor.css";
 
@@ -182,7 +182,6 @@ function ReportCanvasInner() {
                           onChange={(e) => dispatch({ type: "contentChanged", id: w.id, content: e.target.value })}
                         />
                       )}
-                      <WidgetBindingEditor widget={w} columns={filteredResult?.columns ?? []} onChange={(binding) => dispatch({ type: "bindingChanged", id: w.id, binding })} />
                       <WidgetRenderer
                         widget={{
                           id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
@@ -208,7 +207,21 @@ function ReportCanvasInner() {
             }
           }}
         >
-          {(tab) => <div>{tab} tab content — Tasks 14/16</div>}
+          {(tab) =>
+            tab === "build"
+              ? (
+                <BuildTab
+                  widget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
+                  columns={filteredResult?.columns ?? []}
+                  onChange={(binding) => {
+                    if (selectedWidgetId !== null) {
+                      dispatch({ type: "bindingChanged", id: selectedWidgetId, binding });
+                    }
+                  }}
+                />
+              )
+              : <div>format tab content — Task 16</div>
+          }
         </VisualizationsPane>
       </div>
       <div className="pagetabs">
