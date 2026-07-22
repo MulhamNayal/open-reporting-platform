@@ -21,7 +21,7 @@ function WidgetChrome({
           </div>
         )}
       </div>
-      {children}
+      <div className="vbody">{children}</div>
     </div>
   );
 }

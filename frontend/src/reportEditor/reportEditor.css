@@ -568,6 +568,26 @@
   border-color: var(--accent);
   color: var(--accent);
 }
+.visual {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--sh-sm);
+}
+.visual.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--accent), var(--sh-md);
+}
+.vbody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 10px 10px;
+}
 .vhead {
   display: flex;
   align-items: center;
