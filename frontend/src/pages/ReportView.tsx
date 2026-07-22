@@ -57,6 +57,7 @@ function ReportViewInner() {
           onAdd={() => {}}
           onRename={() => {}}
           onDelete={() => {}}
+          readOnly
         />
       </div>
     </div>

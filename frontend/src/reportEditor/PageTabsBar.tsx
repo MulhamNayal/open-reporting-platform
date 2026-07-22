@@ -3,7 +3,7 @@ import type { ReportPage } from "../api/reportPages";
 import "./reportEditor.css";
 
 function PageTabsBar({
-  pages, activePageId, onSelect, onAdd, onRename, onDelete,
+  pages, activePageId, onSelect, onAdd, onRename, onDelete, readOnly = false,
 }: {
   pages: ReportPage[];
   activePageId: number | null;
@@ -11,6 +11,7 @@ function PageTabsBar({
   onAdd: () => void;
   onRename: (id: number, name: string) => void;
   onDelete: (id: number) => void;
+  readOnly?: boolean;
 }) {
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -45,16 +46,16 @@ function PageTabsBar({
             type="button"
             className={"ptab" + (page.id === activePageId ? " active" : "")}
             onClick={() => onSelect(page.id)}
-            onDoubleClick={() => startRename(page)}
+            onDoubleClick={() => { if (!readOnly) { startRename(page); } }}
           >
             {page.name}
-            {page.id === activePageId && pages.length > 1 && (
+            {!readOnly && page.id === activePageId && pages.length > 1 && (
               <span aria-hidden="true" onClick={(e) => { e.stopPropagation(); onDelete(page.id); }}> ×</span>
             )}
           </button>
         ),
       )}
-      <button className="addpage" title="New page" onClick={onAdd}>+</button>
+      {!readOnly && <button className="addpage" title="New page" onClick={onAdd}>+</button>}
     </div>
   );
 }
