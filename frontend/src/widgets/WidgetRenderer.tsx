@@ -58,6 +58,10 @@ function WidgetRenderer({ widget, result }: { widget: WidgetSummary; result: Que
       return <TableWidget title={widget.title} result={result} valueFields={widget.binding.valueFields} />;
     case "Bar":
       return <BarWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} />;
+    case "StackedColumn":
+      return <BarWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} stacked />;
+    case "ClusteredBar":
+      return <BarWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} horizontal />;
     case "Line":
       return <LineWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} />;
     case "Pie":

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as echarts from "echarts";
 import type { QueryResult } from "../api/datasets";
 import type { WidgetSummary } from "../api/widgets";
 import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
@@ -23,6 +24,15 @@ function makeWidget(overrides: Partial<WidgetSummary>): WidgetSummary {
 const formatOptionsJson = JSON.stringify(DEFAULT_FORMAT_OPTIONS);
 
 describe("WidgetRenderer", () => {
+  // Chart widgets init ECharts, which needs a real canvas jsdom lacks. Stub init
+  // to a no-op chart — same seam useECharts.test.tsx uses; ECharts is not asserted on here.
+  beforeEach(() => {
+    vi.spyOn(echarts, "init").mockReturnValue({
+      setOption: vi.fn(),
+      dispose: vi.fn(),
+    } as unknown as echarts.ECharts);
+  });
+
   it("renders a Text widget without needing a result", () => {
     render(<WidgetRenderer widget={makeWidget({ type: "Text", title: "A note", content: "hello" })} result={null} />);
 
@@ -73,5 +83,47 @@ describe("WidgetRenderer", () => {
     );
 
     expect(screen.getByText("500")).toBeInTheDocument();
+  });
+
+  it("renders a StackedColumn widget when the binding is valid", () => {
+    const result: QueryResult = {
+      columns: [
+        { name: "Month", nativeType: "nvarchar(20)" },
+        { name: "Revenue", nativeType: "decimal(18,2)" },
+      ],
+      rows: [["Jan", 100]],
+    };
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "StackedColumn", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
+        result={result}
+      />,
+    );
+
+    // No throw and no stale-binding/incomplete-binding messaging is the assertion here —
+    // ECharts itself is not asserted on (see Milestone 4's own useECharts.test.tsx for that seam).
+    expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Finish configuring/)).not.toBeInTheDocument();
+  });
+
+  it("renders a ClusteredBar widget when the binding is valid", () => {
+    const result: QueryResult = {
+      columns: [
+        { name: "Month", nativeType: "nvarchar(20)" },
+        { name: "Revenue", nativeType: "decimal(18,2)" },
+      ],
+      rows: [["Jan", 100]],
+    };
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "ClusteredBar", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Finish configuring/)).not.toBeInTheDocument();
   });
 });

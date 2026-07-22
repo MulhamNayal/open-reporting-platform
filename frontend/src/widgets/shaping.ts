@@ -9,6 +9,8 @@ export interface ShapedTableRows {
 export interface CategorySeriesOptions {
   sortDirection?: "asc" | "desc" | null;
   dataLabels?: boolean;
+  stacked?: boolean;
+  horizontal?: boolean;
 }
 
 function columnIndex(result: QueryResult, name: string): number {
@@ -64,14 +66,16 @@ function buildCategorySeriesOption(
     name: field,
     type: seriesType,
     data: seriesValues[i],
+    ...(options?.stacked ? { stack: "total" } : {}),
     ...(options?.dataLabels ? { label: { show: true } } : {}),
   }));
 
-  return {
-    xAxis: { type: "category", data: categories },
-    yAxis: { type: "value" },
-    series,
-  };
+  const categoryAxis = { type: "category" as const, data: categories };
+  const valueAxis = { type: "value" as const };
+
+  return options?.horizontal
+    ? { yAxis: categoryAxis, xAxis: valueAxis, series }
+    : { xAxis: categoryAxis, yAxis: valueAxis, series };
 }
 
 export function shapeBarOption(

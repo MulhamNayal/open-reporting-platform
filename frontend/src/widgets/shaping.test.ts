@@ -76,6 +76,30 @@ describe("shapeBarOption sort/data-labels options", () => {
   });
 });
 
+describe("shapeBarOption stacked/horizontal options", () => {
+  it("sets stack on every series when stacked is true", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue", "Cost"], { stacked: true });
+
+    const series = option.series as Array<{ stack?: string }>;
+    expect(series[0].stack).toBeDefined();
+    expect(series[0].stack).toBe(series[1].stack);
+  });
+
+  it("does not set stack by default", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue", "Cost"]);
+
+    const series = option.series as Array<{ stack?: string }>;
+    expect(series[0].stack).toBeUndefined();
+  });
+
+  it("swaps the category axis to Y and value axis to X when horizontal is true", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], { horizontal: true });
+
+    expect(option.yAxis).toMatchObject({ type: "category", data: ["Jan", "Feb"] });
+    expect(option.xAxis).toMatchObject({ type: "value" });
+  });
+});
+
 describe("shapePieOption", () => {
   it("builds one slice per category row", () => {
     const option = shapePieOption(result, "Month", "Revenue");
