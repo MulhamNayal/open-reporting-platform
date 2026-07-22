@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 function Probe() {
-  const { rawResult, filteredResult, loading, reportPageId } = useReportQuery();
+  const { rawResult, filteredResult, loading, reportPageId, reportName } = useReportQuery();
   if (loading) {
     return <div>loading</div>;
   }
@@ -24,6 +24,7 @@ function Probe() {
       <div>rows: {rawResult?.rows.length ?? 0}</div>
       <div>filtered: {filteredResult?.rows.length ?? 0}</div>
       <div>page: {reportPageId ?? "none"}</div>
+      <div>name: {reportName ?? "none"}</div>
     </div>
   );
 }
@@ -49,6 +50,21 @@ describe("ReportQueryProvider", () => {
     expect(screen.getByText("filtered: 2")).toBeInTheDocument();
     expect(screen.getByText("page: 10")).toBeInTheDocument();
     expect(executeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("exposes the fetched report's real name", async () => {
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "Q3 Sales", description: "", datasetId: null });
+    vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([
+      { id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{}" },
+    ]);
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <Probe />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("name: Q3 Sales")).toBeInTheDocument());
   });
 
   it("does not call executeDataset when the report has no datasetId yet", async () => {

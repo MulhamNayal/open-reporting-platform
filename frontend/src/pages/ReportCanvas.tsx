@@ -28,16 +28,26 @@ let tempIdCounter = -1;
 
 function ReportCanvasInner() {
   const navigate = useNavigate();
-  const { reportId, reportPages, reportPageId, setReportPageId, filteredResult, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
+  const { reportId, reportName: fetchedReportName, reportPages, reportPageId, setReportPageId, filteredResult, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
 
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
   const [reportName, setReportName] = useState("Report");
+  const reportNameSeededRef = useRef(false);
   const [changeSourceOpen, setChangeSourceOpen] = useState(false);
   const [selectedWidgetId, setSelectedWidgetId] = useState<number | null>(null);
   const [filtersVisible, setFiltersVisible] = useState(true);
   const [railView, setRailView] = useState<"Report" | "Data table">("Report");
   const gridRef = useRef<HTMLDivElement | null>(null);
+
+  // Seed the ribbon title from the fetched report name once. Guarded so an
+  // in-session rename (or a later refresh) never clobbers unsaved local edits.
+  useEffect(() => {
+    if (!reportNameSeededRef.current && fetchedReportName !== null) {
+      setReportName(fetchedReportName);
+      reportNameSeededRef.current = true;
+    }
+  }, [fetchedReportName]);
 
   useEffect(() => {
     if (reportPageId === null) {

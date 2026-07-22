@@ -7,6 +7,7 @@ import { applyFilters } from "./crossFilter";
 
 export interface ReportQueryContextValue {
   reportId: number;
+  reportName: string | null;
   reportPages: ReportPage[];
   reportPageId: number | null;
   setReportPageId: (id: number) => void;
@@ -23,6 +24,7 @@ export interface ReportQueryContextValue {
 const ReportQueryContext = createContext<ReportQueryContextValue | null>(null);
 
 export function ReportQueryProvider({ reportId, children }: { reportId: number; children: ReactNode }) {
+  const [reportName, setReportName] = useState<string | null>(null);
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
   const [reportPageId, setReportPageIdState] = useState<number | null>(null);
   const [rawResult, setRawResult] = useState<QueryResult | null>(null);
@@ -35,6 +37,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     setError(null);
     try {
       const report = await getReport(reportId);
+      setReportName(report.name);
       const pages = await getReportPages(reportId);
       setReportPages(pages);
       const firstPageId = pages[0]?.id ?? null;
@@ -77,6 +80,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
 
   const value: ReportQueryContextValue = {
     reportId,
+    reportName,
     reportPages,
     reportPageId,
     setReportPageId,
