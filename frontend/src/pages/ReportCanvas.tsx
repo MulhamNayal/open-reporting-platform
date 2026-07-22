@@ -4,7 +4,7 @@ import { Alert, Dialog, DialogContent, DialogTitle } from "@mui/material";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 import axios from "axios";
-import { getWidgets, saveWidgets, parseFormatOptions, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
+import { getWidgets, saveWidgets, parseFormatOptions, DEFAULT_FORMAT_OPTIONS, type SaveWidgetRequest, type WidgetType } from "../api/widgets";
 import { renameReport, setReportDataset } from "../api/reports";
 import { createReportPage, deleteReportPage, updateReportPage } from "../api/reportPages";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
@@ -17,6 +17,8 @@ import FormatTab from "../reportEditor/FormatTab";
 import DataPane from "../reportEditor/DataPane";
 import FiltersPane from "../reportEditor/FiltersPane";
 import PageTabsBar from "../reportEditor/PageTabsBar";
+import WidgetChrome from "../reportEditor/WidgetChrome";
+import QueryResultGrid from "../components/QueryResultGrid";
 import { smartAdd } from "../reportEditor/fieldAssignment";
 import { toggleCrossFilterValue } from "../reportEditor/clickToCrossFilter";
 import QueryDefinitionForm from "./QueryDefinitionForm";
@@ -34,6 +36,7 @@ function ReportCanvasInner() {
   const [changeSourceOpen, setChangeSourceOpen] = useState(false);
   const [selectedWidgetId, setSelectedWidgetId] = useState<number | null>(null);
   const [filtersVisible, setFiltersVisible] = useState(true);
+  const [railView, setRailView] = useState<"Report" | "Data table">("Report");
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -105,6 +108,13 @@ function ReportCanvasInner() {
     dispatch({ type: "removed", id: widgetId });
   }
 
+  function duplicateWidget(source: WidgetDraft) {
+    dispatch({
+      type: "added",
+      widget: { ...source, id: tempIdCounter--, x: source.x + 1, y: source.y + 1 },
+    });
+  }
+
   async function handleSave() {
     if (reportPageId === null) {
       return;
@@ -158,10 +168,12 @@ function ReportCanvasInner() {
       <div className="body">
         <FiltersPane visible={filtersVisible} rawResult={rawResult} filterState={filterState} onChange={setFilterState} />
         <div className="rail">
-          <button className="rbtn active" title="Report">▦</button>
-          <button className="rbtn" title="Data table">☰</button>
+          <button className={"rbtn" + (railView === "Report" ? " active" : "")} title="Report" onClick={() => setRailView("Report")}>▦</button>
+          <button className={"rbtn" + (railView === "Data table" ? " active" : "")} title="Data table" onClick={() => setRailView("Data table")}>☰</button>
         </div>
         <div className="stage">
+          {railView === "Report" ? (
+          <>
           <div className="stagebar">
             <span>{widgets.length} widget{widgets.length === 1 ? "" : "s"}</span>
           </div>
@@ -181,33 +193,45 @@ function ReportCanvasInner() {
                     {...({ "gs-id": String(w.id), "gs-x": w.x, "gs-y": w.y, "gs-w": w.w, "gs-h": w.h } as Record<string, unknown>)}
                   >
                     <div className="grid-stack-item-content" onClick={() => setSelectedWidgetId(w.id)}>
-                      <button onClick={() => removeWidget(w.id)}>Remove</button>
-                      <input
-                        value={w.title}
-                        onChange={(e) => dispatch({ type: "titleChanged", id: w.id, title: e.target.value })}
-                      />
-                      {w.type === "Text" && (
-                        <textarea
-                          value={w.content ?? ""}
-                          onChange={(e) => dispatch({ type: "contentChanged", id: w.id, content: e.target.value })}
+                      <WidgetChrome
+                        title={w.title}
+                        selected={selectedWidgetId === w.id}
+                        onDuplicate={() => duplicateWidget(w)}
+                        onDelete={() => removeWidget(w.id)}
+                      >
+                        <input
+                          value={w.title}
+                          onChange={(e) => dispatch({ type: "titleChanged", id: w.id, title: e.target.value })}
                         />
-                      )}
-                      <WidgetRenderer
-                        widget={{
-                          id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
-                          binding: w.binding
-                            ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
-                            : null,
-                        }}
-                        result={filteredResult}
-                        onDataPointClick={(field, value) => setFilterState(toggleCrossFilterValue(filterState, field, value))}
-                      />
+                        {w.type === "Text" && (
+                          <textarea
+                            value={w.content ?? ""}
+                            onChange={(e) => dispatch({ type: "contentChanged", id: w.id, content: e.target.value })}
+                          />
+                        )}
+                        <WidgetRenderer
+                          widget={{
+                            id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
+                            binding: w.binding
+                              ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
+                              : null,
+                          }}
+                          result={filteredResult}
+                          onDataPointClick={(field, value) => setFilterState(toggleCrossFilterValue(filterState, field, value))}
+                        />
+                      </WidgetChrome>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+          </>
+          ) : (
+            <div className="scroll">
+              <QueryResultGrid result={rawResult} />
+            </div>
+          )}
         </div>
         <VisualizationsPane
           selectedWidget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
@@ -248,8 +272,21 @@ function ReportCanvasInner() {
           selectedWidget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
           onSmartAdd={(fieldName, fieldKind) => {
             if (selectedWidgetId === null) {
+              const newId = tempIdCounter--;
+              const binding = smartAdd(
+                { categoryField: null, valueFields: [], formatOptions: DEFAULT_FORMAT_OPTIONS },
+                "Bar",
+                fieldName,
+                fieldKind,
+              );
+              dispatch({
+                type: "added",
+                widget: { id: newId, type: "Bar", x: 0, y: 0, w: 4, h: 3, title: "New Bar widget", content: null, binding },
+              });
+              setSelectedWidgetId(newId);
               return;
             }
+
             const widget = widgets.find((w) => w.id === selectedWidgetId);
             if (!widget?.binding) {
               return;

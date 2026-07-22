@@ -33,6 +33,15 @@ describe("DataPane", () => {
     expect(onSmartAdd).toHaveBeenCalledWith("Revenue", "Numeric");
   });
 
+  it("checking a field when nothing is selected calls onSmartAdd anyway, letting the caller decide to create a widget", async () => {
+    const onSmartAdd = vi.fn();
+    render(<DataPane columns={columns} selectedWidget={null} onSmartAdd={onSmartAdd} />);
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Revenue" }));
+
+    expect(onSmartAdd).toHaveBeenCalledWith("Revenue", "Numeric");
+  });
+
   it("marks a field's checkbox checked when it's already used in the selected widget's binding", () => {
     const widget: WidgetDraft = {
       id: 1, type: "Bar", x: 0, y: 0, w: 4, h: 3, title: "W", content: null,

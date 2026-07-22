@@ -568,3 +568,39 @@
   border-color: var(--accent);
   color: var(--accent);
 }
+.vhead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  cursor: move;
+  user-select: none;
+}
+.vtitle {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vhead .vtools {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+.vtool {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: none;
+  border-radius: 5px;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.vtool:hover {
+  background: var(--groove);
+  color: var(--text);
+}
