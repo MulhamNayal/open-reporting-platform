@@ -40,7 +40,7 @@ export function isBindingComplete(
     case "Area":
       return categoryField !== null && valueFields.length >= 1;
     case "Scatter":
-      return valueFields.length === 2;
+      return valueFields.length === 2 && !!valueFields[0] && !!valueFields[1];
     case "Table":
       return true;
     default:

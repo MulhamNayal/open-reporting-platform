@@ -100,6 +100,21 @@ export function removeField(binding: WidgetBindingDraft, wellKey: string, fieldN
     return binding.categoryField === fieldName ? { ...binding, categoryField: null } : binding;
   }
 
+  // Scatter's x/y wells are positional (index 0 = X, index 1 = Y). Filtering would
+  // shift the surviving measure into the wrong axis, so clear the one slot in place.
+  if (wellKey === "x" || wellKey === "y") {
+    const index = wellKey === "x" ? 0 : 1;
+    if (binding.valueFields[index] !== fieldName) {
+      return binding;
+    }
+    const next = [...binding.valueFields];
+    delete next[index];
+    if (!next[0] && !next[1]) {
+      return { ...binding, valueFields: [] };
+    }
+    return { ...binding, valueFields: next };
+  }
+
   return { ...binding, valueFields: binding.valueFields.filter((f) => f !== fieldName) };
 }
 

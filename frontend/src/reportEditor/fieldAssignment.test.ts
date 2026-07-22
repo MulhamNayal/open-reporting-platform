@@ -97,6 +97,23 @@ describe("removeField", () => {
 
     expect(binding.categoryField).toBeNull();
   });
+
+  it("clearing Scatter's x well leaves y in its positional slot rather than shifting it to x", () => {
+    const binding: WidgetBindingDraft = { categoryField: null, valueFields: ["Rx", "Ry"], formatOptions: DEFAULT_FORMAT_OPTIONS };
+
+    const cleared = removeField(binding, "x", "Rx");
+
+    expect(cleared.valueFields[0]).toBeFalsy();
+    expect(cleared.valueFields[1]).toBe("Ry");
+  });
+
+  it("clearing the only set Scatter axis collapses to an empty array", () => {
+    const binding: WidgetBindingDraft = { categoryField: null, valueFields: ["Rx"], formatOptions: DEFAULT_FORMAT_OPTIONS };
+
+    const cleared = removeField(binding, "x", "Rx");
+
+    expect(cleared.valueFields).toEqual([]);
+  });
 });
 
 describe("smartAdd", () => {

@@ -57,6 +57,14 @@ describe("isBindingComplete", () => {
     expect(isBindingComplete("Scatter", null, ["Sales"])).toBe(false);
   });
 
+  it("returns false for a Scatter with a hole at the x slot (only y assigned)", () => {
+    // Dropping onto Y before X yields a sparse [<hole>, "Rev"] via assignField.
+    const sparse: string[] = [];
+    sparse[1] = "Rev";
+
+    expect(isBindingComplete("Scatter", null, sparse)).toBe(false);
+  });
+
   it("returns true for a StackedColumn with a category and one value field", () => {
     expect(isBindingComplete("StackedColumn", "Month", ["Revenue"])).toBe(true);
   });
