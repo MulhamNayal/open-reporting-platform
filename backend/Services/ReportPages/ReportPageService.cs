@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Backend.Data;
 using Backend.Models;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,8 @@ public class ReportPageService : IReportPageService
 
         var existing = await _context.ReportPages.Where(p => p.ReportId == reportId).ToListAsync();
         var sortOrder = existing.Count == 0 ? 0 : existing.Max(p => p.SortOrder) + 1;
-        var name = string.IsNullOrWhiteSpace(request.Name) ? $"Page {existing.Count + 1}" : request.Name!;
+        var nextPageNumber = existing.Count == 0 ? 1 : existing.Max(p => ExtractPageNumber(p.Name)) + 1;
+        var name = string.IsNullOrWhiteSpace(request.Name) ? $"Page {nextPageNumber}" : request.Name!;
 
         var page = new ReportPage { ReportId = reportId, Name = name, SortOrder = sortOrder, FilterState = "{}" };
         _context.ReportPages.Add(page);
@@ -103,6 +105,14 @@ public class ReportPageService : IReportPageService
         }
 
         return page;
+    }
+
+    private static readonly Regex PageNumberPattern = new(@"^Page (\d+)$", RegexOptions.Compiled);
+
+    private static int ExtractPageNumber(string name)
+    {
+        var match = PageNumberPattern.Match(name);
+        return match.Success ? int.Parse(match.Groups[1].Value) : 0;
     }
 
     private static ReportPageSummary ToSummary(ReportPage page) =>

@@ -54,6 +54,19 @@ public class ReportPageServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_AfterDeletingAnEarlierPage_DoesNotReuseItsDefaultName()
+    {
+        var (service, _) = CreateService(Guid.NewGuid().ToString());
+        var first = await service.CreateAsync(1, new CreateReportPageRequest(null));
+        await service.CreateAsync(1, new CreateReportPageRequest(null));
+        await service.DeleteAsync(1, first.Id);
+
+        var third = await service.CreateAsync(1, new CreateReportPageRequest(null));
+
+        Assert.Equal("Page 3", third.Name);
+    }
+
+    [Fact]
     public async Task CreateAsync_ExplicitName_IsUsedVerbatim()
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
