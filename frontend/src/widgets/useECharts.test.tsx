@@ -30,7 +30,8 @@ describe("useECharts", () => {
     const { unmount } = render(<TestComponent option={{ series: [] }} />);
 
     expect(echarts.init).toHaveBeenCalledTimes(1);
-    expect(setOptionSpy).toHaveBeenCalledWith({ series: [] });
+    // notMerge: true so a re-shape with fewer series can't leave orphaned series behind.
+    expect(setOptionSpy).toHaveBeenCalledWith({ series: [] }, { notMerge: true });
 
     unmount();
 

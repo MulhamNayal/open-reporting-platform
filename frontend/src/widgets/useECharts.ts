@@ -26,7 +26,10 @@ export function useECharts(
 
   useEffect(() => {
     if (chartRef.current && option) {
-      chartRef.current.setOption(option);
+      // notMerge: replace the option wholesale. Cross-filtering re-shapes the same
+      // chart with a varying number of series (e.g. Scatter grouped by Details), and
+      // merge-mode setOption would leave orphaned series from a previous render.
+      chartRef.current.setOption(option, { notMerge: true });
     }
   }, [option]);
 
