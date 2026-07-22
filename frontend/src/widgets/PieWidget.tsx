@@ -5,10 +5,10 @@ import { shapePieOption } from "./shaping";
 import { useECharts } from "./useECharts";
 
 function PieWidget({
-  title, result, categoryField, valueField,
-}: { title: string; result: QueryResult; categoryField: string; valueField: string }) {
+  title, result, categoryField, valueField, donut = false,
+}: { title: string; result: QueryResult; categoryField: string; valueField: string; donut?: boolean }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  useECharts(containerRef, shapePieOption(result, categoryField, valueField));
+  useECharts(containerRef, shapePieOption(result, categoryField, valueField, { donut }));
 
   return (
     <Paper sx={{ p: 2, height: "100%" }}>

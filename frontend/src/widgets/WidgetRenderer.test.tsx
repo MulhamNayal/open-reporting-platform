@@ -126,4 +126,42 @@ describe("WidgetRenderer", () => {
     expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Finish configuring/)).not.toBeInTheDocument();
   });
+
+  it("renders an Area widget when the binding is valid", () => {
+    const result: QueryResult = {
+      columns: [
+        { name: "Month", nativeType: "nvarchar(20)" },
+        { name: "Revenue", nativeType: "decimal(18,2)" },
+      ],
+      rows: [["Jan", 100]],
+    };
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Area", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
+  });
+
+  it("renders a Donut widget when the binding is valid", () => {
+    const result: QueryResult = {
+      columns: [
+        { name: "Month", nativeType: "nvarchar(20)" },
+        { name: "Revenue", nativeType: "decimal(18,2)" },
+      ],
+      rows: [["Jan", 100]],
+    };
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Donut", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { QueryResult } from "../api/datasets";
-import { shapeBarOption, shapeKpiValue, shapePieOption, shapeTableRows } from "./shaping";
+import { shapeBarOption, shapeKpiValue, shapeLineOption, shapePieOption, shapeTableRows } from "./shaping";
 
 const result: QueryResult = {
   columns: [
@@ -109,6 +109,38 @@ describe("shapePieOption", () => {
       { name: "Jan", value: 100 },
       { name: "Feb", value: 150 },
     ]);
+  });
+});
+
+describe("shapeLineOption area option", () => {
+  it("sets areaStyle on every series when area is true", () => {
+    const option = shapeLineOption(result, "Month", ["Revenue"], { area: true });
+
+    const series = option.series as Array<{ areaStyle?: object }>;
+    expect(series[0].areaStyle).toBeDefined();
+  });
+
+  it("does not set areaStyle by default", () => {
+    const option = shapeLineOption(result, "Month", ["Revenue"]);
+
+    const series = option.series as Array<{ areaStyle?: object }>;
+    expect(series[0].areaStyle).toBeUndefined();
+  });
+});
+
+describe("shapePieOption donut option", () => {
+  it("sets a cutout radius range when donut is true", () => {
+    const option = shapePieOption(result, "Month", "Revenue", { donut: true });
+
+    const series = option.series as Array<{ radius?: string[] }>;
+    expect(series[0].radius).toEqual(["50%", "70%"]);
+  });
+
+  it("uses a full-circle radius by default", () => {
+    const option = shapePieOption(result, "Month", "Revenue");
+
+    const series = option.series as Array<{ radius?: string[] }>;
+    expect(series[0].radius).toBeUndefined();
   });
 });
 

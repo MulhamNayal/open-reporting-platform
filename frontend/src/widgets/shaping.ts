@@ -11,6 +11,7 @@ export interface CategorySeriesOptions {
   dataLabels?: boolean;
   stacked?: boolean;
   horizontal?: boolean;
+  area?: boolean;
 }
 
 function columnIndex(result: QueryResult, name: string): number {
@@ -67,6 +68,7 @@ function buildCategorySeriesOption(
     type: seriesType,
     data: seriesValues[i],
     ...(options?.stacked ? { stack: "total" } : {}),
+    ...(options?.area ? { areaStyle: {} } : {}),
     ...(options?.dataLabels ? { label: { show: true } } : {}),
   }));
 
@@ -100,7 +102,7 @@ export function shapePieOption(
   result: QueryResult,
   categoryField: string,
   valueField: string,
-  options?: CategorySeriesOptions,
+  options?: CategorySeriesOptions & { donut?: boolean },
 ): EChartsOption {
   const categoryIndex = columnIndex(result, categoryField);
   const valueIndex = columnIndex(result, valueField);
@@ -115,6 +117,7 @@ export function shapePieOption(
       {
         type: "pie",
         data,
+        ...(options?.donut ? { radius: ["50%", "70%"] } : {}),
         ...(options?.dataLabels ? { label: { show: true } } : { label: { show: false } }),
       },
     ],

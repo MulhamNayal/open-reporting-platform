@@ -66,6 +66,10 @@ function WidgetRenderer({ widget, result }: { widget: WidgetSummary; result: Que
       return <LineWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} />;
     case "Pie":
       return <PieWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} />;
+    case "Area":
+      return <LineWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} area />;
+    case "Donut":
+      return <PieWidget title={widget.title} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} donut />;
     case "Kpi":
       return <KpiWidget title={widget.title} result={result} valueField={widget.binding.valueFields[0]} />;
     default:
