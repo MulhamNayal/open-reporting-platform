@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from "react";
 import { getReport } from "../api/reports";
 import { executeDataset, type QueryResult } from "../api/datasets";
-import { getReportPages, type ReportPage } from "../api/reportPages";
+import { getReportPages, updateReportPage, type ReportPage } from "../api/reportPages";
 import { applyFilters } from "./crossFilter";
 
 export interface ReportQueryContextValue {
@@ -14,6 +14,7 @@ export interface ReportQueryContextValue {
   filteredResult: QueryResult | null;
   filterState: Record<string, string[]>;
   setFilterState: (next: Record<string, string[]>) => void;
+  saveFilterState: () => Promise<void>;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -52,6 +53,13 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     }
   }, [reportId]);
 
+  const saveFilterState = useCallback(async () => {
+    if (reportPageId === null) {
+      return;
+    }
+    await updateReportPage(reportId, reportPageId, { filterState: JSON.stringify(filterState) });
+  }, [reportId, reportPageId, filterState]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -70,6 +78,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     filteredResult,
     filterState,
     setFilterState,
+    saveFilterState,
     loading,
     error,
     refresh: load,

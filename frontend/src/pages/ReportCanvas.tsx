@@ -14,6 +14,7 @@ import VisualizationsPane from "../reportEditor/VisualizationsPane";
 import BuildTab from "../reportEditor/BuildTab";
 import FormatTab from "../reportEditor/FormatTab";
 import DataPane from "../reportEditor/DataPane";
+import FiltersPane from "../reportEditor/FiltersPane";
 import { smartAdd } from "../reportEditor/fieldAssignment";
 import QueryDefinitionForm from "./QueryDefinitionForm";
 import "../reportEditor/reportEditor.css";
@@ -22,13 +23,14 @@ let tempIdCounter = -1;
 
 function ReportCanvasInner() {
   const navigate = useNavigate();
-  const { reportId, reportPageId, filteredResult, loading: queryLoading, refresh } = useReportQuery();
+  const { reportId, reportPageId, filteredResult, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
 
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
   const [reportName, setReportName] = useState("Report");
   const [changeSourceOpen, setChangeSourceOpen] = useState(false);
   const [selectedWidgetId, setSelectedWidgetId] = useState<number | null>(null);
+  const [filtersVisible, setFiltersVisible] = useState(true);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -115,6 +117,7 @@ function ReportCanvasInner() {
 
     try {
       await saveWidgets(reportPageId, payload);
+      await saveFilterState();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
         setError(typeof err.response.data === "string" ? err.response.data : "Could not save this report's widgets.");
@@ -144,12 +147,13 @@ function ReportCanvasInner() {
         onChangeDataSource={() => setChangeSourceOpen(true)}
         onBackToReports={() => navigate("/reports")}
         onAddText={() => addWidget("Text")}
-        onToggleFilters={() => {}}
+        onToggleFilters={() => setFiltersVisible((v) => !v)}
         onRefresh={refresh}
         onSave={handleSave}
       />
       {error && <Alert severity="error">{error}</Alert>}
       <div className="body">
+        <FiltersPane visible={filtersVisible} rawResult={rawResult} filterState={filterState} onChange={setFilterState} />
         <div className="rail">
           <button className="rbtn active" title="Report">▦</button>
           <button className="rbtn" title="Data table">☰</button>

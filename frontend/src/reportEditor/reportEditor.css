@@ -503,3 +503,53 @@
 .swatch.active {
   border-color: var(--text);
 }
+.pane-filters {
+  width: 214px;
+  flex: 0 0 214px;
+}
+.filter-scope {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+  font-weight: 600;
+  padding: 12px 12px 4px;
+}
+.filter-card {
+  margin: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.filter-card > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 9px 11px;
+  font-weight: 500;
+  background: var(--panel-2);
+}
+.filter-card > summary::-webkit-details-marker {
+  display: none;
+}
+.filter-card .opts {
+  padding: 6px 11px 10px;
+}
+.opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  color: var(--text);
+  cursor: pointer;
+}
+.opt input {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+}
+.filters-empty {
+  color: var(--faint);
+  font-size: 12px;
+  padding: 12px;
+  line-height: 1.5;
+}
