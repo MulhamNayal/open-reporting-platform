@@ -54,7 +54,7 @@ function FiltersPane({
                     checked={(filterState[column.name] ?? []).includes(value)}
                     onChange={(e) => toggle(column.name, value, e.target.checked)}
                   />
-                  <span>{value}</span>
+                  <span>{value === "" ? "(blank)" : value}</span>
                 </label>
               ))}
             </div>

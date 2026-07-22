@@ -71,4 +71,17 @@ describe("FiltersPane", () => {
 
     expect(onChange).toHaveBeenCalledWith({ Region: [""] });
   });
+
+  it("labels the normalized empty value as (blank) instead of an empty checkbox", () => {
+    const withNull: QueryResult = {
+      columns: [
+        { name: "Region", nativeType: "nvarchar(20)" },
+        { name: "Revenue", nativeType: "decimal(18,2)" },
+      ],
+      rows: [["North", 100], [null, 50]],
+    };
+    render(<FiltersPane visible rawResult={withNull} filterState={{}} onChange={vi.fn()} />);
+
+    expect(screen.getByText("(blank)")).toBeInTheDocument();
+  });
 });
