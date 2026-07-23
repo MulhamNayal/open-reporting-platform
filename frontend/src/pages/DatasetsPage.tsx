@@ -245,7 +245,14 @@ function DatasetsPage() {
                   label="Table"
                   size="small"
                   value={selectedTable}
-                  onChange={(e) => { setSelectedTable(e.target.value); setSelectedColumns([]); }}
+                  onChange={(e) => {
+                    setSelectedTable(e.target.value);
+                    setSelectedColumns([]);
+                    setFilterRows([]);
+                    setSortField("");
+                    setSortDirection("ASC");
+                    setTopN("");
+                  }}
                   sx={{ minWidth: 180, mb: 2 }}
                 >
                   {tables.map((t) => (
@@ -264,7 +271,7 @@ function DatasetsPage() {
                   </Box>
                 )}
                 {selectedTableFields.length > 0 && (
-                  <details className="advanced-section" style={{ marginBottom: 16 }}>
+                  <details className="advanced-section">
                     <summary>Advanced (filters, sort, Top N)</summary>
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="subtitle2" gutterBottom>Filters</Typography>
