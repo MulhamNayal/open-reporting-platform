@@ -202,7 +202,15 @@ function DatasetsPage() {
         label="Connection"
         size="small"
         value={selectedConnectionId}
-        onChange={(e) => setSelectedConnectionId(e.target.value === "" ? "" : Number(e.target.value))}
+        onChange={(e) => {
+          setSelectedConnectionId(e.target.value === "" ? "" : Number(e.target.value));
+          setSelectedTable("");
+          setSelectedColumns([]);
+          setFilterRows([]);
+          setSortField("");
+          setSortDirection("ASC");
+          setTopN("");
+        }}
         sx={{ minWidth: 240, mb: 3 }}
       >
         {connections.map((c) => (
