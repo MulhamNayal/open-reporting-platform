@@ -100,6 +100,10 @@ public class DatasetsController : ControllerBase
         {
             return NotFound(ex.Message);
         }
+        catch (UnsupportedQueryOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             return Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway);
