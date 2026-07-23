@@ -29,6 +29,7 @@ import {
 } from "../api/datasets";
 import QueryResultGrid from "../components/QueryResultGrid";
 import { buildTableQueryDefinition, ALLOWED_OPERATORS, type FilterRowDraft } from "./tableQueryDefinition";
+import "./datasetsPage.css";
 
 function DatasetsPage() {
   const [connections, setConnections] = useState<DataSourceConnectionSummary[]>([]);
@@ -192,7 +193,7 @@ function DatasetsPage() {
   const selectedTableFields = tables.find((t) => t.name === selectedTable)?.fields ?? [];
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="md" sx={{ py: 4 }} className="datasets-page">
       <Typography variant="h4" gutterBottom>Datasets</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {columnPreviewError && <Alert severity="warning" sx={{ mb: 2 }}>{columnPreviewError}</Alert>}
@@ -230,7 +231,7 @@ function DatasetsPage() {
 
       {typeof selectedConnectionId === "number" && (
         <>
-          <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
+          <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }} className="create-form">
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField label="Dataset Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
               <TextField label="Description (optional)" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
@@ -448,7 +449,7 @@ function DatasetsPage() {
             </Button>
           </Box>
 
-          <TableContainer component={Paper} sx={{ mb: 3 }}>
+          <TableContainer component={Paper} sx={{ mb: 3 }} className="dataset-list">
             <Table size="small">
               <TableHead>
                 <TableRow><TableCell>Name</TableCell><TableCell>Mode</TableCell><TableCell>Row Limit</TableCell><TableCell>Preview</TableCell></TableRow>
