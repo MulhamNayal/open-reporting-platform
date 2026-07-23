@@ -55,10 +55,6 @@ public class DatasetsControllerTests
     [Fact]
     public async Task Execute_OtherFailure_Returns502()
     {
-        var stub = new StubDatasetService
-        {
-            ExecuteAsyncFunc = _ => throw new InvalidOperationException("simulated", new TimeoutException("db unreachable")),
-        };
         // InvalidOperationException always maps to 404 regardless of inner exception, so use a
         // genuinely different exception type to exercise the generic catch-all -> 502 path.
         var stub502 = new StubDatasetService
