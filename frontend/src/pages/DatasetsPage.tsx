@@ -28,6 +28,7 @@ import {
   type QueryResult,
 } from "../api/datasets";
 import QueryResultGrid from "../components/QueryResultGrid";
+import { buildTableQueryDefinition, ALLOWED_OPERATORS, type FilterRowDraft } from "./tableQueryDefinition";
 
 function DatasetsPage() {
   const [connections, setConnections] = useState<DataSourceConnectionSummary[]>([]);
@@ -39,6 +40,10 @@ function DatasetsPage() {
   const [description, setDescription] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [filterRows, setFilterRows] = useState<FilterRowDraft[]>([]);
+  const [sortField, setSortField] = useState("");
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC");
+  const [topN, setTopN] = useState("");
   const [rowLimit, setRowLimit] = useState("");
 
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +92,20 @@ function DatasetsPage() {
     );
   }
 
+  function addFilterRow() {
+    setFilterRows([...filterRows, { field: "", operator: "=", value: "" }]);
+  }
+
+  function updateFilterRow(index: number, patch: Partial<FilterRowDraft>) {
+    const next = [...filterRows];
+    next[index] = { ...next[index], ...patch };
+    setFilterRows(next);
+  }
+
+  function removeFilterRow(index: number) {
+    setFilterRows(filterRows.filter((_, i) => i !== index));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -97,9 +116,9 @@ function DatasetsPage() {
 
     let definitionJson: string;
     if (mode === "TableQuery") {
-      definitionJson = JSON.stringify({
-        query: { table: selectedTable, columns: selectedColumns, filters: [], sort: null, top: null },
-      });
+      definitionJson = JSON.stringify(
+        buildTableQueryDefinition(selectedTable, selectedColumns, filterRows, sortField, sortDirection, topN),
+      );
     } else if (mode === "RawSql") {
       definitionJson = JSON.stringify({ sqlText });
     } else if (mode === "StoredProcedure") {
@@ -141,6 +160,10 @@ function DatasetsPage() {
       setDescription("");
       setSelectedTable("");
       setSelectedColumns([]);
+      setFilterRows([]);
+      setSortField("");
+      setSortDirection("ASC");
+      setTopN("");
       setSqlText("");
       setRoutineName("");
       setProcParams([{ name: "", value: "" }]);
@@ -238,6 +261,88 @@ function DatasetsPage() {
                       />
                     ))}
                   </Box>
+                )}
+                {selectedTableFields.length > 0 && (
+                  <details className="advanced-section" style={{ marginBottom: 16 }}>
+                    <summary>Advanced (filters, sort, Top N)</summary>
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>Filters</Typography>
+                      {filterRows.map((row, i) => (
+                        <Box key={i} sx={{ display: "flex", gap: 1, mb: 1, alignItems: "center" }}>
+                          <TextField
+                            select
+                            label="Field"
+                            size="small"
+                            value={row.field}
+                            onChange={(e) => updateFilterRow(i, { field: e.target.value })}
+                            sx={{ minWidth: 140 }}
+                          >
+                            {selectedTableFields.map((f) => (
+                              <MenuItem key={f.name} value={f.name}>{f.name}</MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField
+                            select
+                            label="Operator"
+                            size="small"
+                            value={row.operator}
+                            onChange={(e) => updateFilterRow(i, { operator: e.target.value as FilterRowDraft["operator"] })}
+                            sx={{ minWidth: 100 }}
+                          >
+                            {ALLOWED_OPERATORS.map((op) => (
+                              <MenuItem key={op} value={op}>{op}</MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField
+                            label="Value"
+                            size="small"
+                            value={row.value}
+                            onChange={(e) => updateFilterRow(i, { value: e.target.value })}
+                          />
+                          <Button size="small" onClick={() => removeFilterRow(i)}>Remove</Button>
+                        </Box>
+                      ))}
+                      <Button size="small" onClick={addFilterRow} sx={{ mb: 2 }}>+ Add filter</Button>
+
+                      <Typography variant="subtitle2" gutterBottom>Sort</Typography>
+                      <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                        <TextField
+                          select
+                          label="Sort field"
+                          size="small"
+                          value={sortField}
+                          onChange={(e) => setSortField(e.target.value)}
+                          sx={{ minWidth: 160 }}
+                        >
+                          <MenuItem value="">None</MenuItem>
+                          {selectedTableFields.map((f) => (
+                            <MenuItem key={f.name} value={f.name}>{f.name}</MenuItem>
+                          ))}
+                        </TextField>
+                        <TextField
+                          select
+                          label="Direction"
+                          size="small"
+                          value={sortDirection}
+                          onChange={(e) => setSortDirection(e.target.value as "ASC" | "DESC")}
+                          disabled={sortField === ""}
+                          sx={{ minWidth: 120 }}
+                        >
+                          <MenuItem value="ASC">Ascending</MenuItem>
+                          <MenuItem value="DESC">Descending</MenuItem>
+                        </TextField>
+                      </Box>
+
+                      <Typography variant="subtitle2" gutterBottom>Top N</Typography>
+                      <TextField
+                        label="Top N (optional)"
+                        size="small"
+                        value={topN}
+                        onChange={(e) => setTopN(e.target.value)}
+                        sx={{ mb: 2 }}
+                      />
+                    </Box>
+                  </details>
                 )}
               </>
             )}
