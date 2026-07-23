@@ -88,7 +88,7 @@ public class SqlServerProviderQueryBuilderTests
             null,
             null);
 
-        Assert.Throws<InvalidOperationException>(() => provider.BuildTableQuerySql(query, rowLimit: 100));
+        Assert.Throws<UnsupportedQueryOperationException>(() => provider.BuildTableQuerySql(query, rowLimit: 100));
     }
 
     [Fact]
@@ -97,6 +97,6 @@ public class SqlServerProviderQueryBuilderTests
         var provider = new SqlServerProvider();
         var query = new SelectQuery("Reports", new[] { "Id" }, Array.Empty<QueryFilter>(), new QuerySort("Id", "SIDEWAYS"), null);
 
-        Assert.Throws<InvalidOperationException>(() => provider.BuildTableQuerySql(query, rowLimit: 100));
+        Assert.Throws<UnsupportedQueryOperationException>(() => provider.BuildTableQuerySql(query, rowLimit: 100));
     }
 }

@@ -102,7 +102,7 @@ public class SqlServerProvider : IDataSourceProvider
         {
             if (!AllowedOperators.Contains(filter.Operator))
             {
-                throw new InvalidOperationException($"Unsupported filter operator: {filter.Operator}");
+                throw new UnsupportedQueryOperationException($"Unsupported filter operator: {filter.Operator}");
             }
 
             var parameterName = $"@p{parameters.Count}";
@@ -121,7 +121,7 @@ public class SqlServerProvider : IDataSourceProvider
         {
             if (!AllowedSortDirections.Contains(query.Sort.Direction))
             {
-                throw new InvalidOperationException($"Unsupported sort direction: {query.Sort.Direction}");
+                throw new UnsupportedQueryOperationException($"Unsupported sort direction: {query.Sort.Direction}");
             }
 
             sql += $" ORDER BY [{query.Sort.Field}] {query.Sort.Direction}";
