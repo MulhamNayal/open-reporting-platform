@@ -43,7 +43,7 @@ export function buildTableQueryDefinition(
   const sort: TableQuerySort | null = sortField === "" ? null : { field: sortField, direction: sortDirection };
 
   const parsedTop = top.trim() === "" ? null : Number(top);
-  const topValue = parsedTop !== null && Number.isFinite(parsedTop) && parsedTop > 0 ? parsedTop : null;
+  const topValue = parsedTop !== null && Number.isInteger(parsedTop) && parsedTop > 0 ? parsedTop : null;
 
   return { query: { table, columns, filters, sort, top: topValue } };
 }

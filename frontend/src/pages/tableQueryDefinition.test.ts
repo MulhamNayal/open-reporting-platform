@@ -52,4 +52,8 @@ describe("buildTableQueryDefinition", () => {
     expect(buildTableQueryDefinition("Reports", ["Id"], [], "", "ASC", "0").query.top).toBeNull();
     expect(buildTableQueryDefinition("Reports", ["Id"], [], "", "ASC", "-5").query.top).toBeNull();
   });
+
+  it("treats a decimal top as null (backend Top is an int)", () => {
+    expect(buildTableQueryDefinition("Reports", ["Id"], [], "", "ASC", "2.5").query.top).toBeNull();
+  });
 });
