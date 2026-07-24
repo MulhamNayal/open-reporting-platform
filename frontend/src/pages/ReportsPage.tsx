@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import {
-  Alert, Box, Button, Container, Dialog, DialogContent, DialogTitle, Paper, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, TextField, Typography,
+  Alert, Box, Button, Container, Dialog, DialogContent, DialogTitle, TextField, Typography,
 } from "@mui/material";
 import axios from "axios";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { createReport, getReports, setReportDataset, type Report } from "../api/reports";
+import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { executeDataset, type QueryResult } from "../api/datasets";
 import QueryDefinitionForm, { type QueryDefinitionValue } from "./QueryDefinitionForm";
 
@@ -69,6 +69,22 @@ function ReportsPage() {
     navigate(`/reports/${reportId}/edit`);
   }
 
+  const reportColumns: DataTableColumn<Report>[] = [
+    { key: "id", label: "ID", value: (r) => r.id, render: (r) => r.id },
+    { key: "name", label: "Name", value: (r) => r.name, render: (r) => r.name },
+    { key: "description", label: "Description", value: (r) => r.description ?? "", render: (r) => r.description },
+    {
+      key: "designer",
+      label: "Designer",
+      render: (r) => (
+        <>
+          <Button size="small" component={RouterLink} to={`/reports/${r.id}`}>View</Button>
+          <Button size="small" component={RouterLink} to={`/reports/${r.id}/edit`}>Edit</Button>
+        </>
+      ),
+    },
+  ];
+
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>Reports</Typography>
@@ -78,26 +94,7 @@ function ReportsPage() {
         <TextField label="Description" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
         <Button type="submit" variant="contained">Add</Button>
       </Box>
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow><TableCell>ID</TableCell><TableCell>Name</TableCell><TableCell>Description</TableCell><TableCell>Designer</TableCell></TableRow>
-          </TableHead>
-          <TableBody>
-            {reports.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.id}</TableCell>
-                <TableCell>{r.name}</TableCell>
-                <TableCell>{r.description}</TableCell>
-                <TableCell>
-                  <Button size="small" component={RouterLink} to={`/reports/${r.id}`}>View</Button>
-                  <Button size="small" component={RouterLink} to={`/reports/${r.id}/edit`}>Edit</Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable columns={reportColumns} rows={reports} rowKey={(r) => r.id} />
 
       <Dialog open={pendingReport !== null} maxWidth="sm" fullWidth onClose={() => {}}>
         <DialogTitle>Define this report's query</DialogTitle>
