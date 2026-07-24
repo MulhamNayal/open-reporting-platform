@@ -5,17 +5,11 @@ import {
   Button,
   Container,
   MenuItem,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
 import axios from "axios";
+import DataTable, { type DataTableColumn } from "../components/DataTable";
 import {
   createDataSource,
   getDataSources,
@@ -79,6 +73,29 @@ function DataSourcesPage() {
     setTestResults((prev) => ({ ...prev, [id]: result }));
   }
 
+  const connectionColumns: DataTableColumn<DataSourceConnectionSummary>[] = [
+    { key: "name", label: "Name", value: (c) => c.name, render: (c) => c.name },
+    { key: "type", label: "Type", value: (c) => c.type, render: (c) => c.type },
+    { key: "host", label: "Host", value: (c) => c.host, render: (c) => c.host },
+    {
+      key: "test",
+      label: "Test",
+      render: (c) => {
+        const result = testResults[c.id];
+        return (
+          <>
+            <Button size="small" variant="outlined" onClick={() => handleTest(c.id)}>Test</Button>
+            {result && (
+              <Typography component="span" sx={{ ml: 1 }} color={result.success ? "success.main" : "error.main"}>
+                {result.success ? "OK" : result.errorMessage ?? "Failed"}
+              </Typography>
+            )}
+          </>
+        );
+      },
+    },
+  ];
+
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>Connections</Typography>
@@ -133,44 +150,7 @@ function DataSourcesPage() {
         )}
         <Button type="submit" variant="contained">Add</Button>
       </Box>
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Host</TableCell>
-              <TableCell>Test</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {connections.map((c) => {
-              const result = testResults[c.id];
-              return (
-                <TableRow key={c.id}>
-                  <TableCell>{c.name}</TableCell>
-                  <TableCell>{c.type}</TableCell>
-                  <TableCell>{c.host}</TableCell>
-                  <TableCell>
-                    <Button size="small" variant="outlined" onClick={() => handleTest(c.id)}>
-                      Test
-                    </Button>
-                    {result && (
-                      <Typography
-                        component="span"
-                        sx={{ ml: 1 }}
-                        color={result.success ? "success.main" : "error.main"}
-                      >
-                        {result.success ? "OK" : result.errorMessage ?? "Failed"}
-                      </Typography>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable columns={connectionColumns} rows={connections} rowKey={(c) => c.id} />
     </Container>
   );
 }
