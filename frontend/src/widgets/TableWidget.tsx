@@ -1,27 +1,34 @@
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import { Paper, Typography } from "@mui/material";
 import type { QueryResult } from "../api/datasets";
+import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { shapeTableRows } from "./shaping";
 
+interface ResultRow {
+  values: unknown[];
+}
+
 function TableWidget({ title, result, valueFields }: { title: string; result: QueryResult; valueFields: string[] }) {
-  const { columns, rows } = shapeTableRows(result, valueFields);
+  const { columns: columnNames, rows: shapedRows } = shapeTableRows(result, valueFields);
+
+  const columns: DataTableColumn<ResultRow>[] = columnNames.map((name, colIndex) => ({
+    key: name,
+    label: name,
+    value: (row) => {
+      const cell = row.values[colIndex];
+      return cell === null || cell === undefined ? "" : String(cell);
+    },
+    render: (row) => {
+      const cell = row.values[colIndex];
+      return cell === null ? "" : String(cell);
+    },
+  }));
+
+  const rows: ResultRow[] = shapedRows.map((values) => ({ values }));
 
   return (
     <Paper sx={{ p: 2, height: "100%" }}>
       <Typography variant="subtitle2" gutterBottom>{title}</Typography>
-      <TableContainer>
-        <Table size="small">
-          <TableHead>
-            <TableRow>{columns.map((c) => <TableCell key={c}>{c}</TableCell>)}</TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, i) => (
-              <TableRow key={i}>
-                {row.map((value, j) => <TableCell key={j}>{value === null ? "" : String(value)}</TableCell>)}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable columns={columns} rows={rows} rowKey={(row) => shapedRows.indexOf(row.values)} />
     </Paper>
   );
 }
