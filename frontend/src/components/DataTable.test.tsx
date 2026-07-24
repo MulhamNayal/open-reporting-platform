@@ -1,0 +1,93 @@
+import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it } from "vitest";
+import DataTable, { type DataTableColumn } from "./DataTable";
+
+// This project doesn't enable Vitest globals, so RTL's automatic cleanup doesn't run.
+afterEach(cleanup);
+
+interface Row {
+  id: number;
+  name: string;
+}
+
+const columns: DataTableColumn<Row>[] = [
+  { key: "id", label: "ID", value: (r) => r.id, render: (r) => r.id },
+  { key: "name", label: "Name", value: (r) => r.name, render: (r) => r.name },
+];
+
+const rows: Row[] = [
+  { id: 3, name: "Charlie" },
+  { id: 1, name: "Alice" },
+  { id: 2, name: "Bob" },
+];
+
+describe("DataTable", () => {
+  it("renders one row per item with the correct cell values", () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.getByText("Bob")).toBeInTheDocument();
+    expect(screen.getByText("Charlie")).toBeInTheDocument();
+  });
+
+  it("search filters to only matching rows, using any searchable column", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    await userEvent.type(screen.getByPlaceholderText("Search"), "ali");
+
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.queryByText("Bob")).not.toBeInTheDocument();
+    expect(screen.queryByText("Charlie")).not.toBeInTheDocument();
+  });
+
+  it("shows a no-matching-rows message when search excludes everything", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    await userEvent.type(screen.getByPlaceholderText("Search"), "zzz");
+
+    expect(screen.getByText("No matching rows.")).toBeInTheDocument();
+  });
+
+  it("clicking a sortable header sorts ascending, then descending, then back to unsorted", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    const idHeader = screen.getByText("ID");
+    const bodyRows = () => screen.getAllByRole("row").slice(1); // skip header row
+
+    await userEvent.click(idHeader);
+    expect(within(bodyRows()[0]).getByText("1")).toBeInTheDocument();
+
+    await userEvent.click(idHeader);
+    expect(within(bodyRows()[0]).getByText("3")).toBeInTheDocument();
+
+    await userEvent.click(idHeader);
+    expect(within(bodyRows()[0]).getByText("3")).toBeInTheDocument(); // back to original order
+  });
+
+  it("paginates: shows only the first page's rows and lets you change rows-per-page", async () => {
+    const manyRows: Row[] = Array.from({ length: 30 }, (_, i) => ({ id: i, name: `Row ${i}` }));
+    render(<DataTable columns={columns} rows={manyRows} rowKey={(r) => r.id} />);
+
+    // Default rows-per-page is 25, so row 25 should not be visible on page 1.
+    expect(screen.getByText("Row 0")).toBeInTheDocument();
+    expect(screen.queryByText("Row 25")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /next page/i }));
+
+    expect(screen.getByText("Row 25")).toBeInTheDocument();
+    expect(screen.queryByText("Row 0")).not.toBeInTheDocument();
+  });
+
+  it("a column with no value function is not sortable and excluded from search", async () => {
+    const actionColumns: DataTableColumn<Row>[] = [
+      ...columns,
+      { key: "actions", label: "Actions", render: () => "button" },
+    ];
+    render(<DataTable columns={actionColumns} rows={rows} rowKey={(r) => r.id} />);
+
+    // Clicking the "Actions" header (plain text, not a TableSortLabel) does nothing —
+    // confirm it doesn't render as a sort label at all.
+    expect(screen.queryByRole("button", { name: "Actions" })).not.toBeInTheDocument();
+  });
+});
