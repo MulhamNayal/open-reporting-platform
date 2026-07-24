@@ -7,13 +7,6 @@ import {
   Container,
   FormControlLabel,
   MenuItem,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
@@ -28,6 +21,7 @@ import {
   type QueryResult,
 } from "../api/datasets";
 import QueryResultGrid from "../components/QueryResultGrid";
+import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { buildTableQueryDefinition, ALLOWED_OPERATORS, type FilterRowDraft } from "./tableQueryDefinition";
 import "./datasetsPage.css";
 
@@ -191,6 +185,17 @@ function DatasetsPage() {
   }
 
   const selectedTableFields = tables.find((t) => t.name === selectedTable)?.fields ?? [];
+
+  const datasetColumns: DataTableColumn<DatasetSummary>[] = [
+    { key: "name", label: "Name", value: (d) => d.name, render: (d) => d.name },
+    { key: "mode", label: "Mode", value: (d) => d.mode, render: (d) => d.mode },
+    { key: "rowLimit", label: "Row Limit", value: (d) => d.rowLimit ?? -1, render: (d) => d.rowLimit ?? "default" },
+    {
+      key: "preview",
+      label: "Preview",
+      render: (d) => <Button size="small" variant="outlined" onClick={() => handlePreview(d.id)}>Run</Button>,
+    },
+  ];
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }} className="datasets-page">
@@ -464,25 +469,9 @@ function DatasetsPage() {
             </Button>
           </Box>
 
-          <TableContainer component={Paper} sx={{ mb: 3 }} className="dataset-list">
-            <Table size="small">
-              <TableHead>
-                <TableRow><TableCell>Name</TableCell><TableCell>Mode</TableCell><TableCell>Row Limit</TableCell><TableCell>Preview</TableCell></TableRow>
-              </TableHead>
-              <TableBody>
-                {datasets.map((d) => (
-                  <TableRow key={d.id}>
-                    <TableCell>{d.name}</TableCell>
-                    <TableCell>{d.mode}</TableCell>
-                    <TableCell>{d.rowLimit ?? "default"}</TableCell>
-                    <TableCell>
-                      <Button size="small" variant="outlined" onClick={() => handlePreview(d.id)}>Run</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <div className="dataset-list">
+            <DataTable columns={datasetColumns} rows={datasets} rowKey={(d) => d.id} />
+          </div>
 
           <QueryResultGrid result={previewResult} />
         </>
