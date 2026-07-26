@@ -10,6 +10,14 @@
   position: relative;
   z-index: 40;
 }
+.ribbon-mark {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  background: var(--accent);
+  border-radius: 5px;
+  display: inline-block;
+}
 .brand {
   display: flex;
   align-items: center;
@@ -577,6 +585,9 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--sh-sm);
+}
+.visual:hover {
+  box-shadow: var(--sh-md);
 }
 .visual.selected {
   border-color: var(--accent);

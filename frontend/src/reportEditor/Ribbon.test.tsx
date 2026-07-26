@@ -47,4 +47,47 @@ describe("Ribbon", () => {
 
     expect(onSave).toHaveBeenCalledTimes(1);
   });
+
+  it("readOnly hides the File/Insert/View menus and the Save button", () => {
+    render(
+      <Ribbon
+        reportName="My Report"
+        onRename={vi.fn()}
+        onChangeDataSource={vi.fn()}
+        onBackToReports={vi.fn()}
+        onAddText={vi.fn()}
+        onToggleFilters={vi.fn()}
+        onRefresh={vi.fn()}
+        onSave={vi.fn()}
+        readOnly
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "File" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Insert" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  });
+
+  it("readOnly still shows the report name and a working Refresh button", async () => {
+    const onRefresh = vi.fn();
+    render(
+      <Ribbon
+        reportName="My Report"
+        onRename={vi.fn()}
+        onChangeDataSource={vi.fn()}
+        onBackToReports={vi.fn()}
+        onAddText={vi.fn()}
+        onToggleFilters={vi.fn()}
+        onRefresh={onRefresh}
+        onSave={vi.fn()}
+        readOnly
+      />,
+    );
+
+    expect(screen.getByText("My Report")).toBeInTheDocument();
+    await userEvent.click(screen.getByTitle("Refresh data"));
+
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
 });

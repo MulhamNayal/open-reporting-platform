@@ -6,12 +6,14 @@ import WidgetRenderer from "../widgets/WidgetRenderer";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
 import FiltersPane from "../reportEditor/FiltersPane";
 import PageTabsBar from "../reportEditor/PageTabsBar";
+import Ribbon from "../reportEditor/Ribbon";
 import { toggleCrossFilterValue } from "../reportEditor/clickToCrossFilter";
 import "../reportEditor/reportEditor.css";
 
 function ReportViewInner() {
   const {
-    reportPageId, setReportPageId, reportPages, rawResult, filteredResult, filterState, setFilterState, loading: queryLoading,
+    reportName, reportPageId, setReportPageId, reportPages, rawResult, filteredResult, filterState, setFilterState,
+    loading: queryLoading, refresh,
   } = useReportQuery();
   const [widgets, setWidgets] = useState<WidgetSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,17 @@ function ReportViewInner() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw" }}>
+      <Ribbon
+        reportName={reportName ?? "Report"}
+        onRename={() => {}}
+        onChangeDataSource={() => {}}
+        onBackToReports={() => {}}
+        onAddText={() => {}}
+        onToggleFilters={() => {}}
+        onRefresh={refresh}
+        onSave={() => {}}
+        readOnly
+      />
       {error && <Alert severity="error">{error}</Alert>}
       <div className="body" style={{ flex: 1 }}>
         <FiltersPane visible rawResult={rawResult} filterState={filterState} onChange={setFilterState} />
