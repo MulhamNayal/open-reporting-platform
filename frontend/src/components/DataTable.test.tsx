@@ -1,7 +1,10 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import DataTable, { type DataTableColumn } from "./DataTable";
+import { exportRows } from "./dataTableExport";
+
+vi.mock("./dataTableExport", () => ({ exportRows: vi.fn() }));
 
 // This project doesn't enable Vitest globals, so RTL's automatic cleanup doesn't run.
 afterEach(cleanup);
@@ -164,5 +167,36 @@ describe("DataTable", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Bob" }));
 
     expect(filterButton).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("exporting as Excel calls exportRows with the current filtered/sorted rows and value-bearing columns", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} exportFileName="my-file" />);
+
+    await userEvent.type(screen.getByPlaceholderText("Search"), "ali");
+    await userEvent.click(screen.getByRole("button", { name: "Export" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Export as Excel (.xlsx)" }));
+
+    expect(exportRows).toHaveBeenCalledWith(columns, [rows[1]], "xlsx", "my-file");
+  });
+
+  it("defaults the export file name to 'export' when not provided", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Export" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Export as CSV" }));
+
+    expect(exportRows).toHaveBeenCalledWith(columns, rows, "csv", "export");
+  });
+
+  it("export respects an active column filter, not just search", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Bob" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Export" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Export as Excel (.xlsx)" }));
+
+    expect(exportRows).toHaveBeenCalledWith(columns, [rows[0], rows[1]], "xlsx", "export");
   });
 });

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import {
-  Checkbox, ClickAwayListener, FormControlLabel, IconButton, Paper, Popper, Table, TableBody, TableCell,
-  TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Typography,
+  Button, Checkbox, ClickAwayListener, FormControlLabel, IconButton, Menu, MenuItem, Paper, Popper, Table,
+  TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Typography,
 } from "@mui/material";
+import { exportRows } from "./dataTableExport";
 
 export interface DataTableColumn<T> {
   key: string;
@@ -23,12 +24,13 @@ function distinctValues<T>(column: DataTableColumn<T>, rows: T[]): (string | num
 }
 
 function DataTable<T>({
-  columns, rows, rowKey, searchPlaceholder = "Search",
+  columns, rows, rowKey, searchPlaceholder = "Search", exportFileName = "export",
 }: {
   columns: DataTableColumn<T>[];
   rows: T[];
   rowKey: (row: T) => string | number;
   searchPlaceholder?: string;
+  exportFileName?: string;
 }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -39,6 +41,7 @@ function DataTable<T>({
   const [filterMenuColumnKey, setFilterMenuColumnKey] = useState<string | null>(null);
   const [filterMenuAnchor, setFilterMenuAnchor] = useState<HTMLElement | null>(null);
   const [filterSearchText, setFilterSearchText] = useState("");
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
 
   const searchableColumns = columns.filter((c) => c.value);
   const filtered = rows.filter((row) => {
@@ -108,6 +111,11 @@ function DataTable<T>({
     setPage(0);
   }
 
+  function handleExport(format: "xlsx" | "csv") {
+    exportRows(columns, sorted, format, exportFileName);
+    setExportMenuAnchor(null);
+  }
+
   function handleHeaderClick(column: DataTableColumn<T>) {
     if (!column.value) {
       return;
@@ -126,13 +134,21 @@ function DataTable<T>({
 
   return (
     <div>
-      <TextField
-        size="small"
-        placeholder={searchPlaceholder}
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-        sx={{ mb: 1 }}
-      />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <TextField
+          size="small"
+          placeholder={searchPlaceholder}
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+        />
+        <Button size="small" variant="outlined" onClick={(e) => setExportMenuAnchor(e.currentTarget)}>
+          Export
+        </Button>
+        <Menu anchorEl={exportMenuAnchor} open={Boolean(exportMenuAnchor)} onClose={() => setExportMenuAnchor(null)}>
+          <MenuItem onClick={() => handleExport("xlsx")}>Export as Excel (.xlsx)</MenuItem>
+          <MenuItem onClick={() => handleExport("csv")}>Export as CSV</MenuItem>
+        </Menu>
+      </div>
       <TableContainer component={Paper}>
         <Table size="small">
           <TableHead>
