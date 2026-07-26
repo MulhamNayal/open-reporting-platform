@@ -19,6 +19,10 @@
   --accent-line: #c9c2f7;
   --good: #12a594;
   --warn: #e5843a;
+  --good-soft: #e2f6f2;
+  --warn-soft: #fdefe2;
+  --bad: #e5484d;
+  --bad-soft: #fdecec;
   --sh-sm: 0 1px 2px rgba(20, 24, 40, 0.06), 0 1px 1px rgba(20, 24, 40, 0.04);
   --sh-md: 0 4px 14px rgba(20, 24, 40, 0.1), 0 1px 3px rgba(20, 24, 40, 0.06);
   --r: 8px;
