@@ -15,4 +15,16 @@ describe("AppSidebar", () => {
     expect(screen.getByRole("link", { name: /datasets/i })).toHaveAttribute("href", "/datasets");
     expect(screen.getByRole("link", { name: /reports/i })).toHaveAttribute("href", "/reports");
   });
+
+  it("shows a section header and marks the active destination", () => {
+    render(
+      <MemoryRouter initialEntries={["/datasets"]}>
+        <AppSidebar />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Overview")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /datasets/i })).toHaveClass("active");
+    expect(screen.getByRole("link", { name: /reports/i })).not.toHaveClass("active");
+  });
 });

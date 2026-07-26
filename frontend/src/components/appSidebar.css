@@ -1,0 +1,40 @@
+.app-nav {
+  width: 200px;
+  flex: 0 0 200px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  padding: 14px 0;
+}
+.app-nav-group {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 14px 18px 6px;
+}
+.app-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 18px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+.app-nav-link:hover {
+  background: var(--groove);
+}
+.app-nav-link.active {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.app-nav-icon {
+  width: 18px;
+  flex: 0 0 18px;
+  text-align: center;
+}
