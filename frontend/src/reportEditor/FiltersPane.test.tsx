@@ -84,4 +84,68 @@ describe("FiltersPane", () => {
 
     expect(screen.getByText("(blank)")).toBeInTheDocument();
   });
+
+  it("shows a cross-filter chip with the field and value when crossFilter is set", () => {
+    const { container } = render(
+      <FiltersPane
+        visible
+        rawResult={result}
+        filterState={{}}
+        onChange={vi.fn()}
+        crossFilter={{ field: "Region", value: "North" }}
+        onClearCrossFilter={vi.fn()}
+        onResetAll={vi.fn()}
+      />,
+    );
+
+    // "Region" also appears as this field's own filter-group label, so the
+    // chip's combined text is checked directly rather than via a page-wide
+    // getByText, which would be ambiguous between the two.
+    const chip = container.querySelector(".xfchip");
+    expect(chip).not.toBeNull();
+    expect(chip?.textContent).toContain("Region");
+    expect(chip?.textContent).toContain("North");
+  });
+
+  it("clicking the cross-filter chip's clear button calls onClearCrossFilter", async () => {
+    const onClearCrossFilter = vi.fn();
+    render(
+      <FiltersPane
+        visible
+        rawResult={result}
+        filterState={{}}
+        onChange={vi.fn()}
+        crossFilter={{ field: "Region", value: "North" }}
+        onClearCrossFilter={onClearCrossFilter}
+        onResetAll={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear cross-filter" }));
+
+    expect(onClearCrossFilter).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a Reset filters link when a filter is active, and calls onResetAll when clicked", async () => {
+    const onResetAll = vi.fn();
+    render(
+      <FiltersPane
+        visible
+        rawResult={result}
+        filterState={{ Region: ["North"] }}
+        onChange={vi.fn()}
+        onResetAll={onResetAll}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+
+    expect(onResetAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not show a Reset filters link when nothing is active", () => {
+    render(<FiltersPane visible rawResult={result} filterState={{}} onChange={vi.fn()} onResetAll={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: "Reset filters" })).not.toBeInTheDocument();
+  });
 });

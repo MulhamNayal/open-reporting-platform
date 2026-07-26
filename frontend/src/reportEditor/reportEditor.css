@@ -523,37 +523,92 @@
   font-weight: 600;
   padding: 12px 12px 4px;
 }
-.filter-card {
-  margin: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
+.filter-group {
+  margin: 10px 10px 4px;
 }
-.filter-card > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 9px 11px;
-  font-weight: 500;
-  background: var(--panel-2);
+.filter-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 6px;
 }
-.filter-card > summary::-webkit-details-marker {
-  display: none;
-}
-.filter-card .opts {
-  padding: 6px 11px 10px;
+.filter-group-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 .opt {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-  color: var(--text);
   cursor: pointer;
 }
 .opt input {
-  accent-color: var(--accent);
-  width: 14px;
-  height: 14px;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.opt span {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+.opt:has(input:checked) span {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.xfchip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 10px 0;
+  background: var(--good-soft);
+  border: 1px solid #bfe9e0;
+  color: var(--good);
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 6px 4px 12px;
+  width: fit-content;
+}
+.xfchip .x {
+  border: 0;
+  background: rgba(18, 165, 148, 0.15);
+  color: var(--good);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  cursor: pointer;
+}
+.xfchip .x:hover {
+  background: rgba(18, 165, 148, 0.28);
+}
+.resetf {
+  display: block;
+  margin: 8px 10px 0;
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.resetf:hover {
+  background: var(--accent-soft);
 }
 .filters-empty {
   color: var(--faint);

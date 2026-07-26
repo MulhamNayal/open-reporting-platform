@@ -48,6 +48,7 @@ function ReportCanvasInner() {
   const [filtersVisible, setFiltersVisible] = useState(true);
   const [railView, setRailView] = useState<"Report" | "Data table">("Report");
   const [widgetsLoaded, setWidgetsLoaded] = useState(false);
+  const [crossFilter, setCrossFilter] = useState<{ field: string; value: string } | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   // Seed the ribbon title from the fetched report name once. Guarded so an
@@ -204,6 +205,24 @@ function ReportCanvasInner() {
     }
   }
 
+  function handleDataPointClick(field: string, value: string) {
+    setFilterState(toggleCrossFilterValue(filterState, field, value));
+    setCrossFilter((prev) => (prev && prev.field === field && prev.value === value ? null : { field, value }));
+  }
+
+  function handleClearCrossFilter() {
+    if (!crossFilter) {
+      return;
+    }
+    setFilterState(toggleCrossFilterValue(filterState, crossFilter.field, crossFilter.value));
+    setCrossFilter(null);
+  }
+
+  function handleResetAllFilters() {
+    setFilterState({});
+    setCrossFilter(null);
+  }
+
   if (queryLoading) {
     return <div>Loading…</div>;
   }
@@ -222,7 +241,15 @@ function ReportCanvasInner() {
       />
       {error && <Alert severity="error">{error}</Alert>}
       <div className="body">
-        <FiltersPane visible={filtersVisible} rawResult={rawResult} filterState={filterState} onChange={setFilterState} />
+        <FiltersPane
+          visible={filtersVisible}
+          rawResult={rawResult}
+          filterState={filterState}
+          onChange={setFilterState}
+          crossFilter={crossFilter}
+          onClearCrossFilter={handleClearCrossFilter}
+          onResetAll={handleResetAllFilters}
+        />
         <div className="rail">
           <button className={"rbtn" + (railView === "Report" ? " active" : "")} title="Report" onClick={() => setRailView("Report")}>▦</button>
           <button className={"rbtn" + (railView === "Data table" ? " active" : "")} title="Data table" onClick={() => setRailView("Data table")}>☰</button>
@@ -270,7 +297,7 @@ function ReportCanvasInner() {
                               : null,
                           }}
                           result={filteredResult}
-                          onDataPointClick={(field, value) => setFilterState(toggleCrossFilterValue(filterState, field, value))}
+                          onDataPointClick={handleDataPointClick}
                         />
                       </WidgetChrome>
                     </div>

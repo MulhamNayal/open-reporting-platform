@@ -17,6 +17,7 @@ function ReportViewInner() {
   } = useReportQuery();
   const [widgets, setWidgets] = useState<WidgetSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [crossFilter, setCrossFilter] = useState<{ field: string; value: string } | null>(null);
 
   useEffect(() => {
     if (reportPageId === null) {
@@ -25,6 +26,24 @@ function ReportViewInner() {
 
     getWidgets(reportPageId).then(setWidgets).catch(() => setError("Could not load this report's widgets."));
   }, [reportPageId]);
+
+  function handleDataPointClick(field: string, value: string) {
+    setFilterState(toggleCrossFilterValue(filterState, field, value));
+    setCrossFilter((prev) => (prev && prev.field === field && prev.value === value ? null : { field, value }));
+  }
+
+  function handleClearCrossFilter() {
+    if (!crossFilter) {
+      return;
+    }
+    setFilterState(toggleCrossFilterValue(filterState, crossFilter.field, crossFilter.value));
+    setCrossFilter(null);
+  }
+
+  function handleResetAllFilters() {
+    setFilterState({});
+    setCrossFilter(null);
+  }
 
   if (queryLoading) {
     return <Box sx={{ p: 4 }}><Typography>Loading…</Typography></Box>;
@@ -45,7 +64,15 @@ function ReportViewInner() {
       />
       {error && <Alert severity="error">{error}</Alert>}
       <div className="body" style={{ flex: 1 }}>
-        <FiltersPane visible rawResult={rawResult} filterState={filterState} onChange={setFilterState} />
+        <FiltersPane
+          visible
+          rawResult={rawResult}
+          filterState={filterState}
+          onChange={setFilterState}
+          crossFilter={crossFilter}
+          onClearCrossFilter={handleClearCrossFilter}
+          onResetAll={handleResetAllFilters}
+        />
         <div className="stage">
           <div className="scroll">
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 2, width: 960 }}>
@@ -54,7 +81,7 @@ function ReportViewInner() {
                   <WidgetRenderer
                     widget={w}
                     result={filteredResult}
-                    onDataPointClick={(field, value) => setFilterState(toggleCrossFilterValue(filterState, field, value))}
+                    onDataPointClick={handleDataPointClick}
                   />
                 </Box>
               ))}

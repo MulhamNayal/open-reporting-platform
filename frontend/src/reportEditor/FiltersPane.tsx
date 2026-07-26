@@ -10,12 +10,15 @@ function distinctValues(result: QueryResult, field: string): string[] {
 }
 
 function FiltersPane({
-  visible, rawResult, filterState, onChange,
+  visible, rawResult, filterState, onChange, crossFilter, onClearCrossFilter, onResetAll,
 }: {
   visible: boolean;
   rawResult: QueryResult | null;
   filterState: Record<string, string[]>;
   onChange: (next: Record<string, string[]>) => void;
+  crossFilter?: { field: string; value: string } | null;
+  onClearCrossFilter?: () => void;
+  onResetAll?: () => void;
 }) {
   if (!visible) {
     return null;
@@ -31,6 +34,7 @@ function FiltersPane({
   }
 
   const categoricalFields = rawResult.columns.filter((c) => classify(c.nativeType) === "Categorical");
+  const hasActiveFilters = Object.values(filterState).some((values) => values.length > 0) || Boolean(crossFilter);
 
   function toggle(field: string, value: string, checked: boolean) {
     const current = filterState[field] ?? [];
@@ -43,10 +47,19 @@ function FiltersPane({
       <div className="pane-head">Filters</div>
       <div className="pane-scroll">
         <div className="filter-scope">Filters on this page</div>
+        {crossFilter && (
+          <div className="xfchip">
+            <span><b>{crossFilter.field}</b>: {crossFilter.value}</span>
+            <button type="button" className="x" aria-label="Clear cross-filter" onClick={onClearCrossFilter}>✕</button>
+          </div>
+        )}
+        {hasActiveFilters && onResetAll && (
+          <button type="button" className="resetf" onClick={onResetAll}>Reset filters</button>
+        )}
         {categoricalFields.map((column) => (
-          <details className="filter-card" key={column.name}>
-            <summary>{column.name}</summary>
-            <div className="opts">
+          <div className="filter-group" key={column.name}>
+            <div className="filter-group-label">{column.name}</div>
+            <div className="filter-group-opts">
               {distinctValues(rawResult, column.name).map((value) => (
                 <label className="opt" key={value}>
                   <input
@@ -58,7 +71,7 @@ function FiltersPane({
                 </label>
               ))}
             </div>
-          </details>
+          </div>
         ))}
       </div>
     </div>
