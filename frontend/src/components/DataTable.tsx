@@ -2,9 +2,10 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import {
   Button, Checkbox, ClickAwayListener, FormControlLabel, IconButton, Menu, MenuItem, Paper, Popper, Table,
-  TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Typography,
+  TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography,
 } from "@mui/material";
 import { exportRows } from "./dataTableExport";
+import DataTablePager from "./DataTablePager";
 
 export interface DataTableColumn<T> {
   key: string;
@@ -194,14 +195,12 @@ function DataTable<T>({
             No matching rows.
           </Typography>
         )}
-        <TablePagination
-          component="div"
-          count={sorted.length}
+        <DataTablePager
           page={page}
-          onPageChange={(_e, newPage) => setPage(newPage)}
           rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
-          rowsPerPageOptions={[10, 25, 50]}
+          totalRows={sorted.length}
+          onPageChange={setPage}
+          onRowsPerPageChange={(n) => { setRowsPerPage(n); setPage(0); }}
         />
       </TableContainer>
       <Popper open={Boolean(filterMenuAnchor)} anchorEl={filterMenuAnchor} placement="bottom-start" style={{ zIndex: 1300 }}>

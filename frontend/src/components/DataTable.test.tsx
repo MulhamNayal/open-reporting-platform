@@ -82,6 +82,18 @@ describe("DataTable", () => {
     expect(screen.queryByText("Row 0")).not.toBeInTheDocument();
   });
 
+  it("changing rows-per-page resets pagination to the first page", async () => {
+    const manyRows: Row[] = Array.from({ length: 30 }, (_, i) => ({ id: i, name: `Row ${i}` }));
+    render(<DataTable columns={columns} rows={manyRows} rowKey={(r) => r.id} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /next page/i }));
+    expect(screen.getByRole("button", { name: /previous page/i })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "10 rows per page" }));
+
+    expect(screen.getByRole("button", { name: /previous page/i })).toBeDisabled();
+  });
+
   it("a column with no value function is not sortable and excluded from search", async () => {
     const actionColumns: DataTableColumn<Row>[] = [
       ...columns,
