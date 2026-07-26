@@ -89,5 +89,80 @@ describe("DataTable", () => {
     // Clicking the "Actions" header (plain text, not a TableSortLabel) does nothing —
     // confirm it doesn't render as a sort label at all.
     expect(screen.queryByRole("button", { name: "Actions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Filter Actions" })).not.toBeInTheDocument();
+  });
+
+  it("a column filter checklist narrows rows to only the checked values", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+    const table = screen.getByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Bob" }));
+
+    expect(within(table).getByText("Alice")).toBeInTheDocument();
+    expect(within(table).queryByText("Bob")).not.toBeInTheDocument();
+    expect(within(table).getByText("Charlie")).toBeInTheDocument();
+  });
+
+  it("the filter popover's search box narrows the checklist of values", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    await userEvent.type(screen.getByPlaceholderText("Search values"), "ali");
+
+    expect(screen.getByRole("checkbox", { name: "Alice" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Bob" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Charlie" })).not.toBeInTheDocument();
+  });
+
+  it("a column filter combines with the global search box (AND)", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+    const table = screen.getByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Alice" }));
+
+    await userEvent.type(screen.getByPlaceholderText("Search"), "charlie");
+
+    expect(within(table).queryByText("Alice")).not.toBeInTheDocument();
+    expect(within(table).queryByText("Bob")).not.toBeInTheDocument();
+    expect(within(table).getByText("Charlie")).toBeInTheDocument();
+  });
+
+  it("re-checking a value in the filter restores its rows", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+    const table = screen.getByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Bob" }));
+    expect(within(table).queryByText("Bob")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Bob" }));
+    expect(within(table).getByText("Bob")).toBeInTheDocument();
+  });
+
+  it("changing a column filter resets pagination to the first page", async () => {
+    const manyRows: Row[] = Array.from({ length: 30 }, (_, i) => ({ id: i, name: `Row ${i}` }));
+    render(<DataTable columns={columns} rows={manyRows} rowKey={(r) => r.id} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /next page/i }));
+    expect(screen.getByRole("button", { name: /previous page/i })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Row 0" }));
+
+    expect(screen.getByRole("button", { name: /previous page/i })).toBeDisabled();
+  });
+
+  it("the filter icon shows an active state only while a filter narrows that column", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    const filterButton = screen.getByRole("button", { name: "Filter Name" });
+    expect(filterButton).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(filterButton);
+    await userEvent.click(screen.getByRole("checkbox", { name: "Bob" }));
+
+    expect(filterButton).toHaveAttribute("aria-pressed", "true");
   });
 });

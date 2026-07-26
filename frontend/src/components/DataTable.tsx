@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import {
-  Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField,
-  Typography,
+  Checkbox, ClickAwayListener, FormControlLabel, IconButton, Paper, Popper, Table, TableBody, TableCell,
+  TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Typography,
 } from "@mui/material";
 
 export interface DataTableColumn<T> {
@@ -10,6 +10,16 @@ export interface DataTableColumn<T> {
   label: string;
   render: (row: T) => ReactNode;
   value?: (row: T) => string | number;
+}
+
+function distinctValues<T>(column: DataTableColumn<T>, rows: T[]): (string | number)[] {
+  const seen = new Set<string | number>();
+  rows.forEach((row) => {
+    if (column.value) {
+      seen.add(column.value(row));
+    }
+  });
+  return Array.from(seen).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 function DataTable<T>({
@@ -25,13 +35,21 @@ function DataTable<T>({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [columnFilters, setColumnFilters] = useState<Record<string, Set<string | number>>>({});
+  const [filterMenuColumnKey, setFilterMenuColumnKey] = useState<string | null>(null);
+  const [filterMenuAnchor, setFilterMenuAnchor] = useState<HTMLElement | null>(null);
+  const [filterSearchText, setFilterSearchText] = useState("");
 
   const searchableColumns = columns.filter((c) => c.value);
-  const filtered = search.trim() === ""
-    ? rows
-    : rows.filter((row) =>
-        searchableColumns.some((c) => String(c.value!(row)).toLowerCase().includes(search.trim().toLowerCase())),
-      );
+  const filtered = rows.filter((row) => {
+    const matchesSearch = search.trim() === ""
+      || searchableColumns.some((c) => String(c.value!(row)).toLowerCase().includes(search.trim().toLowerCase()));
+    const matchesColumnFilters = columns.every((c) => {
+      const selected = c.value ? columnFilters[c.key] : undefined;
+      return !selected || selected.has(c.value!(row));
+    });
+    return matchesSearch && matchesColumnFilters;
+  });
 
   const sortColumn = columns.find((c) => c.key === sortKey);
   const sorted = sortColumn?.value
@@ -44,6 +62,51 @@ function DataTable<T>({
     : filtered;
 
   const paged = sorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const activeFilterColumn = filterMenuColumnKey ? columns.find((c) => c.key === filterMenuColumnKey) : undefined;
+  const activeFilterValues = activeFilterColumn ? distinctValues(activeFilterColumn, rows) : [];
+  const visibleFilterValues = activeFilterValues.filter((v) =>
+    String(v).toLowerCase().includes(filterSearchText.toLowerCase()),
+  );
+
+  function isValueSelected(columnKey: string, value: string | number): boolean {
+    const selected = columnFilters[columnKey];
+    return selected ? selected.has(value) : true;
+  }
+
+  function isColumnFiltered(column: DataTableColumn<T>): boolean {
+    const selected = columnFilters[column.key];
+    if (!selected) {
+      return false;
+    }
+    return selected.size < distinctValues(column, rows).length;
+  }
+
+  function openFilterMenu(column: DataTableColumn<T>, anchor: HTMLElement) {
+    setFilterMenuColumnKey(column.key);
+    setFilterMenuAnchor(anchor);
+    setFilterSearchText("");
+  }
+
+  function closeFilterMenu() {
+    setFilterMenuColumnKey(null);
+    setFilterMenuAnchor(null);
+  }
+
+  function toggleFilterValue(column: DataTableColumn<T>, value: string | number) {
+    setColumnFilters((prev) => {
+      const allValues = distinctValues(column, rows);
+      const current = prev[column.key] ?? new Set(allValues);
+      const next = new Set(current);
+      if (next.has(value)) {
+        next.delete(value);
+      } else {
+        next.add(value);
+      }
+      return { ...prev, [column.key]: next };
+    });
+    setPage(0);
+  }
 
   function handleHeaderClick(column: DataTableColumn<T>) {
     if (!column.value) {
@@ -87,6 +150,17 @@ function DataTable<T>({
                   ) : (
                     c.label
                   )}
+                  {c.value && (
+                    <IconButton
+                      size="small"
+                      color={isColumnFiltered(c) ? "primary" : "default"}
+                      aria-label={`Filter ${c.label}`}
+                      aria-pressed={isColumnFiltered(c)}
+                      onClick={(e) => openFilterMenu(c, e.currentTarget)}
+                    >
+                      <span aria-hidden="true">&#9662;</span>
+                    </IconButton>
+                  )}
                 </TableCell>
               ))}
             </TableRow>
@@ -114,6 +188,35 @@ function DataTable<T>({
           rowsPerPageOptions={[10, 25, 50]}
         />
       </TableContainer>
+      <Popper open={Boolean(filterMenuAnchor)} anchorEl={filterMenuAnchor} placement="bottom-start" style={{ zIndex: 1300 }}>
+        <ClickAwayListener onClickAway={closeFilterMenu}>
+          <Paper elevation={4} style={{ padding: 8, minWidth: 200 }}>
+            <TextField
+              size="small"
+              placeholder="Search values"
+              value={filterSearchText}
+              onChange={(e) => setFilterSearchText(e.target.value)}
+              sx={{ mb: 1 }}
+              fullWidth
+            />
+            <div style={{ maxHeight: 200, overflowY: "auto" }}>
+              {visibleFilterValues.map((value) => (
+                <FormControlLabel
+                  key={String(value)}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={activeFilterColumn ? isValueSelected(activeFilterColumn.key, value) : false}
+                      onChange={() => activeFilterColumn && toggleFilterValue(activeFilterColumn, value)}
+                    />
+                  }
+                  label={String(value)}
+                />
+              ))}
+            </div>
+          </Paper>
+        </ClickAwayListener>
+      </Popper>
     </div>
   );
 }
