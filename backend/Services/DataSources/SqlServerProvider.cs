@@ -135,6 +135,44 @@ public class SqlServerProvider : IDataSourceProvider
         return $"SELECT TOP (0) * FROM ({sqlText}) AS x";
     }
 
+    // A trailing ORDER BY at paren-depth 0 can't be wrapped in a derived table (SQL Server
+    // requires TOP/OFFSET on any subquery with an ORDER BY) — nested ORDER BYs (inside a
+    // subquery, CTE, or an OVER(...) window clause) sit at depth > 0 and are unaffected.
+    private static bool HasTopLevelOrderBy(string sqlText)
+    {
+        var depth = 0;
+        var upper = sqlText.ToUpperInvariant();
+        for (var i = 0; i < upper.Length; i++)
+        {
+            if (upper[i] == '(')
+            {
+                depth++;
+            }
+            else if (upper[i] == ')')
+            {
+                depth--;
+            }
+            else if (depth == 0 && upper.AsSpan(i).StartsWith("ORDER BY", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Executing raw SQL verbatim with no row-bounding lets SQL Server scan and stream an
+    // arbitrarily large result set even though only rowLimit rows are ever read — the
+    // client-side stop-after-N-rows loop in ReadQueryResultAsync doesn't reduce what the
+    // server computes or sends. This bounds the query at the source instead.
+    public string BuildBoundedRawSql(string sqlText, int rowLimit)
+    {
+        var trimmed = sqlText.TrimEnd().TrimEnd(';');
+
+        return HasTopLevelOrderBy(trimmed)
+            ? $"{trimmed} OFFSET 0 ROWS FETCH NEXT ({rowLimit}) ROWS ONLY"
+            : $"SELECT TOP ({rowLimit}) * FROM ({trimmed}) AS x";
+    }
+
     public async Task<IReadOnlyList<ColumnDescriptor>> DiscoverRawSqlColumnsAsync(DataSourceConnection connection, string sqlText, CancellationToken cancellationToken)
     {
         var connectionString = BuildConnectionString(connection);
@@ -181,7 +219,7 @@ public class SqlServerProvider : IDataSourceProvider
                 break;
             case DatasetMode.RawSql:
                 var rawSqlDefinition = JsonSerializer.Deserialize<RawSqlDefinition>(dataset.Definition, CaseInsensitiveJson)!;
-                sql = rawSqlDefinition.SqlText;
+                sql = BuildBoundedRawSql(rawSqlDefinition.SqlText, rowLimit);
                 parameters = Array.Empty<SqlParameter>();
                 break;
             case DatasetMode.StoredProcedure:
