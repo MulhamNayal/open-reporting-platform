@@ -148,4 +148,19 @@ describe("FiltersPane", () => {
 
     expect(screen.queryByRole("button", { name: "Reset filters" })).not.toBeInTheDocument();
   });
+
+  it("excludes a categorical field whose distinct value count exceeds the display threshold", () => {
+    const highCardinality: QueryResult = {
+      columns: [
+        { name: "Region", nativeType: "nvarchar(20)" },
+        { name: "DocNo", nativeType: "nvarchar(20)" },
+      ],
+      rows: Array.from({ length: 40 }, (_, i) => ["North", `PVS-${i}`]),
+    };
+    render(<FiltersPane visible rawResult={highCardinality} filterState={{}} onChange={vi.fn()} />);
+
+    expect(screen.getByText("Region")).toBeInTheDocument();
+    expect(screen.queryByText("DocNo")).not.toBeInTheDocument();
+    expect(screen.queryByText("PVS-0")).not.toBeInTheDocument();
+  });
 });

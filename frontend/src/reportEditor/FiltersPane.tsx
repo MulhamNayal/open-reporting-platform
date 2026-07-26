@@ -3,6 +3,12 @@ import { classify } from "../widgets/fieldClassification";
 import { normalizeCell } from "./crossFilter";
 import "./reportEditor.css";
 
+// Above this many distinct values, a field isn't a usable checkbox/chip filter
+// regardless of layout — e.g. a near-unique document-number column classified
+// as "Categorical" purely by its text type. Such fields are excluded entirely
+// rather than dumped into the pane as an unbrowsable wall of chips.
+const MAX_FILTER_VALUES = 30;
+
 function distinctValues(result: QueryResult, field: string): string[] {
   const index = result.columns.findIndex((c) => c.name === field);
   const values = new Set(result.rows.map((row) => normalizeCell(row[index])));
@@ -33,7 +39,10 @@ function FiltersPane({
     );
   }
 
-  const categoricalFields = rawResult.columns.filter((c) => classify(c.nativeType) === "Categorical");
+  const filterableFields = rawResult.columns
+    .filter((c) => classify(c.nativeType) === "Categorical")
+    .map((column) => ({ column, values: distinctValues(rawResult, column.name) }))
+    .filter(({ values }) => values.length <= MAX_FILTER_VALUES);
   const hasActiveFilters = Object.values(filterState).some((values) => values.length > 0) || Boolean(crossFilter);
 
   function toggle(field: string, value: string, checked: boolean) {
@@ -56,11 +65,11 @@ function FiltersPane({
         {hasActiveFilters && onResetAll && (
           <button type="button" className="resetf" onClick={onResetAll}>Reset filters</button>
         )}
-        {categoricalFields.map((column) => (
+        {filterableFields.map(({ column, values }) => (
           <div className="filter-group" key={column.name}>
             <div className="filter-group-label">{column.name}</div>
             <div className="filter-group-opts">
-              {distinctValues(rawResult, column.name).map((value) => (
+              {values.map((value) => (
                 <label className="opt" key={value}>
                   <input
                     type="checkbox"
