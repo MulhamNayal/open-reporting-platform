@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import DataTable, { type DataTableColumn } from "./DataTable";
@@ -210,5 +210,29 @@ describe("DataTable", () => {
     await userEvent.click(screen.getByRole("menuitem", { name: "Export as Excel (.xlsx)" }));
 
     expect(exportRows).toHaveBeenCalledWith(columns, [rows[0], rows[1]], "xlsx", "export");
+  });
+
+  it("dragging a column's resize handle sets an explicit pixel width on that column's cells", () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    const handle = screen.getByRole("separator", { name: "Resize Name column" });
+    fireEvent.mouseDown(handle, { clientX: 100 });
+    fireEvent.mouseMove(window, { clientX: 160 });
+    fireEvent.mouseUp(window);
+
+    const nameHeaderCell = screen.getByText("Name").closest("th");
+    expect(nameHeaderCell).toHaveStyle({ width: "60px" });
+  });
+
+  it("a column marked numeric right-aligns its header and body cells", () => {
+    const numericColumns: DataTableColumn<Row>[] = [
+      columns[0],
+      { ...columns[1] },
+      { key: "score", label: "Score", value: () => 0, render: () => "9.5", numeric: true },
+    ];
+    render(<DataTable columns={numericColumns} rows={rows} rowKey={(r) => r.id} />);
+
+    const scoreHeaderCell = screen.getByText("Score").closest("th");
+    expect(scoreHeaderCell).toHaveClass("MuiTableCell-alignRight");
   });
 });

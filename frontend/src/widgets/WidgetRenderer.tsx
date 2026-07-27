@@ -12,20 +12,21 @@ import ScatterWidget from "./ScatterWidget";
 import TextWidget from "./TextWidget";
 
 function WidgetRenderer({
-  widget, result, onDataPointClick,
+  widget, result, onDataPointClick, hideTitle = false,
 }: {
   widget: WidgetSummary;
   result: QueryResult | null;
   onDataPointClick?: (field: string, value: string) => void;
+  hideTitle?: boolean;
 }) {
   if (widget.type === "Text") {
-    return <TextWidget title={widget.title} content={widget.content} />;
+    return <TextWidget title={hideTitle ? "" : widget.title} content={widget.content} />;
   }
 
   if (!widget.binding) {
     return (
       <Paper sx={{ p: 2, height: "100%" }}>
-        <Typography variant="subtitle2">{widget.title}</Typography>
+        {!hideTitle && <Typography variant="subtitle2">{widget.title}</Typography>}
         <Alert severity="info" sx={{ mt: 1 }}>Not bound to a field yet.</Alert>
       </Paper>
     );
@@ -34,7 +35,7 @@ function WidgetRenderer({
   if (!result) {
     return (
       <Paper sx={{ p: 2, height: "100%" }}>
-        <Typography variant="subtitle2">{widget.title}</Typography>
+        {!hideTitle && <Typography variant="subtitle2">{widget.title}</Typography>}
         <Typography variant="body2">Loading…</Typography>
       </Paper>
     );
@@ -44,7 +45,7 @@ function WidgetRenderer({
   if (missingFields.length > 0) {
     return (
       <Paper sx={{ p: 2, height: "100%" }}>
-        <Typography variant="subtitle2">{widget.title}</Typography>
+        {!hideTitle && <Typography variant="subtitle2">{widget.title}</Typography>}
         <Alert severity="warning" sx={{ mt: 1 }}>
           Field {missingFields.join(", ")} no longer exists in this report's query — edit the binding to fix.
         </Alert>
@@ -55,7 +56,7 @@ function WidgetRenderer({
   if (!isBindingComplete(widget.type, widget.binding.categoryField, widget.binding.valueFields)) {
     return (
       <Paper sx={{ p: 2, height: "100%" }}>
-        <Typography variant="subtitle2">{widget.title}</Typography>
+        {!hideTitle && <Typography variant="subtitle2">{widget.title}</Typography>}
         <Alert severity="info" sx={{ mt: 1 }}>Finish configuring this widget's fields to see a preview.</Alert>
       </Paper>
     );
@@ -63,7 +64,9 @@ function WidgetRenderer({
 
   const format = parseFormatOptions(widget.binding.formatOptions);
   // showTitle toggles the displayed title; a non-empty format title overrides the widget's own.
-  const chartTitle = format.showTitle ? (format.title || widget.title) : "";
+  // hideTitle suppresses it regardless — used when a wrapping chrome (the report editor's
+  // widget card) already shows and lets you rename this same title, so it isn't shown twice.
+  const chartTitle = !hideTitle && format.showTitle ? (format.title || widget.title) : "";
 
   switch (widget.type) {
     case "Table":

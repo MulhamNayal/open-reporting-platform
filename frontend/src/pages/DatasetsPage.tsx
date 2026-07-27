@@ -198,7 +198,7 @@ function DatasetsPage() {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }} className="datasets-page">
+    <Container maxWidth={false} sx={{ py: 4, px: 4 }} className="datasets-page">
       <Typography variant="h4" gutterBottom>Datasets</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {columnPreviewError && <Alert severity="warning" sx={{ mb: 2 }}>{columnPreviewError}</Alert>}

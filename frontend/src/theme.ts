@@ -24,8 +24,17 @@ const meridianTheme = createTheme({
     },
     MuiTableCell: {
       styleOverrides: {
-        root: { borderBottom: "1px solid #eef0f4" },
-        head: { color: "#6c7480", fontWeight: 600, background: "#f6f7f9" },
+        root: { padding: "6px 9px", fontSize: "0.71875rem", borderBottom: "1px solid #eef0f4" },
+        head: {
+          color: "#6c7480",
+          fontWeight: 600,
+          background: "#f6f7f9",
+          padding: "7px 9px",
+          borderBottom: "1.5px solid #cfd5e0",
+          position: "sticky",
+          top: 0,
+          zIndex: 1,
+        },
       },
     },
     MuiTableRow: {

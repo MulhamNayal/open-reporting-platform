@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  Button, Checkbox, ClickAwayListener, FormControlLabel, IconButton, Menu, MenuItem, Paper, Popper, Table,
+  Box, Button, Checkbox, ClickAwayListener, FormControlLabel, IconButton, Menu, MenuItem, Paper, Popper, Table,
   TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography,
 } from "@mui/material";
 import { exportRows } from "./dataTableExport";
@@ -12,7 +12,10 @@ export interface DataTableColumn<T> {
   label: string;
   render: (row: T) => ReactNode;
   value?: (row: T) => string | number;
+  numeric?: boolean;
 }
+
+const MIN_COLUMN_WIDTH = 60;
 
 function distinctValues<T>(column: DataTableColumn<T>, rows: T[]): (string | number)[] {
   const seen = new Set<string | number>();
@@ -43,6 +46,8 @@ function DataTable<T>({
   const [filterMenuAnchor, setFilterMenuAnchor] = useState<HTMLElement | null>(null);
   const [filterSearchText, setFilterSearchText] = useState("");
   const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const headerCellRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
 
   const searchableColumns = columns.filter((c) => c.value);
   const filtered = rows.filter((row) => {
@@ -117,6 +122,27 @@ function DataTable<T>({
     setExportMenuAnchor(null);
   }
 
+  function startColumnResize(columnKey: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = columnWidths[columnKey] ?? headerCellRefs.current[columnKey]?.getBoundingClientRect().width
+      ?? MIN_COLUMN_WIDTH;
+
+    function handleMouseMove(moveEvent: MouseEvent) {
+      const nextWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(startWidth + (moveEvent.clientX - startX)));
+      setColumnWidths((prev) => ({ ...prev, [columnKey]: nextWidth }));
+    }
+
+    function handleMouseUp() {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }
+
   function handleHeaderClick(column: DataTableColumn<T>) {
     if (!column.value) {
       return;
@@ -155,7 +181,12 @@ function DataTable<T>({
           <TableHead>
             <TableRow>
               {columns.map((c) => (
-                <TableCell key={c.key}>
+                <TableCell
+                  key={c.key}
+                  ref={(el: HTMLTableCellElement | null) => { headerCellRefs.current[c.key] = el; }}
+                  align={c.numeric ? "right" : undefined}
+                  style={columnWidths[c.key] ? { width: columnWidths[c.key], maxWidth: columnWidths[c.key] } : undefined}
+                >
                   {c.value ? (
                     <TableSortLabel
                       active={sortKey === c.key}
@@ -178,6 +209,24 @@ function DataTable<T>({
                       <span aria-hidden="true">&#9662;</span>
                     </IconButton>
                   )}
+                  <Box
+                    component="span"
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label={`Resize ${c.label} column`}
+                    onMouseDown={(e) => startColumnResize(c.key, e)}
+                    sx={{
+                      position: "absolute",
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 10,
+                      cursor: "col-resize",
+                      userSelect: "none",
+                      zIndex: 1,
+                      "&:hover, &:active": { backgroundColor: "rgba(91, 79, 230, 0.35)" },
+                    }}
+                  />
                 </TableCell>
               ))}
             </TableRow>
@@ -185,7 +234,22 @@ function DataTable<T>({
           <TableBody>
             {paged.map((row) => (
               <TableRow key={rowKey(row)}>
-                {columns.map((c) => <TableCell key={c.key}>{c.render(row)}</TableCell>)}
+                {columns.map((c) => (
+                  <TableCell
+                    key={c.key}
+                    align={c.numeric ? "right" : undefined}
+                    sx={c.numeric ? { fontVariantNumeric: "tabular-nums" } : undefined}
+                    style={columnWidths[c.key] ? {
+                      width: columnWidths[c.key],
+                      maxWidth: columnWidths[c.key],
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    } : undefined}
+                  >
+                    {c.render(row)}
+                  </TableCell>
+                ))}
               </TableRow>
             ))}
           </TableBody>

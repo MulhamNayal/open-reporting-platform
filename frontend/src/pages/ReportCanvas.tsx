@@ -298,6 +298,7 @@ function ReportCanvasInner() {
                           }}
                           result={filteredResult}
                           onDataPointClick={handleDataPointClick}
+                          hideTitle
                         />
                       </WidgetChrome>
                     </div>
