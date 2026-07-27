@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.DataProtection;
 using Backend.Data;
 using Backend.Services;
 using Backend.Services.DataSources;
@@ -23,7 +24,18 @@ builder.Services.AddDbContext<ReportingDbContext>(options =>
 builder.Services.AddScoped<IReportService, ReportService>();
 
 builder.Services.AddHttpClient();
-builder.Services.AddDataProtection();
+// Persists Data Protection keys to a stable, app-independent location (ProgramData,
+// identical on any Windows machine). Without this, IIS-hosted apps can fall back to
+// ephemeral in-memory keys that don't survive an app pool restart -- every connection's
+// EncryptedCredentials (see CredentialProtector) becomes permanently undecryptable the
+// next time the pool restarts, since the key used to encrypt it is gone. Confirmed live:
+// a real connection's credentials broke with a fast 502 after a routine redeploy cycled
+// the app pool. Deliberately outside C:\AspNetCoreWebApps\reporting itself, since that
+// whole directory is robocopy /MIR'd (wiped and replaced) on every deploy.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "OpenReportingPlatform", "keys")))
+    .SetApplicationName("OpenReportingPlatform");
 builder.Services.AddScoped<ICredentialProtector, CredentialProtector>();
 builder.Services.AddScoped<IDataSourceProvider, SqlServerProvider>();
 builder.Services.AddScoped<IDataSourceProvider, RestApiProvider>();
