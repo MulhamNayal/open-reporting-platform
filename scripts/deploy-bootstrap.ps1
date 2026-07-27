@@ -76,16 +76,24 @@ Write-Host "=== copy frontend files ==="
 robocopy "$bundleRoot\frontend" $frontendRoot /MIR /NFL /NDL /NJH /NJS /R:3 /W:5
 if ($LASTEXITCODE -ge 8) { throw "robocopy frontend failed with exit code $LASTEXITCODE" }
 
-Write-Host "=== configure backend DB connection string (IIS app pool environment variable, never written to disk as a file) ==="
-$envVarPath = "/system.webServer/aspNetCore/environmentVariables"
-$existing = Get-WebConfigurationProperty -Filter $envVarPath -PSPath "IIS:\Sites\$siteName\$backendApp" -Name Collection -ErrorAction SilentlyContinue |
-    Where-Object { $_.name -eq "ConnectionStrings__ReportingDatabase" }
-if ($existing) {
-    Set-WebConfigurationProperty -Filter "$envVarPath/add[@name='ConnectionStrings__ReportingDatabase']" -PSPath "IIS:\Sites\$siteName\$backendApp" -Name "value" -Value $env:DB_CONNECTION_STRING
-} else {
-    Add-WebConfigurationProperty -Filter $envVarPath -PSPath "IIS:\Sites\$siteName\$backendApp" -Name Collection -Value @{ name = "ConnectionStrings__ReportingDatabase"; value = $env:DB_CONNECTION_STRING }
+Write-Host "=== configure backend environment variables (IIS app pool level, never written to disk as a file) ==="
+function Set-BackendEnvVar([string]$name, [string]$value) {
+    $envVarPath = "/system.webServer/aspNetCore/environmentVariables"
+    $existing = Get-WebConfigurationProperty -Filter $envVarPath -PSPath "IIS:\Sites\$siteName\$backendApp" -Name Collection -ErrorAction SilentlyContinue |
+        Where-Object { $_.name -eq $name }
+    if ($existing) {
+        Set-WebConfigurationProperty -Filter "$envVarPath/add[@name='$name']" -PSPath "IIS:\Sites\$siteName\$backendApp" -Name "value" -Value $value
+    } else {
+        Add-WebConfigurationProperty -Filter $envVarPath -PSPath "IIS:\Sites\$siteName\$backendApp" -Name Collection -Value @{ name = $name; value = $value }
+    }
+    Write-Host "Set '$name' on IIS Application '$backendApp'."
 }
-Write-Host "Connection string configured on IIS Application '$backendApp'."
+
+Set-BackendEnvVar "ConnectionStrings__ReportingDatabase" $env:DB_CONNECTION_STRING
+# erpapidev is a dev box, not a real production instance -- Development matches what it
+# actually is, and Program.cs only registers Swagger (needed at /reporting/swagger) when
+# this is set. IIS/ANCM otherwise defaults ASPNETCORE_ENVIRONMENT to Production.
+Set-BackendEnvVar "ASPNETCORE_ENVIRONMENT" "Development"
 
 Write-Host "=== start app pools ==="
 foreach ($pool in @($backendPool, $frontendPool)) {
