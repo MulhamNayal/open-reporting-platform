@@ -2,14 +2,11 @@
 # bundle there. $PSScriptRoot is <bundleDir>\scripts, so the bundle root (containing
 # backend/ and frontend/) is one level up.
 #
-# Expects these to already exist on the server (see the one-time IIS setup steps):
-#   - IIS site "$env:IIS_SITE_NAME"
-#   - IIS Application "reporting"    (backend)  at C:\AspNetCoreWebApps\reporting
-#   - IIS Application "reportingweb" (frontend) at C:\AspNetCoreWebApps\reportingweb
-#   - App pools "reporting" and "reportingweb"
+# Self-provisioning: creates the app pools and IIS Applications under $env:IIS_SITE_NAME
+# if they don't already exist, so no manual IIS Manager setup is required beforehand.
 #
 # Expects these environment variables (set by the deploy workflow before running this):
-#   - IIS_SITE_NAME          the parent IIS site name
+#   - IIS_SITE_NAME          the parent IIS site name (must already exist)
 #   - DB_CONNECTION_STRING   the backend's ConnectionStrings:ReportingDatabase value
 
 $ErrorActionPreference = 'Stop'
@@ -25,52 +22,75 @@ $backendRoot  = Join-Path $root $backendApp
 $frontendRoot = Join-Path $root $frontendApp
 $bundleRoot   = Split-Path -Parent $PSScriptRoot
 
-Write-Host "=== stop app pools ==="
-foreach ($pool in @($backendPool, $frontendPool)) {
-    if (Test-Path "IIS:\AppPools\$pool") {
-        if ((Get-WebAppPoolState -Name $pool).Value -eq 'Started') {
-            Stop-WebAppPool -Name $pool
-            while ((Get-WebAppPoolState -Name $pool).Value -ne 'Stopped') { Start-Sleep -Milliseconds 500 }
-        }
-        Write-Host "Pool '$pool' stopped."
+if (-not $siteName) {
+    throw "IIS_SITE_NAME is not set -- can't provision or target any IIS Application without a parent site name."
+}
+if (-not (Test-Path "IIS:\Sites\$siteName")) {
+    throw "IIS site '$siteName' does not exist on this server. This script provisions Applications under an existing site, not the site itself."
+}
+
+function Ensure-AppPool([string]$pool) {
+    if (-not (Test-Path "IIS:\AppPools\$pool")) {
+        Write-Host "Creating app pool '$pool'..."
+        New-WebAppPool -Name $pool | Out-Null
+        # ASP.NET Core apps run via the ASP.NET Core Module (ANCM) out-of-process,
+        # not the classic CLR pipeline, so the app pool needs "No Managed Code".
+        Set-ItemProperty "IIS:\AppPools\$pool" -Name managedRuntimeVersion -Value ""
     } else {
-        Write-Host "Pool '$pool' does not exist yet (first deploy?) - skipping stop."
+        Write-Host "App pool '$pool' already exists."
     }
 }
 
+function Ensure-Application([string]$appName, [string]$physicalPath, [string]$pool) {
+    New-Item -ItemType Directory -Force -Path $physicalPath | Out-Null
+    if (-not (Test-Path "IIS:\Sites\$siteName\$appName")) {
+        Write-Host "Creating IIS Application '$appName' at '$physicalPath'..."
+        New-WebApplication -Site $siteName -Name $appName -PhysicalPath $physicalPath -ApplicationPool $pool | Out-Null
+    } else {
+        Write-Host "IIS Application '$appName' already exists."
+    }
+}
+
+Write-Host "=== ensure app pools exist ==="
+Ensure-AppPool $backendPool
+Ensure-AppPool $frontendPool
+
+Write-Host "=== ensure IIS Applications exist ==="
+Ensure-Application $backendApp $backendRoot $backendPool
+Ensure-Application $frontendApp $frontendRoot $frontendPool
+
+Write-Host "=== stop app pools (before overwriting files they're serving) ==="
+foreach ($pool in @($backendPool, $frontendPool)) {
+    if ((Get-WebAppPoolState -Name $pool).Value -eq 'Started') {
+        Stop-WebAppPool -Name $pool
+        while ((Get-WebAppPoolState -Name $pool).Value -ne 'Stopped') { Start-Sleep -Milliseconds 500 }
+    }
+    Write-Host "Pool '$pool' stopped."
+}
+
 Write-Host "=== copy backend files ==="
-New-Item -ItemType Directory -Force -Path $backendRoot | Out-Null
 robocopy "$bundleRoot\backend" $backendRoot /MIR /NFL /NDL /NJH /NJS /R:3 /W:5
 if ($LASTEXITCODE -ge 8) { throw "robocopy backend failed with exit code $LASTEXITCODE" }
 
 Write-Host "=== copy frontend files ==="
-New-Item -ItemType Directory -Force -Path $frontendRoot | Out-Null
 robocopy "$bundleRoot\frontend" $frontendRoot /MIR /NFL /NDL /NJH /NJS /R:3 /W:5
 if ($LASTEXITCODE -ge 8) { throw "robocopy frontend failed with exit code $LASTEXITCODE" }
 
 Write-Host "=== configure backend DB connection string (IIS app pool environment variable, never written to disk as a file) ==="
-if ($siteName -and (Test-Path "IIS:\Sites\$siteName\$backendApp")) {
-    $envVarPath = "/system.webServer/aspNetCore/environmentVariables"
-    $existing = Get-WebConfigurationProperty -Filter $envVarPath -PSPath "IIS:\Sites\$siteName\$backendApp" -Name Collection -ErrorAction SilentlyContinue |
-        Where-Object { $_.name -eq "ConnectionStrings__ReportingDatabase" }
-    if ($existing) {
-        Set-WebConfigurationProperty -Filter "$envVarPath/add[@name='ConnectionStrings__ReportingDatabase']" -PSPath "IIS:\Sites\$siteName\$backendApp" -Name "value" -Value $env:DB_CONNECTION_STRING
-    } else {
-        Add-WebConfigurationProperty -Filter $envVarPath -PSPath "IIS:\Sites\$siteName\$backendApp" -Name Collection -Value @{ name = "ConnectionStrings__ReportingDatabase"; value = $env:DB_CONNECTION_STRING }
-    }
-    Write-Host "Connection string configured on IIS Application '$backendApp'."
+$envVarPath = "/system.webServer/aspNetCore/environmentVariables"
+$existing = Get-WebConfigurationProperty -Filter $envVarPath -PSPath "IIS:\Sites\$siteName\$backendApp" -Name Collection -ErrorAction SilentlyContinue |
+    Where-Object { $_.name -eq "ConnectionStrings__ReportingDatabase" }
+if ($existing) {
+    Set-WebConfigurationProperty -Filter "$envVarPath/add[@name='ConnectionStrings__ReportingDatabase']" -PSPath "IIS:\Sites\$siteName\$backendApp" -Name "value" -Value $env:DB_CONNECTION_STRING
 } else {
-    Write-Host "IIS Application '$backendApp' does not exist yet under site '$siteName' - skipping connection-string configuration (create the site/app first, then re-run deploy)."
+    Add-WebConfigurationProperty -Filter $envVarPath -PSPath "IIS:\Sites\$siteName\$backendApp" -Name Collection -Value @{ name = "ConnectionStrings__ReportingDatabase"; value = $env:DB_CONNECTION_STRING }
 }
+Write-Host "Connection string configured on IIS Application '$backendApp'."
 
 Write-Host "=== start app pools ==="
 foreach ($pool in @($backendPool, $frontendPool)) {
-    if (Test-Path "IIS:\AppPools\$pool") {
-        Start-WebAppPool -Name $pool
-        Write-Host "Pool '$pool' started."
-    } else {
-        Write-Host "Pool '$pool' does not exist - skipping start (create it via the one-time IIS setup, then re-run deploy)."
-    }
+    Start-WebAppPool -Name $pool
+    Write-Host "Pool '$pool' started."
 }
 
 Write-Host "Deploy complete."
