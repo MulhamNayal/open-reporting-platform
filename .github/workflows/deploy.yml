@@ -1,0 +1,65 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Publish backend
+        run: dotnet publish backend/Backend.csproj -c Release -o publish/backend
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble bundle
+        run: |
+          mkdir -p publish/frontend publish/scripts
+          cp -r frontend/dist/. publish/frontend/
+          cp scripts/deploy-bootstrap.ps1 publish/scripts/
+          cd publish && zip -r ../bundle.zip . && cd ..
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload bundle to S3 and generate presigned URL
+        id: upload
+        env:
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        run: |
+          aws s3 cp bundle.zip "s3://$S3_BUCKET/deploys/open-reporting-platform/bundle.zip"
+          url=$(aws s3 presign "s3://$S3_BUCKET/deploys/open-reporting-platform/bundle.zip" --expires-in 3600)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy on EC2 via WinRM
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_PASS: ${{ secrets.EC2_PASS }}
+          IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+          BUNDLE_URL: ${{ steps.upload.outputs.url }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          pip install pywinrm --quiet
+          python3 scripts/winrm_deploy.py
