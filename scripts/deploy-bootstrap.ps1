@@ -74,3 +74,8 @@ foreach ($pool in @($backendPool, $frontendPool)) {
 }
 
 Write-Host "Deploy complete."
+# robocopy's own success exit code is 1 (0 means "nothing needed copying"), and nothing
+# after the copy steps otherwise touches $LASTEXITCODE -- without this, the script's own
+# exit code silently inherits robocopy's leftover value, which callers checking
+# $LASTEXITCODE -ne 0 misread as a failure even though everything above succeeded.
+exit 0
