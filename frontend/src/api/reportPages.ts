@@ -14,7 +14,7 @@ export interface UpdateReportPageRequest {
   filterState?: string;
 }
 
-const api = axios.create({ baseURL: "http://localhost:5198/api" });
+const api = axios.create({ baseURL: import.meta.env.DEV ? "http://localhost:5198/api" : "/reporting/api" });
 
 export async function getReportPages(reportId: number): Promise<ReportPage[]> {
   const res = await api.get<ReportPage[]>(`/reports/${reportId}/pages`);

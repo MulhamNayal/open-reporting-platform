@@ -34,7 +34,7 @@ export interface QueryResult {
   rows: unknown[][];
 }
 
-const api = axios.create({ baseURL: "http://localhost:5198/api" });
+const api = axios.create({ baseURL: import.meta.env.DEV ? "http://localhost:5198/api" : "/reporting/api" });
 
 export async function getDatasets(connectionId: number): Promise<DatasetSummary[]> {
   const res = await api.get<DatasetSummary[]>("/datasets", { params: { connectionId } });

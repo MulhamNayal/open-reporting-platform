@@ -60,7 +60,7 @@ export interface SaveWidgetRequest {
   binding: SaveWidgetBindingRequest | null;
 }
 
-const api = axios.create({ baseURL: "http://localhost:5198/api" });
+const api = axios.create({ baseURL: import.meta.env.DEV ? "http://localhost:5198/api" : "/reporting/api" });
 
 export async function getWidgets(reportPageId: number): Promise<WidgetSummary[]> {
   const res = await api.get<WidgetSummary[]>(`/reportpages/${reportPageId}/widgets`);

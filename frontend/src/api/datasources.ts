@@ -24,7 +24,7 @@ export interface CreateDataSourceConnectionRequest {
   credentialsJson: string;
 }
 
-const api = axios.create({ baseURL: "http://localhost:5198/api" });
+const api = axios.create({ baseURL: import.meta.env.DEV ? "http://localhost:5198/api" : "/reporting/api" });
 
 export async function getDataSources(): Promise<DataSourceConnectionSummary[]> {
   const res = await api.get<DataSourceConnectionSummary[]>("/datasources");
