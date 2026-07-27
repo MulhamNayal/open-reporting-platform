@@ -77,6 +77,12 @@ function DataTable<T>({
   const visibleFilterValues = activeFilterValues.filter((v) =>
     String(v).toLowerCase().includes(filterSearchText.toLowerCase()),
   );
+  const allVisibleFilterValuesSelected = activeFilterColumn
+    ? visibleFilterValues.length > 0 && visibleFilterValues.every((v) => isValueSelected(activeFilterColumn.key, v))
+    : false;
+  const someVisibleFilterValuesSelected = activeFilterColumn
+    ? visibleFilterValues.some((v) => isValueSelected(activeFilterColumn.key, v))
+    : false;
 
   function isValueSelected(columnKey: string, value: string | number): boolean {
     const selected = columnFilters[columnKey];
@@ -112,6 +118,19 @@ function DataTable<T>({
       } else {
         next.add(value);
       }
+      return { ...prev, [column.key]: next };
+    });
+    setPage(0);
+  }
+
+  // Only touches the given values (the currently search-narrowed checklist), leaving any
+  // value hidden by that search untouched — same "Select All applies to what's visible" behaviour as Excel.
+  function setFilterValues(column: DataTableColumn<T>, values: (string | number)[], selected: boolean) {
+    setColumnFilters((prev) => {
+      const allValues = distinctValues(column, rows);
+      const current = prev[column.key] ?? new Set(allValues);
+      const next = new Set(current);
+      values.forEach((v) => (selected ? next.add(v) : next.delete(v)));
       return { ...prev, [column.key]: next };
     });
     setPage(0);
@@ -278,10 +297,23 @@ function DataTable<T>({
               sx={{ mb: 1 }}
               fullWidth
             />
-            <div style={{ maxHeight: 200, overflowY: "auto" }}>
+            <FormControlLabel
+              sx={{ display: "flex", width: "100%", m: 0, borderBottom: "1px solid #eef0f4", mb: 0.5, pb: 0.5 }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={allVisibleFilterValuesSelected}
+                  indeterminate={someVisibleFilterValuesSelected && !allVisibleFilterValuesSelected}
+                  onChange={(e) => activeFilterColumn && setFilterValues(activeFilterColumn, visibleFilterValues, e.target.checked)}
+                />
+              }
+              label="Select all"
+            />
+            <div style={{ display: "flex", flexDirection: "column", maxHeight: 200, overflowY: "auto" }}>
               {visibleFilterValues.map((value) => (
                 <FormControlLabel
                   key={String(value)}
+                  sx={{ display: "flex", width: "100%", m: 0 }}
                   control={
                     <Checkbox
                       size="small"

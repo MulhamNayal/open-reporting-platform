@@ -181,6 +181,52 @@ describe("DataTable", () => {
     expect(filterButton).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("unchecking 'Select all' in the filter popover hides every row for that column", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+    const table = screen.getByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    expect(screen.getByRole("checkbox", { name: "Select all" })).toBeChecked();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select all" }));
+
+    expect(within(table).queryByText("Alice")).not.toBeInTheDocument();
+    expect(within(table).queryByText("Bob")).not.toBeInTheDocument();
+    expect(within(table).queryByText("Charlie")).not.toBeInTheDocument();
+  });
+
+  it("re-checking 'Select all' after unchecking one value restores every row", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+    const table = screen.getByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Bob" }));
+    expect(screen.getByRole("checkbox", { name: "Select all" })).not.toBeChecked();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select all" }));
+
+    expect(within(table).getByText("Alice")).toBeInTheDocument();
+    expect(within(table).getByText("Bob")).toBeInTheDocument();
+    expect(within(table).getByText("Charlie")).toBeInTheDocument();
+  });
+
+  it("'Select all' only affects values narrowed by the value-search box, leaving others untouched", async () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+    const table = screen.getByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Bob" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Charlie" }));
+    expect(within(table).getByText("Alice")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByPlaceholderText("Search values"), "char");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select all" }));
+
+    expect(within(table).getByText("Alice")).toBeInTheDocument();
+    expect(within(table).getByText("Charlie")).toBeInTheDocument();
+    expect(within(table).queryByText("Bob")).not.toBeInTheDocument();
+  });
+
   it("exporting as Excel calls exportRows with the current filtered/sorted rows and value-bearing columns", async () => {
     render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} exportFileName="my-file" />);
 
