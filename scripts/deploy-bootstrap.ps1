@@ -14,9 +14,9 @@ Import-Module WebAdministration
 
 $siteName     = $env:IIS_SITE_NAME
 $backendApp   = "reporting"
-$frontendApp  = "reportingweb"
+$frontendApp  = "reportingapp"
 $backendPool  = "reporting"
-$frontendPool = "reportingweb"
+$frontendPool = "reportingapp"
 $root         = "C:\AspNetCoreWebApps"
 $backendRoot  = Join-Path $root $backendApp
 $frontendRoot = Join-Path $root $frontendApp
