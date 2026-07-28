@@ -131,8 +131,10 @@ function FormatTab({
                     <label htmlFor={`format-type-${field}`}>Format</label>
                     <select
                       id={`format-type-${field}`}
+                      className="text-in"
                       value={current.type}
                       onChange={(e) => updateFieldFormat(field, { type: e.target.value as FieldFormatType })}
+                      style={{ maxWidth: 160 }}
                     >
                       {FORMAT_TYPE_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -149,6 +151,7 @@ function FormatTab({
                           <label htmlFor={`format-decimals-${field}`}>Decimal places</label>
                           <input
                             id={`format-decimals-${field}`}
+                            className="text-in"
                             type="number"
                             min={0}
                             max={6}
@@ -193,8 +196,10 @@ function FormatTab({
                       <label htmlFor={`format-date-${field}`}>Date format</label>
                       <select
                         id={`format-date-${field}`}
+                        className="text-in"
                         value={current.datePreset}
                         onChange={(e) => updateFieldFormat(field, { datePreset: e.target.value as DatePreset })}
+                        style={{ maxWidth: 160 }}
                       >
                         {Object.entries(DATE_PRESET_EXAMPLES).map(([preset, example]) => (
                           <option key={preset} value={preset}>{example}</option>
@@ -208,8 +213,10 @@ function FormatTab({
                       <label htmlFor={`format-bool-${field}`}>Style</label>
                       <select
                         id={`format-bool-${field}`}
+                        className="text-in"
                         value={current.booleanStyle}
                         onChange={(e) => updateFieldFormat(field, { booleanStyle: e.target.value as BooleanStyle })}
+                        style={{ maxWidth: 160 }}
                       >
                         <option value="trueFalse">True / False</option>
                         <option value="yesNo">Yes / No</option>
