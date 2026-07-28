@@ -9,6 +9,7 @@ export const DEFAULT_FIELD_FORMAT: FieldFormat = {
   datePreset: "iso",
   booleanStyle: "trueFalse",
   displayName: null,
+  columnWidth: null,
 };
 
 // Shown as the option label in the date-format dropdown, and reused as a live preview.

@@ -4,12 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ColumnDescriptor } from "../api/datasets";
 import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
+import type { WidgetType } from "../api/widgets";
 import type { WidgetBindingDraft, WidgetDraft } from "../widgets/widgetDraftReducer";
 import FormatTab from "./FormatTab";
 
-function makeWidget(): WidgetDraft {
+function makeWidget(type: WidgetType = "Bar"): WidgetDraft {
   return {
-    id: 1, type: "Bar", x: 0, y: 0, w: 4, h: 3, title: "W", content: null,
+    id: 1, type, x: 0, y: 0, w: 4, h: 3, title: "W", content: null,
     binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: DEFAULT_FORMAT_OPTIONS },
   };
 }
@@ -197,5 +198,51 @@ describe("FormatTab", () => {
     await userEvent.click(row());
     expect(screen.queryByLabelText("Decimal places")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Revenue format, currently Decimal" })).toBeInTheDocument();
+  });
+
+  it("shows a Table layout section with a Row height input only for a Table widget", () => {
+    render(<FormatTab widget={makeWidget("Table")} onChange={vi.fn()} />);
+
+    expect(screen.getByText("Table layout")).toBeInTheDocument();
+    expect(screen.getByLabelText("Row height (px)")).toHaveValue(null);
+  });
+
+  it("does not show the Table layout section for a non-Table widget", () => {
+    render(<FormatTab widget={makeWidget("Bar")} onChange={vi.fn()} />);
+
+    expect(screen.queryByText("Table layout")).not.toBeInTheDocument();
+  });
+
+  it("changing row height updates formatOptions.rowHeight", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget("Table")} />);
+
+    await userEvent.type(screen.getByLabelText("Row height (px)"), "40");
+
+    expect(screen.getByLabelText("Row height (px)")).toHaveValue(40);
+  });
+
+  it("shows a Column width input inside a field's expanded row only for a Table widget", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget("Table")} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Revenue format/ }));
+
+    expect(screen.getByLabelText("Column width (px)")).toHaveValue(null);
+  });
+
+  it("does not show a Column width input for a non-Table widget", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget("Bar")} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Revenue format/ }));
+
+    expect(screen.queryByLabelText("Column width (px)")).not.toBeInTheDocument();
+  });
+
+  it("changing a field's column width updates its fieldFormats entry", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget("Table")} />);
+    await userEvent.click(screen.getByRole("button", { name: /Revenue format/ }));
+
+    await userEvent.type(screen.getByLabelText("Column width (px)"), "140");
+
+    expect(screen.getByLabelText("Column width (px)")).toHaveValue(140);
   });
 });

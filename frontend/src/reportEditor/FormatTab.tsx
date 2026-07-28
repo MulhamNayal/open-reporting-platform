@@ -142,6 +142,27 @@ function FormatTab({
         </div>
       </details>
 
+      {widget.type === "Table" && (
+        <details className="fgroup" open>
+          <summary>Table layout</summary>
+          <div className="fbody">
+            <div className="frow">
+              <label htmlFor="format-row-height">Row height (px)</label>
+              <input
+                id="format-row-height"
+                className="text-in"
+                type="number"
+                min={24}
+                placeholder="Auto"
+                value={options.rowHeight ?? ""}
+                onChange={(e) => update({ rowHeight: e.target.value === "" ? null : Number(e.target.value) })}
+                style={{ width: 70 }}
+              />
+            </div>
+          </div>
+        </details>
+      )}
+
       {binding.valueFields.length > 0 && (
         <details className="fgroup" open>
           <summary>Value formats</summary>
@@ -185,6 +206,21 @@ function FormatTab({
                       onChange={(e) => updateFieldFormat(field, { displayName: e.target.value === "" ? null : e.target.value })}
                     />
                   </div>
+                  {widget.type === "Table" && (
+                    <div className="frow">
+                      <label htmlFor={`format-colwidth-${field}`}>Column width (px)</label>
+                      <input
+                        id={`format-colwidth-${field}`}
+                        className="text-in"
+                        type="number"
+                        min={40}
+                        placeholder="Auto"
+                        value={current.columnWidth ?? ""}
+                        onChange={(e) => updateFieldFormat(field, { columnWidth: e.target.value === "" ? null : Number(e.target.value) })}
+                        style={{ width: 70 }}
+                      />
+                    </div>
+                  )}
                   <div className="frow">
                     <label htmlFor={`format-type-${field}`}>Format</label>
                     <select

@@ -18,10 +18,14 @@ function TableWidget({
   format?: WidgetFormatOptions;
 }) {
   const { columns: columnNames, rows: shapedRows } = shapeTableRows(result, valueFields);
+  const columnWidths: Record<string, number> = {};
 
   const columns: DataTableColumn<ResultRow>[] = columnNames.map((name, colIndex) => {
     const nativeType = result.columns.find((c) => c.name === name)?.nativeType;
     const fieldFormat = getFieldFormat(format, name, nativeType);
+    if (fieldFormat.columnWidth !== null) {
+      columnWidths[name] = fieldFormat.columnWidth;
+    }
 
     return {
       key: name,
@@ -44,7 +48,13 @@ function TableWidget({
   return (
     <Paper sx={{ p: 2, height: "100%" }}>
       <Typography variant="subtitle2" gutterBottom>{title}</Typography>
-      <DataTable columns={columns} rows={rows} rowKey={(row) => shapedRows.indexOf(row.values)} />
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => shapedRows.indexOf(row.values)}
+        columnWidths={columnWidths}
+        rowHeight={format?.rowHeight ?? undefined}
+      />
     </Paper>
   );
 }

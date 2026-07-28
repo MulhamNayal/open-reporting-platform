@@ -44,13 +44,18 @@ function distinctValues<T>(column: DataTableColumn<T>, rows: T[]): (string | num
 }
 
 function DataTable<T>({
-  columns, rows, rowKey, searchPlaceholder = "Search", exportFileName = "export",
+  columns, rows, rowKey, searchPlaceholder = "Search", exportFileName = "export", columnWidths: presetColumnWidths, rowHeight,
 }: {
   columns: DataTableColumn<T>[];
   rows: T[];
   rowKey: (row: T) => string | number;
   searchPlaceholder?: string;
   exportFileName?: string;
+  // Persisted per-column widths (e.g. from a widget's saved format) — the starting point for
+  // each column's width. A manual in-session drag (below) overrides this for that column only,
+  // but never writes back to it; persisting a drag is a separate, explicit "save" action.
+  columnWidths?: Record<string, number>;
+  rowHeight?: number;
 }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -62,8 +67,13 @@ function DataTable<T>({
   const [filterMenuAnchor, setFilterMenuAnchor] = useState<HTMLElement | null>(null);
   const [filterSearchText, setFilterSearchText] = useState("");
   const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const [manualColumnWidths, setManualColumnWidths] = useState<Record<string, number>>({});
   const headerCellRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
+
+  function effectiveWidth(columnKey: string): number | undefined {
+    const width = manualColumnWidths[columnKey] ?? presetColumnWidths?.[columnKey];
+    return width ? Math.max(MIN_COLUMN_WIDTH, width) : undefined;
+  }
 
   const searchableColumns = columns.filter((c) => c.value);
   const filtered = rows.filter((row) => {
@@ -180,12 +190,12 @@ function DataTable<T>({
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX;
-    const startWidth = columnWidths[columnKey] ?? headerCellRefs.current[columnKey]?.getBoundingClientRect().width
+    const startWidth = effectiveWidth(columnKey) ?? headerCellRefs.current[columnKey]?.getBoundingClientRect().width
       ?? MIN_COLUMN_WIDTH;
 
     function handleMouseMove(moveEvent: MouseEvent) {
       const nextWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(startWidth + (moveEvent.clientX - startX)));
-      setColumnWidths((prev) => ({ ...prev, [columnKey]: nextWidth }));
+      setManualColumnWidths((prev) => ({ ...prev, [columnKey]: nextWidth }));
     }
 
     function handleMouseUp() {
@@ -239,7 +249,7 @@ function DataTable<T>({
                   key={c.key}
                   ref={(el: HTMLTableCellElement | null) => { headerCellRefs.current[c.key] = el; }}
                   align={c.numeric ? "right" : undefined}
-                  style={columnWidths[c.key] ? { width: columnWidths[c.key], maxWidth: columnWidths[c.key] } : undefined}
+                  style={effectiveWidth(c.key) ? { width: effectiveWidth(c.key), maxWidth: effectiveWidth(c.key) } : undefined}
                 >
                   {c.value ? (
                     <TableSortLabel
@@ -251,7 +261,7 @@ function DataTable<T>({
                         title={c.label}
                         style={{
                           display: "inline-block",
-                          maxWidth: columnWidths[c.key] ? columnWidths[c.key] - HEADER_ICON_ALLOWANCE : DEFAULT_HEADER_LABEL_MAX_WIDTH,
+                          maxWidth: effectiveWidth(c.key) ? effectiveWidth(c.key)! - HEADER_ICON_ALLOWANCE : DEFAULT_HEADER_LABEL_MAX_WIDTH,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -266,7 +276,7 @@ function DataTable<T>({
                       title={c.label}
                       style={{
                         display: "inline-block",
-                        maxWidth: columnWidths[c.key] ? columnWidths[c.key] - HEADER_ICON_ALLOWANCE : DEFAULT_HEADER_LABEL_MAX_WIDTH,
+                        maxWidth: effectiveWidth(c.key) ? effectiveWidth(c.key)! - HEADER_ICON_ALLOWANCE : DEFAULT_HEADER_LABEL_MAX_WIDTH,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -311,15 +321,15 @@ function DataTable<T>({
           </TableHead>
           <TableBody>
             {paged.map((row) => (
-              <TableRow key={rowKey(row)}>
+              <TableRow key={rowKey(row)} style={rowHeight ? { height: rowHeight } : undefined}>
                 {columns.map((c) => (
                   <TableCell
                     key={c.key}
                     align={c.numeric ? "right" : undefined}
                     sx={c.numeric ? { fontVariantNumeric: "tabular-nums" } : undefined}
-                    style={columnWidths[c.key] ? {
-                      width: columnWidths[c.key],
-                      maxWidth: columnWidths[c.key],
+                    style={effectiveWidth(c.key) ? {
+                      width: effectiveWidth(c.key),
+                      maxWidth: effectiveWidth(c.key),
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",

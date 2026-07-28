@@ -19,6 +19,8 @@ export interface FieldFormat {
   booleanStyle: BooleanStyle;
   // null (the default) means "show the real column name" — set to override it per widget.
   displayName: string | null;
+  // Table widgets only. Pixels; null means auto (sized by content, or a manual in-session drag).
+  columnWidth: number | null;
 }
 
 export interface WidgetFormatOptions {
@@ -30,6 +32,8 @@ export interface WidgetFormatOptions {
   sortField: string | null;
   sortDirection: "asc" | "desc" | null;
   dataLabels: boolean;
+  // Table widgets only. Pixels; null means the table's default row height.
+  rowHeight: number | null;
   fieldFormats: Record<string, Partial<FieldFormat>>;
 }
 
@@ -42,6 +46,7 @@ export const DEFAULT_FORMAT_OPTIONS: WidgetFormatOptions = {
   sortField: null,
   sortDirection: null,
   dataLabels: false,
+  rowHeight: null,
   fieldFormats: {},
 };
 

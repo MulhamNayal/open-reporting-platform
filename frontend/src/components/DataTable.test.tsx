@@ -320,6 +320,48 @@ describe("DataTable", () => {
     expect(screen.getByTitle("StagingSubsaleInvoiceCustomerIdentifierColumn")).toHaveStyle({ maxWidth: "266px" });
   });
 
+  it("applies a preset column width from the columnWidths prop", () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} columnWidths={{ name: 180 }} />);
+
+    const nameHeaderCell = screen.getByText("Name").closest("th");
+    expect(nameHeaderCell).toHaveStyle({ width: "180px" });
+  });
+
+  it("a manual drag continues from the preset width, and overrides it for that column", () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} columnWidths={{ name: 180 }} />);
+
+    const handle = screen.getByRole("separator", { name: "Resize Name column" });
+    fireEvent.mouseDown(handle, { clientX: 100 });
+    // Drag starts from the current (preset) width of 180px, not from 0 — +60px of movement
+    // lands at 240px, confirming the drag reads the preset rather than ignoring it.
+    fireEvent.mouseMove(window, { clientX: 160 });
+    fireEvent.mouseUp(window);
+
+    const nameHeaderCell = screen.getByText("Name").closest("th");
+    expect(nameHeaderCell).toHaveStyle({ width: "240px" });
+  });
+
+  it("clamps a preset column width below the minimum up to the minimum", () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} columnWidths={{ name: 10 }} />);
+
+    const nameHeaderCell = screen.getByText("Name").closest("th");
+    expect(nameHeaderCell).toHaveStyle({ width: "60px" });
+  });
+
+  it("applies rowHeight to each body row", () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} rowHeight={48} />);
+
+    const bodyRow = screen.getByText("Alice").closest("tr");
+    expect(bodyRow).toHaveStyle({ height: "48px" });
+  });
+
+  it("leaves row height at its default when rowHeight is not given", () => {
+    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
+
+    const bodyRow = screen.getByText("Alice").closest("tr");
+    expect(bodyRow).not.toHaveAttribute("style");
+  });
+
   it("a column marked numeric right-aligns its header and body cells", () => {
     const numericColumns: DataTableColumn<Row>[] = [
       columns[0],

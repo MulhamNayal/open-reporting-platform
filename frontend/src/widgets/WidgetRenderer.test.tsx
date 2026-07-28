@@ -339,6 +339,31 @@ describe("WidgetRenderer", () => {
     expect(screen.queryByText("DocAmount")).not.toBeInTheDocument();
   });
 
+  it("applies a Table's configured column width and row height", () => {
+    const result: QueryResult = {
+      columns: [{ name: "DocAmount", nativeType: "decimal(18,2)" }],
+      rows: [[1234.5]],
+    };
+    const formatOptions = JSON.stringify({
+      ...DEFAULT_FORMAT_OPTIONS,
+      rowHeight: 48,
+      fieldFormats: { DocAmount: { columnWidth: 220, type: "decimal", decimalPlaces: 2 } },
+    });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Table", binding: { categoryField: null, valueFields: ["DocAmount"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    const headerCell = screen.getByText("DocAmount").closest("th");
+    expect(headerCell).toHaveStyle({ width: "220px" });
+
+    const bodyRow = screen.getByText("1,234.50").closest("tr");
+    expect(bodyRow).toHaveStyle({ height: "48px" });
+  });
+
   it("renders a Scatter widget, using valueFields[0]/[1] positionally as X/Y", () => {
     const result: QueryResult = {
       columns: [
