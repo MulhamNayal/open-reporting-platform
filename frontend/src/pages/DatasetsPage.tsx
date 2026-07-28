@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -15,7 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
-import { getDataSources, getDataSourceSchema, type DataSourceConnectionSummary } from "../api/datasources";
+import { getDataSourceRoutines, getDataSources, getDataSourceSchema, type DataSourceConnectionSummary, type RoutineDescriptor, type TableDescriptor } from "../api/datasources";
 import {
   createDataset,
   discoverDatasetColumns,
@@ -28,13 +29,16 @@ import {
 import QueryResultGrid from "../components/QueryResultGrid";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { buildTableQueryDefinition, parseTableQueryDefinition, ALLOWED_OPERATORS, type FilterRowDraft } from "./tableQueryDefinition";
+import SqlEditor from "./SqlEditor";
+import { buildSqlCompletionSchema } from "./sqlCompletionSchema";
 import "./datasetsPage.css";
 
 function DatasetsPage() {
   const [connections, setConnections] = useState<DataSourceConnectionSummary[]>([]);
   const [selectedConnectionId, setSelectedConnectionId] = useState<number | "">("");
   const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
-  const [tables, setTables] = useState<{ name: string; fields: { name: string }[] }[]>([]);
+  const [tables, setTables] = useState<TableDescriptor[]>([]);
+  const [routines, setRoutines] = useState<RoutineDescriptor[]>([]);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -98,6 +102,7 @@ function DatasetsPage() {
     if (typeof selectedConnectionId !== "number") {
       setDatasets([]);
       setTables([]);
+      setRoutines([]);
       return;
     }
 
@@ -105,6 +110,7 @@ function DatasetsPage() {
     getDataSourceSchema(selectedConnectionId)
       .then((schema) => setTables(schema.tables))
       .catch(() => setError("Could not load the connection's schema."));
+    getDataSourceRoutines(selectedConnectionId).then(setRoutines).catch(() => setRoutines([]));
   }, [selectedConnectionId]);
 
   function toggleColumn(fieldName: string) {
@@ -302,6 +308,11 @@ function DatasetsPage() {
 
   const selectedTableFields = tables.find((t) => t.name === selectedTable)?.fields ?? [];
   const editSelectedTableFields = tables.find((t) => t.name === editSelectedTable)?.fields ?? [];
+  // Memoized so its reference only changes when `tables` itself changes (a new connection's
+  // schema arriving) — SqlEditor recreates its CodeMirror view whenever `schema` changes
+  // identity, so a fresh object on every render here would wipe out in-progress typing.
+  const sqlCompletionSchema = useMemo(() => buildSqlCompletionSchema({ tables }), [tables]);
+  const routineOptions = routines.map((r) => `${r.schema}.${r.name}`);
 
   const datasetColumns: DataTableColumn<DatasetSummary>[] = [
     { key: "name", label: "Name", value: (d) => d.name, render: (d) => d.name },
@@ -491,25 +502,20 @@ function DatasetsPage() {
             )}
 
             {mode === "RawSql" && (
-              <TextField
-                label="SQL"
-                multiline
-                minRows={3}
-                fullWidth
-                value={sqlText}
-                onChange={(e) => setSqlText(e.target.value)}
-                sx={{ mb: 2 }}
-              />
+              <Box sx={{ mb: 2 }}>
+                <SqlEditor value={sqlText} onChange={setSqlText} schema={sqlCompletionSchema} aria-label="SQL" />
+              </Box>
             )}
 
             {mode === "StoredProcedure" && (
               <Box sx={{ mb: 2 }}>
-                <TextField
-                  label="Procedure or Function Name"
-                  size="small"
-                  value={routineName}
-                  onChange={(e) => setRoutineName(e.target.value)}
-                  sx={{ mb: 1, display: "block" }}
+                <Autocomplete
+                  freeSolo
+                  options={routineOptions}
+                  inputValue={routineName}
+                  onInputChange={(_, newValue) => setRoutineName(newValue)}
+                  renderInput={(params) => <TextField {...params} label="Procedure or Function Name" size="small" />}
+                  sx={{ mb: 1, minWidth: 280 }}
                 />
                 {procParams.map((p, i) => (
                   <Box key={i} sx={{ display: "flex", gap: 1, mb: 1 }}>
@@ -731,24 +737,18 @@ function DatasetsPage() {
             )}
 
             {editingDataset?.mode === "RawSql" && (
-              <TextField
-                label="SQL"
-                multiline
-                minRows={3}
-                fullWidth
-                value={editSqlText}
-                onChange={(e) => setEditSqlText(e.target.value)}
-              />
+              <SqlEditor value={editSqlText} onChange={setEditSqlText} schema={sqlCompletionSchema} aria-label="SQL" />
             )}
 
             {editingDataset?.mode === "StoredProcedure" && (
               <Box>
-                <TextField
-                  label="Procedure or Function Name"
-                  size="small"
-                  value={editRoutineName}
-                  onChange={(e) => setEditRoutineName(e.target.value)}
-                  sx={{ mb: 1, display: "block" }}
+                <Autocomplete
+                  freeSolo
+                  options={routineOptions}
+                  inputValue={editRoutineName}
+                  onInputChange={(_, newValue) => setEditRoutineName(newValue)}
+                  renderInput={(params) => <TextField {...params} label="Procedure or Function Name" size="small" />}
+                  sx={{ mb: 1, minWidth: 280 }}
                 />
                 {editProcParams.map((p, i) => (
                   <Box key={i} sx={{ display: "flex", gap: 1, mb: 1 }}>

@@ -13,6 +13,9 @@ export default defineConfig(({ command }) => ({
   test: {
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
+    // Default 5000ms starts flaking once enough heavier test files (CodeMirror mounts,
+    // multi-step MUI Autocomplete/Select flows) run concurrently in the same worker pool.
+    testTimeout: 10000,
     server: {
       deps: {
         // Inline echarts so its ESM named exports are spy-able (vi.spyOn) in tests.
