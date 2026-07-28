@@ -276,14 +276,53 @@ describe("shapeBarOption value formatting (tooltip/axis-label/data-label)", () =
   it("formats each series' tooltip line using that series' own field format", () => {
     const option = shapeBarOption(result, "Month", ["Revenue", "Cost"], { format });
 
+    // seriesIndex is what real ECharts callback params always carry for an axis-trigger
+    // tooltip — the formatter uses it (not seriesName) to recover each line's raw field.
     const tooltip = option.tooltip as { formatter: (params: unknown) => string };
     const text = tooltip.formatter([
-      { axisValue: "Jan", marker: "●", seriesName: "Revenue", value: 100 },
-      { axisValue: "Jan", marker: "●", seriesName: "Cost", value: 40 },
+      { axisValue: "Jan", marker: "●", seriesIndex: 0, seriesName: "Revenue", value: 100 },
+      { axisValue: "Jan", marker: "●", seriesIndex: 1, seriesName: "Cost", value: 40 },
     ]);
     expect(text).toContain("$100.0");
     // Cost has no configured format, so it falls back to plain text (native type unknown here).
     expect(text).toContain("Cost: 40");
+  });
+});
+
+describe("shapeBarOption display name", () => {
+  it("uses the configured display name for a series' name/legend label", () => {
+    const format = { ...DEFAULT_FORMAT_OPTIONS, fieldFormats: { Revenue: { displayName: "Total Sales" } } };
+    const option = shapeBarOption(result, "Month", ["Revenue"], { format });
+
+    const series = option.series as Array<{ name: string }>;
+    expect(series[0].name).toBe("Total Sales");
+  });
+
+  it("falls back to the raw field name when no display name is configured", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], {});
+
+    const series = option.series as Array<{ name: string }>;
+    expect(series[0].name).toBe("Revenue");
+  });
+
+  it("labels the tooltip line with the display name while still formatting using the correct field's own format", () => {
+    const format = {
+      ...DEFAULT_FORMAT_OPTIONS,
+      fieldFormats: {
+        Revenue: { displayName: "Total Sales", type: "decimal" as const, decimalPlaces: 1, prefix: "$" },
+        Cost: { displayName: "Total Cost" },
+      },
+    };
+    const option = shapeBarOption(result, "Month", ["Revenue", "Cost"], { format });
+
+    const tooltip = option.tooltip as { formatter: (params: unknown) => string };
+    const text = tooltip.formatter([
+      { axisValue: "Jan", marker: "●", seriesIndex: 0, seriesName: "Total Sales", value: 100 },
+      { axisValue: "Jan", marker: "●", seriesIndex: 1, seriesName: "Total Cost", value: 40 },
+    ]);
+    expect(text).toContain("Total Sales: $100.0");
+    expect(text).toContain("Total Cost: 40");
+    expect(text).not.toContain("Revenue");
   });
 });
 
@@ -337,6 +376,39 @@ describe("shapeScatterOption value formatting (tooltip/axis-label/data-label)", 
     const text = tooltip.formatter({ marker: "●", value: [1000, 250] });
     expect(text).toContain("Sales: $1,000");
     expect(text).toContain("Profit: $250");
+  });
+});
+
+describe("shapeScatterOption display name", () => {
+  const scatterResult: QueryResult = {
+    columns: [
+      { name: "Sales", nativeType: "decimal(18,2)" },
+      { name: "Profit", nativeType: "decimal(18,2)" },
+    ],
+    rows: [[100, 20]],
+  };
+
+  it("uses configured display names for the axis titles and tooltip labels", () => {
+    const format = {
+      ...DEFAULT_FORMAT_OPTIONS,
+      fieldFormats: { Sales: { displayName: "Total Sales" }, Profit: { displayName: "Net Profit" } },
+    };
+    const option = shapeScatterOption(scatterResult, "Sales", "Profit", null, { format });
+
+    expect((option.xAxis as { name: string }).name).toBe("Total Sales");
+    expect((option.yAxis as { name: string }).name).toBe("Net Profit");
+
+    const tooltip = option.tooltip as { formatter: (p: unknown) => string };
+    const text = tooltip.formatter({ marker: "●", value: [100, 20] });
+    expect(text).toContain("Total Sales:");
+    expect(text).toContain("Net Profit:");
+  });
+
+  it("falls back to the raw field name for axis titles when no display name is configured", () => {
+    const option = shapeScatterOption(scatterResult, "Sales", "Profit", null, {});
+
+    expect((option.xAxis as { name: string }).name).toBe("Sales");
+    expect((option.yAxis as { name: string }).name).toBe("Profit");
   });
 });
 

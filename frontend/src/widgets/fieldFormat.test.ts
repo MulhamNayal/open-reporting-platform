@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { WidgetFormatOptions } from "../api/widgets";
 import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
-import { DEFAULT_FIELD_FORMAT, formatFieldValue, getFieldFormat, inferFormatType } from "./fieldFormat";
+import { DEFAULT_FIELD_FORMAT, formatFieldValue, getFieldFormat, inferFormatType, resolveDisplayName } from "./fieldFormat";
 
 describe("inferFormatType", () => {
   it("maps SQL Server decimal-like native types to decimal", () => {
@@ -111,5 +111,24 @@ describe("formatFieldValue", () => {
 
   it("falls back to String(value) for a non-numeric decimal value rather than throwing", () => {
     expect(formatFieldValue("not a number", { ...DEFAULT_FIELD_FORMAT, type: "decimal" })).toBe("not a number");
+  });
+});
+
+describe("resolveDisplayName", () => {
+  it("returns the real field name when no display name is set", () => {
+    expect(resolveDisplayName("DocAmount", DEFAULT_FIELD_FORMAT)).toBe("DocAmount");
+  });
+
+  it("returns the configured display name when set", () => {
+    expect(resolveDisplayName("DocAmount", { ...DEFAULT_FIELD_FORMAT, displayName: "Total Sales" })).toBe("Total Sales");
+  });
+
+  it("falls back to the field name for a blank or whitespace-only display name", () => {
+    expect(resolveDisplayName("DocAmount", { ...DEFAULT_FIELD_FORMAT, displayName: "" })).toBe("DocAmount");
+    expect(resolveDisplayName("DocAmount", { ...DEFAULT_FIELD_FORMAT, displayName: "   " })).toBe("DocAmount");
+  });
+
+  it("trims surrounding whitespace from a configured display name", () => {
+    expect(resolveDisplayName("DocAmount", { ...DEFAULT_FIELD_FORMAT, displayName: "  Total Sales  " })).toBe("Total Sales");
   });
 });

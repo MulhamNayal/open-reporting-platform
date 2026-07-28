@@ -143,6 +143,48 @@ describe("FormatTab", () => {
     expect(screen.getByLabelText("Style")).toBeInTheDocument();
   });
 
+  it("expanding a field's row reveals a Display name input, empty by default", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Revenue format/ }));
+
+    expect(screen.getByLabelText("Display name")).toHaveValue("");
+    expect(screen.getByLabelText("Display name")).toHaveAttribute("placeholder", "Revenue");
+  });
+
+  it("typing a display name updates fieldFormats and shows a renamed badge on the collapsed row", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget()} />);
+    const row = () => screen.getByRole("button", { name: /Revenue format/ });
+
+    await userEvent.click(row());
+    await userEvent.type(screen.getByLabelText("Display name"), "Total Sales");
+    await userEvent.click(row());
+
+    expect(screen.getByText("Revenue")).toBeInTheDocument();
+    expect(screen.getByText("renamed")).toBeInTheDocument();
+  });
+
+  it("does not show the renamed badge when no display name is set", () => {
+    render(<FormatTab widget={makeWidget()} onChange={vi.fn()} />);
+
+    expect(screen.queryByText("renamed")).not.toBeInTheDocument();
+  });
+
+  it("clearing the display name back to empty removes the renamed badge", async () => {
+    const widget = makeWidget();
+    widget.binding!.formatOptions = { ...widget.binding!.formatOptions, fieldFormats: { Revenue: { displayName: "Total Sales" } } };
+    render(<ControlledFormatTab initialWidget={widget} />);
+    const row = () => screen.getByRole("button", { name: /Revenue format/ });
+
+    expect(screen.getByText("renamed")).toBeInTheDocument();
+
+    await userEvent.click(row());
+    await userEvent.clear(screen.getByLabelText("Display name"));
+    await userEvent.click(row());
+
+    expect(screen.queryByText("renamed")).not.toBeInTheDocument();
+  });
+
   it("collapsing a field's row hides its controls again without discarding the saved format", async () => {
     const widget = makeWidget();
     widget.binding!.formatOptions = { ...widget.binding!.formatOptions, fieldFormats: { Revenue: { type: "decimal", decimalPlaces: 3 } } };

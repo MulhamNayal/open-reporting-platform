@@ -318,6 +318,27 @@ describe("WidgetRenderer", () => {
     expect(screen.getByText("1,235 USD")).toBeInTheDocument();
   });
 
+  it("renders a Table's column header using its configured display name instead of the raw field name", () => {
+    const result: QueryResult = {
+      columns: [{ name: "DocAmount", nativeType: "decimal(18,2)" }],
+      rows: [[1234.5]],
+    };
+    const formatOptions = JSON.stringify({
+      ...DEFAULT_FORMAT_OPTIONS,
+      fieldFormats: { DocAmount: { displayName: "Total Sales" } },
+    });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Table", binding: { categoryField: null, valueFields: ["DocAmount"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.getByText("Total Sales")).toBeInTheDocument();
+    expect(screen.queryByText("DocAmount")).not.toBeInTheDocument();
+  });
+
   it("renders a Scatter widget, using valueFields[0]/[1] positionally as X/Y", () => {
     const result: QueryResult = {
       columns: [

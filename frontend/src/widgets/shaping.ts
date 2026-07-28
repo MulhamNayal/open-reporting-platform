@@ -1,7 +1,7 @@
 import type { EChartsOption } from "echarts";
 import type { QueryResult } from "../api/datasets";
 import type { WidgetFormatOptions } from "../api/widgets";
-import { formatFieldValue, getFieldFormat } from "./fieldFormat";
+import { formatFieldValue, getFieldFormat, resolveDisplayName } from "./fieldFormat";
 
 export interface ShapedTableRows {
   columns: string[];
@@ -110,9 +110,10 @@ function buildCategorySeriesOption(
 
   const fieldFormats = new Map(valueFields.map((field) => [field, resolveFieldFormat(result, options?.format, field)]));
   const formatSeriesValue = (field: string, value: unknown) => formatFieldValue(value, fieldFormats.get(field)!);
+  const displayNames = new Map(valueFields.map((field) => [field, resolveDisplayName(field, fieldFormats.get(field)!)]));
 
   const series = valueFields.map((field, i) => ({
-    name: field,
+    name: displayNames.get(field),
     type: seriesType,
     data: seriesValues[i],
     ...(options?.stacked ? { stack: "total" } : {}),
@@ -141,10 +142,16 @@ function buildCategorySeriesOption(
       trigger: "axis",
       formatter: (params) => {
         const list = (Array.isArray(params) ? params : [params]) as Array<{
-          axisValue?: unknown; name?: string; marker?: string; seriesName?: string; value?: unknown;
+          axisValue?: unknown; name?: string; marker?: string; seriesIndex?: number; value?: unknown;
         }>;
         const header = String(list[0]?.axisValue ?? list[0]?.name ?? "");
-        const lines = list.map((p) => `${p.marker ?? ""}${p.seriesName}: ${formatSeriesValue(String(p.seriesName), p.value)}`);
+        // Keyed off seriesIndex, not seriesName — the series name is now the (possibly renamed)
+        // display name, which fieldFormats/formatSeriesValue don't know about; the raw field is
+        // still recoverable positionally from valueFields.
+        const lines = list.map((p) => {
+          const field = valueFields[p.seriesIndex ?? 0];
+          return `${p.marker ?? ""}${displayNames.get(field)}: ${formatSeriesValue(field, p.value)}`;
+        });
         return [header, ...lines].join("<br/>");
       },
     },
@@ -234,10 +241,12 @@ export function shapeScatterOption(
 
   const xFieldFormat = resolveFieldFormat(result, options?.format, xField);
   const yFieldFormat = resolveFieldFormat(result, options?.format, yField);
+  const xDisplayName = resolveDisplayName(xField, xFieldFormat);
+  const yDisplayName = resolveDisplayName(yField, yFieldFormat);
 
   const splitLine = options?.grid !== undefined ? { splitLine: { show: options.grid } } : {};
-  const xAxis = { type: "value" as const, name: xField, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, xFieldFormat) } };
-  const yAxis = { type: "value" as const, name: yField, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, yFieldFormat) } };
+  const xAxis = { type: "value" as const, name: xDisplayName, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, xFieldFormat) } };
+  const yAxis = { type: "value" as const, name: yDisplayName, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, yFieldFormat) } };
   const colors = paletteColors(options?.palette);
   const label = options?.dataLabels
     ? {
@@ -257,7 +266,7 @@ export function shapeScatterOption(
       formatter: (params: unknown) => {
         const p = params as { marker?: string; seriesName?: string; value: [number, number] };
         const seriesLine = p.seriesName ? `${p.seriesName}<br/>` : "";
-        return `${p.marker ?? ""}${seriesLine}${xField}: ${formatFieldValue(p.value[0], xFieldFormat)}<br/>${yField}: ${formatFieldValue(p.value[1], yFieldFormat)}`;
+        return `${p.marker ?? ""}${seriesLine}${xDisplayName}: ${formatFieldValue(p.value[0], xFieldFormat)}<br/>${yDisplayName}: ${formatFieldValue(p.value[1], yFieldFormat)}`;
       },
     },
     ...(options?.showLegend ? { legend: { show: true } } : {}),

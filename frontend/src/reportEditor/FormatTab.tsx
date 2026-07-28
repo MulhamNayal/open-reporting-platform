@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ColumnDescriptor } from "../api/datasets";
 import type { BooleanStyle, DatePreset, FieldFormat, FieldFormatType } from "../api/widgets";
-import { DATE_PRESET_EXAMPLES, DEFAULT_FIELD_FORMAT, inferFormatType } from "../widgets/fieldFormat";
+import { DATE_PRESET_EXAMPLES, DEFAULT_FIELD_FORMAT, inferFormatType, resolveDisplayName } from "../widgets/fieldFormat";
 import type { WidgetBindingDraft, WidgetDraft } from "../widgets/widgetDraftReducer";
 import "./reportEditor.css";
 
@@ -162,7 +162,10 @@ function FormatTab({
                     onClick={() => toggleExpanded(field)}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleExpanded(field); } }}
                   >
-                    <span className="fname">{field}</span>
+                    <span className="fname">
+                      {field}
+                      {resolveDisplayName(field, current) !== field && <span className="rename-badge">renamed</span>}
+                    </span>
                     <span className="cur">
                       {formatSummary(current, nativeType)}
                       <svg className="chev" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -172,6 +175,16 @@ function FormatTab({
                   </div>
                   {isOpen && (
                   <div className="facc-body">
+                  <div className="frow rename-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+                    <label htmlFor={`format-displayname-${field}`}>Display name</label>
+                    <input
+                      id={`format-displayname-${field}`}
+                      className="text-in"
+                      placeholder={field}
+                      value={current.displayName ?? ""}
+                      onChange={(e) => updateFieldFormat(field, { displayName: e.target.value === "" ? null : e.target.value })}
+                    />
+                  </div>
                   <div className="frow">
                     <label htmlFor={`format-type-${field}`}>Format</label>
                     <select

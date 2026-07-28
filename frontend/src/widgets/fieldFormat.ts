@@ -8,6 +8,7 @@ export const DEFAULT_FIELD_FORMAT: FieldFormat = {
   suffix: "",
   datePreset: "iso",
   booleanStyle: "trueFalse",
+  displayName: null,
 };
 
 // Shown as the option label in the date-format dropdown, and reused as a live preview.
@@ -50,6 +51,13 @@ export function getFieldFormat(options: WidgetFormatOptions | undefined, fieldNa
   const merged: FieldFormat = { ...DEFAULT_FIELD_FORMAT, ...saved };
 
   return merged.type === "auto" ? { ...merged, type: inferFormatType(nativeType) } : merged;
+}
+
+// A blank/whitespace-only display name is treated the same as unset — falls back to the real
+// column name rather than showing an empty label.
+export function resolveDisplayName(fieldName: string, format: FieldFormat): string {
+  const trimmed = format.displayName?.trim();
+  return trimmed ? trimmed : fieldName;
 }
 
 function pad(n: number): string {

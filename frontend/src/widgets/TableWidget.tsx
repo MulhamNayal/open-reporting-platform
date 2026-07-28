@@ -2,7 +2,7 @@ import { Paper, Typography } from "@mui/material";
 import type { QueryResult } from "../api/datasets";
 import type { WidgetFormatOptions } from "../api/widgets";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
-import { formatFieldValue, getFieldFormat } from "./fieldFormat";
+import { formatFieldValue, getFieldFormat, resolveDisplayName } from "./fieldFormat";
 import { shapeTableRows } from "./shaping";
 
 interface ResultRow {
@@ -25,7 +25,7 @@ function TableWidget({
 
     return {
       key: name,
-      label: name,
+      label: resolveDisplayName(name, fieldFormat),
       // Sorting/searching compares the raw value, not the formatted display string — formatting
       // a number as "1,234.50" would sort lexicographically ("10" < "2"), not numerically.
       value: (row) => {

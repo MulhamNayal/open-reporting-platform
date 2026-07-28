@@ -17,6 +17,8 @@ export interface FieldFormat {
   suffix: string;
   datePreset: DatePreset;
   booleanStyle: BooleanStyle;
+  // null (the default) means "show the real column name" — set to override it per widget.
+  displayName: string | null;
 }
 
 export interface WidgetFormatOptions {
