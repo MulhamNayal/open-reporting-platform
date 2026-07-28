@@ -96,4 +96,16 @@ public class RestApiProviderTests
         var table = Assert.Single(schema.Tables);
         Assert.Empty(table.Fields);
     }
+
+    [Fact]
+    public async Task DiscoverRoutinesAsync_ReturnsEmptyList()
+    {
+        var factory = new FakeHttpClientFactory(new FakeHttpMessageHandler(HttpStatusCode.OK, "[]"));
+        var provider = new RestApiProvider(factory);
+        var connection = CreateConnection("https://api.example.com/empty");
+
+        var routines = await provider.DiscoverRoutinesAsync(connection);
+
+        Assert.Empty(routines);
+    }
 }

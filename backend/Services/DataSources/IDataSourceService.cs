@@ -10,5 +10,7 @@ public interface IDataSourceService
 
     Task<SchemaDescriptor> DiscoverSchemaAsync(int id);
 
+    Task<IReadOnlyList<RoutineDescriptor>> DiscoverRoutinesAsync(int id);
+
     Task<IReadOnlyList<DataSourceConnectionSummary>> ListAsync();
 }

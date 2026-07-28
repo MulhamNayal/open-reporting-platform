@@ -30,6 +30,9 @@ public class DatasetServiceTests
                 new("Reports", new List<FieldDescriptor> { new("Id", "int"), new("Name", "nvarchar(50)") })
             }));
 
+        public Task<IReadOnlyList<RoutineDescriptor>> DiscoverRoutinesAsync(DataSourceConnection connection) =>
+            Task.FromResult<IReadOnlyList<RoutineDescriptor>>(new List<RoutineDescriptor>());
+
         public Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken) =>
             Task.FromResult(new QueryResult(
                 new List<ColumnDescriptor> { new("Id", "int") },
@@ -44,6 +47,9 @@ public class DatasetServiceTests
             throw new NotImplementedException();
 
         public Task<SchemaDescriptor> DiscoverSchemaAsync(DataSourceConnection connection) =>
+            throw new NotImplementedException();
+
+        public Task<IReadOnlyList<RoutineDescriptor>> DiscoverRoutinesAsync(DataSourceConnection connection) =>
             throw new NotImplementedException();
 
         public Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken) =>

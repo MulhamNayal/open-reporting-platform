@@ -73,3 +73,13 @@ export async function getDataSourceSchema(id: number): Promise<SchemaDescriptor>
   const res = await api.get<SchemaDescriptor>(`/datasources/${id}/schema`);
   return res.data;
 }
+
+export interface RoutineDescriptor {
+  schema: string;
+  name: string;
+}
+
+export async function getDataSourceRoutines(id: number): Promise<RoutineDescriptor[]> {
+  const res = await api.get<RoutineDescriptor[]>(`/datasources/${id}/routines`);
+  return res.data;
+}

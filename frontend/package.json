@@ -12,10 +12,12 @@
     "verify": "tsc -b && vitest run"
   },
   "dependencies": {
+    "@codemirror/lang-sql": "^6.10.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.2.0",
     "axios": "^1.18.1",
+    "codemirror": "^6.0.2",
     "echarts": "^6.1.0",
     "gridstack": "^13.0.0",
     "react": "^19.2.7",

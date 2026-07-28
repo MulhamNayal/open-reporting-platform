@@ -64,4 +64,10 @@ public class DataSourcesController : ControllerBase
     {
         return Ok(await _service.DiscoverSchemaAsync(id));
     }
+
+    [HttpGet("{id}/routines")]
+    public async Task<ActionResult<IEnumerable<RoutineDescriptor>>> Routines(int id)
+    {
+        return Ok(await _service.DiscoverRoutinesAsync(id));
+    }
 }

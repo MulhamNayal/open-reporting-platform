@@ -76,6 +76,10 @@ public class RestApiProvider : IDataSourceProvider
         return new SchemaDescriptor(new List<TableDescriptor> { table });
     }
 
+    // REST connections have no notion of stored procedures/functions.
+    public Task<IReadOnlyList<RoutineDescriptor>> DiscoverRoutinesAsync(DataSourceConnection connection) =>
+        Task.FromResult<IReadOnlyList<RoutineDescriptor>>(new List<RoutineDescriptor>());
+
     public async Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken)
     {
         if (dataset.Mode != DatasetMode.RestQuery)

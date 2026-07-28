@@ -10,5 +10,7 @@ public interface IDataSourceProvider
 
     Task<SchemaDescriptor> DiscoverSchemaAsync(DataSourceConnection connection);
 
+    Task<IReadOnlyList<RoutineDescriptor>> DiscoverRoutinesAsync(DataSourceConnection connection);
+
     Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken);
 }

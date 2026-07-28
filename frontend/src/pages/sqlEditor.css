@@ -1,0 +1,14 @@
+.sql-editor {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  overflow: hidden;
+  font-size: 13px;
+}
+.sql-editor .cm-editor {
+  height: 100%;
+}
+.sql-editor .cm-scroller {
+  min-height: 120px;
+  max-height: 320px;
+  font-family: "IBM Plex Mono", monospace;
+}

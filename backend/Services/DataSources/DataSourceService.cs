@@ -67,6 +67,13 @@ public class DataSourceService : IDataSourceService
         return await provider.DiscoverSchemaAsync(WithDecryptedCredentials(connection));
     }
 
+    public async Task<IReadOnlyList<RoutineDescriptor>> DiscoverRoutinesAsync(int id)
+    {
+        var connection = await GetConnectionAsync(id);
+        var provider = ResolveProvider(connection.Type);
+        return await provider.DiscoverRoutinesAsync(WithDecryptedCredentials(connection));
+    }
+
     public async Task<IReadOnlyList<DataSourceConnectionSummary>> ListAsync()
     {
         var connections = await _context.DataSourceConnections.ToListAsync();

@@ -24,6 +24,9 @@ public class DataSourceServiceTests
         public Task<SchemaDescriptor> DiscoverSchemaAsync(DataSourceConnection connection) =>
             Task.FromResult(new SchemaDescriptor(new List<TableDescriptor>()));
 
+        public Task<IReadOnlyList<RoutineDescriptor>> DiscoverRoutinesAsync(DataSourceConnection connection) =>
+            Task.FromResult<IReadOnlyList<RoutineDescriptor>>(new List<RoutineDescriptor> { new("dbo", "TestProc") });
+
         public Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken) =>
             Task.FromResult(new QueryResult(new List<ColumnDescriptor>(), new List<object?[]>()));
     }
@@ -128,5 +131,23 @@ public class DataSourceServiceTests
         var schema = await service.DiscoverSchemaAsync(created.Id);
 
         Assert.Empty(schema.Tables);
+    }
+
+    [Fact]
+    public async Task DiscoverRoutinesAsync_ResolvesProviderByTypeAndDelegatesToIt()
+    {
+        var (service, _) = CreateService(Guid.NewGuid().ToString());
+        var created = await service.CreateAsync(new CreateDataSourceConnectionRequest(
+            "Main SQL",
+            DataSourceType.SqlServer,
+            "localhost\\SQLEXPRESS",
+            "OpenReportingPlatform",
+            """{"username":"sa","password":"secret"}"""));
+
+        var routines = await service.DiscoverRoutinesAsync(created.Id);
+
+        var routine = Assert.Single(routines);
+        Assert.Equal("dbo", routine.Schema);
+        Assert.Equal("TestProc", routine.Name);
     }
 }

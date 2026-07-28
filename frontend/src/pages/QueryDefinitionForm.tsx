@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Alert, Box, Button, MenuItem, TextField } from "@mui/material";
-import { getDataSources, type DataSourceConnectionSummary } from "../api/datasources";
+import { Alert, Autocomplete, Box, Button, MenuItem, TextField } from "@mui/material";
+import { getDataSourceRoutines, getDataSourceSchema, getDataSources, type DataSourceConnectionSummary, type RoutineDescriptor } from "../api/datasources";
 import type { DatasetMode, QueryResult } from "../api/datasets";
 import QueryResultGrid from "../components/QueryResultGrid";
+import SqlEditor from "./SqlEditor";
+import { buildSqlCompletionSchema, type SqlCompletionSchema } from "./sqlCompletionSchema";
 
 export interface QueryDefinitionValue {
   dataSourceConnectionId: number;
@@ -25,6 +27,8 @@ function QueryDefinitionForm({
   const [rowLimit, setRowLimit] = useState("");
   const [previewResult, setPreviewResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sqlCompletionSchema, setSqlCompletionSchema] = useState<SqlCompletionSchema | undefined>(undefined);
+  const [routines, setRoutines] = useState<RoutineDescriptor[]>([]);
 
   useEffect(() => {
     getDataSources().then(setConnections).catch(() => setError("Could not load connections."));
@@ -35,6 +39,21 @@ function QueryDefinitionForm({
 
   useEffect(() => {
     setMode(isRestConnection ? "RestQuery" : "RawSql");
+  }, [connectionId, isRestConnection]);
+
+  // Schema (for SQL autocomplete) and routines (for the stored-procedure picker) only make
+  // sense for a real database connection — a REST connection has neither.
+  useEffect(() => {
+    if (typeof connectionId !== "number" || isRestConnection) {
+      setSqlCompletionSchema(undefined);
+      setRoutines([]);
+      return;
+    }
+
+    getDataSourceSchema(connectionId)
+      .then((schema) => setSqlCompletionSchema(buildSqlCompletionSchema(schema)))
+      .catch(() => setSqlCompletionSchema(undefined));
+    getDataSourceRoutines(connectionId).then(setRoutines).catch(() => setRoutines([]));
   }, [connectionId, isRestConnection]);
 
   function buildValue(): QueryDefinitionValue | null {
@@ -105,10 +124,17 @@ function QueryDefinitionForm({
       )}
 
       {mode === "RawSql" && (
-        <TextField label="SQL" multiline minRows={3} fullWidth value={sqlText} onChange={(e) => setSqlText(e.target.value)} />
+        <SqlEditor value={sqlText} onChange={setSqlText} schema={sqlCompletionSchema} aria-label="SQL" />
       )}
       {mode === "StoredProcedure" && (
-        <TextField label="Procedure or Function Name" size="small" value={routineName} onChange={(e) => setRoutineName(e.target.value)} />
+        <Autocomplete
+          freeSolo
+          options={routines.map((r) => `${r.schema}.${r.name}`)}
+          inputValue={routineName}
+          onInputChange={(_, newValue) => setRoutineName(newValue)}
+          renderInput={(params) => <TextField {...params} label="Procedure or Function Name" size="small" />}
+          sx={{ minWidth: 280 }}
+        />
       )}
 
       <TextField label="Row Limit (default 10000)" size="small" value={rowLimit} onChange={(e) => setRowLimit(e.target.value)} sx={{ maxWidth: 220 }} />

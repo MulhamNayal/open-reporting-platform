@@ -90,6 +90,30 @@ public class SqlServerProvider : IDataSourceProvider
         return new SchemaDescriptor(tables);
     }
 
+    public async Task<IReadOnlyList<RoutineDescriptor>> DiscoverRoutinesAsync(DataSourceConnection connection)
+    {
+        var connectionString = BuildConnectionString(connection);
+        await using var sqlConnection = new SqlConnection(connectionString);
+        await sqlConnection.OpenAsync();
+
+        const string sql = """
+            SELECT ROUTINE_SCHEMA, ROUTINE_NAME
+            FROM INFORMATION_SCHEMA.ROUTINES
+            ORDER BY ROUTINE_SCHEMA, ROUTINE_NAME
+            """;
+
+        await using var command = new SqlCommand(sql, sqlConnection);
+        await using var reader = await command.ExecuteReaderAsync();
+
+        var routines = new List<RoutineDescriptor>();
+        while (await reader.ReadAsync())
+        {
+            routines.Add(new RoutineDescriptor(reader.GetString(0), reader.GetString(1)));
+        }
+
+        return routines;
+    }
+
     public (string Sql, IReadOnlyList<SqlParameter> Parameters) BuildTableQuerySql(SelectQuery query, int rowLimit)
     {
         var effectiveTop = query.Top.HasValue ? Math.Min(query.Top.Value, rowLimit) : rowLimit;
