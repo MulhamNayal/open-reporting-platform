@@ -1,17 +1,13 @@
 import { useState } from "react";
 import type { ColumnDescriptor } from "../api/datasets";
 import type { BooleanStyle, DatePreset, FieldFormat, FieldFormatType } from "../api/widgets";
+import { useAppearance } from "../appearance/AppearanceContext";
 import { DATE_PRESET_EXAMPLES, DEFAULT_FIELD_FORMAT, inferFormatType, resolveDisplayName } from "../widgets/fieldFormat";
+import { PALETTES } from "../widgets/shaping";
 import type { WidgetBindingDraft, WidgetDraft } from "../widgets/widgetDraftReducer";
 import "./reportEditor.css";
 
 const PALETTE_NAMES = ["meridian", "ocean", "sunset", "forest"];
-const PALETTE_SWATCH_COLORS: Record<string, string> = {
-  meridian: "#5b4fe6",
-  ocean: "#0ea5e9",
-  sunset: "#f5a524",
-  forest: "#46a758",
-};
 
 const FORMAT_TYPE_OPTIONS: { value: FieldFormatType; label: string }[] = [
   { value: "auto", label: "Auto" },
@@ -51,6 +47,7 @@ function FormatTab({
   // Purely local UI state — which fields' controls are expanded in the Value formats
   // accordion. Not persisted; every field starts collapsed.
   const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
+  const { mode } = useAppearance();
 
   if (!widget || !widget.binding) {
     return <div className="no-visual">Select a visual to format it.</div>;
@@ -127,7 +124,7 @@ function FormatTab({
                   type="button"
                   title={name}
                   className={"swatch" + (options.palette === name ? " active" : "")}
-                  style={{ background: PALETTE_SWATCH_COLORS[name] }}
+                  style={{ background: PALETTES[mode][name][0] }}
                   onClick={() => update({ palette: name })}
                 />
               ))}

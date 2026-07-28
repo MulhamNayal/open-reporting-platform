@@ -4,6 +4,7 @@ import * as echarts from "echarts";
 import type { QueryResult } from "../api/datasets";
 import type { WidgetSummary } from "../api/widgets";
 import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
+import { AppearanceProvider } from "../appearance/AppearanceContext";
 import WidgetRenderer from "./WidgetRenderer";
 
 function makeWidget(overrides: Partial<WidgetSummary>): WidgetSummary {
@@ -21,6 +22,10 @@ function makeWidget(overrides: Partial<WidgetSummary>): WidgetSummary {
   };
 }
 
+function renderWidget(ui: React.ReactElement) {
+  return render(<AppearanceProvider>{ui}</AppearanceProvider>);
+}
+
 const formatOptionsJson = JSON.stringify(DEFAULT_FORMAT_OPTIONS);
 
 describe("WidgetRenderer", () => {
@@ -34,13 +39,13 @@ describe("WidgetRenderer", () => {
   });
 
   it("renders a Text widget without needing a result", () => {
-    render(<WidgetRenderer widget={makeWidget({ type: "Text", title: "A note", content: "hello" })} result={null} />);
+    renderWidget(<WidgetRenderer widget={makeWidget({ type: "Text", title: "A note", content: "hello" })} result={null} />);
 
     expect(screen.getByText("hello")).toBeInTheDocument();
   });
 
   it("shows an info state for a data-driven widget with no binding yet", () => {
-    render(<WidgetRenderer widget={makeWidget({ type: "Kpi", binding: null })} result={null} />);
+    renderWidget(<WidgetRenderer widget={makeWidget({ type: "Kpi", binding: null })} result={null} />);
 
     expect(screen.getByText("Not bound to a field yet.")).toBeInTheDocument();
   });
@@ -48,7 +53,7 @@ describe("WidgetRenderer", () => {
   it("shows the stale-binding warning when a bound field no longer exists", () => {
     const result: QueryResult = { columns: [{ name: "Id", nativeType: "int" }], rows: [[1]] };
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Kpi", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
         result={result}
@@ -61,7 +66,7 @@ describe("WidgetRenderer", () => {
   it("shows the finish-configuring info state for a Kpi with no fields chosen yet", () => {
     const result: QueryResult = { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] };
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Kpi", title: "Total Revenue", binding: { categoryField: null, valueFields: [], formatOptions: formatOptionsJson } })}
         result={result}
@@ -75,7 +80,7 @@ describe("WidgetRenderer", () => {
   it("renders a Kpi value when the binding is valid", () => {
     const result: QueryResult = { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] };
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Kpi", title: "Total Revenue", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
         result={result}
@@ -94,7 +99,7 @@ describe("WidgetRenderer", () => {
       rows: [["Jan", 100]],
     };
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "StackedColumn", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
         result={result}
@@ -116,7 +121,7 @@ describe("WidgetRenderer", () => {
       rows: [["Jan", 100]],
     };
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "ClusteredBar", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
         result={result}
@@ -136,7 +141,7 @@ describe("WidgetRenderer", () => {
       rows: [["Jan", 100]],
     };
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Area", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
         result={result}
@@ -155,7 +160,7 @@ describe("WidgetRenderer", () => {
       rows: [["Jan", 100]],
     };
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Donut", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: formatOptionsJson } })}
         result={result}
@@ -175,7 +180,7 @@ describe("WidgetRenderer", () => {
     };
     const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, title: "Quarterly revenue" });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Bar", title: "Widget", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions } })}
         result={result}
@@ -196,7 +201,7 @@ describe("WidgetRenderer", () => {
     };
     const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, showTitle: false, title: "Quarterly revenue" });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Bar", title: "Widget", binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions } })}
         result={result}
@@ -211,7 +216,7 @@ describe("WidgetRenderer", () => {
     const result: QueryResult = { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] };
     const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, title: "Total revenue" });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Kpi", title: "Widget", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions } })}
         result={result}
@@ -226,7 +231,7 @@ describe("WidgetRenderer", () => {
     const result: QueryResult = { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[500]] };
     const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, showTitle: false, title: "Total revenue" });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Kpi", title: "Widget", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions } })}
         result={result}
@@ -246,7 +251,7 @@ describe("WidgetRenderer", () => {
     };
     const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, title: "Sales breakdown" });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Table", title: "Widget", binding: { categoryField: null, valueFields: ["Region"], formatOptions } })}
         result={result}
@@ -264,7 +269,7 @@ describe("WidgetRenderer", () => {
     };
     const formatOptions = JSON.stringify({ ...DEFAULT_FORMAT_OPTIONS, showTitle: false, title: "Sales breakdown" });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Table", title: "Widget", binding: { categoryField: null, valueFields: ["Region"], formatOptions } })}
         result={result}
@@ -284,7 +289,7 @@ describe("WidgetRenderer", () => {
       fieldFormats: { Revenue: { type: "decimal", decimalPlaces: 2, thousandsSeparator: true, prefix: "$" } },
     });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Kpi", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions } })}
         result={result}
@@ -307,7 +312,7 @@ describe("WidgetRenderer", () => {
       fieldFormats: { Revenue: { type: "decimal", decimalPlaces: 0, suffix: " USD" } },
     });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Table", binding: { categoryField: null, valueFields: ["Region", "Revenue"], formatOptions } })}
         result={result}
@@ -328,7 +333,7 @@ describe("WidgetRenderer", () => {
       fieldFormats: { DocAmount: { displayName: "Total Sales" } },
     });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Table", binding: { categoryField: null, valueFields: ["DocAmount"], formatOptions } })}
         result={result}
@@ -350,7 +355,7 @@ describe("WidgetRenderer", () => {
       fieldFormats: { DocAmount: { columnWidth: 220, type: "decimal", decimalPlaces: 2 } },
     });
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Table", binding: { categoryField: null, valueFields: ["DocAmount"], formatOptions } })}
         result={result}
@@ -373,7 +378,7 @@ describe("WidgetRenderer", () => {
       rows: [[100, 20]],
     };
 
-    render(
+    renderWidget(
       <WidgetRenderer
         widget={makeWidget({ type: "Scatter", binding: { categoryField: null, valueFields: ["Sales", "Profit"], formatOptions: formatOptionsJson } })}
         result={result}

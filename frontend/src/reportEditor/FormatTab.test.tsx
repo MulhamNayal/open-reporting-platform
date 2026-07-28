@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ColumnDescriptor } from "../api/datasets";
 import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
 import type { WidgetType } from "../api/widgets";
+import { AppearanceProvider } from "../appearance/AppearanceContext";
 import type { WidgetBindingDraft, WidgetDraft } from "../widgets/widgetDraftReducer";
 import FormatTab from "./FormatTab";
 
@@ -24,18 +25,26 @@ function ControlledFormatTab({ initialWidget, columns }: { initialWidget: Widget
   function handleChange(binding: WidgetBindingDraft) {
     setWidget((w) => ({ ...w, binding }));
   }
-  return <FormatTab widget={widget} columns={columns} onChange={handleChange} />;
+  return (
+    <AppearanceProvider>
+      <FormatTab widget={widget} columns={columns} onChange={handleChange} />
+    </AppearanceProvider>
+  );
+}
+
+function renderFormatTab(ui: React.ReactElement) {
+  return render(<AppearanceProvider>{ui}</AppearanceProvider>);
 }
 
 describe("FormatTab", () => {
   it("shows a no-visual message when nothing is selected", () => {
-    render(<FormatTab widget={null} onChange={vi.fn()} />);
+    renderFormatTab(<FormatTab widget={null} onChange={vi.fn()} />);
     expect(screen.getByText(/select a visual/i)).toBeInTheDocument();
   });
 
   it("toggling Show legend updates formatOptions.showLegend", async () => {
     const onChange = vi.fn();
-    render(<FormatTab widget={makeWidget()} onChange={onChange} />);
+    renderFormatTab(<FormatTab widget={makeWidget()} onChange={onChange} />);
 
     await userEvent.click(screen.getByRole("checkbox", { name: "Show legend" }));
 
@@ -46,7 +55,7 @@ describe("FormatTab", () => {
 
   it("toggling the data labels switch updates formatOptions.dataLabels", async () => {
     const onChange = vi.fn();
-    render(<FormatTab widget={makeWidget()} onChange={onChange} />);
+    renderFormatTab(<FormatTab widget={makeWidget()} onChange={onChange} />);
 
     await userEvent.click(screen.getByRole("checkbox", { name: "Data labels" }));
 
@@ -57,7 +66,7 @@ describe("FormatTab", () => {
 
   it("clicking a palette swatch updates formatOptions.palette", async () => {
     const onChange = vi.fn();
-    render(<FormatTab widget={makeWidget()} onChange={onChange} />);
+    renderFormatTab(<FormatTab widget={makeWidget()} onChange={onChange} />);
 
     await userEvent.click(screen.getByTitle("ocean"));
 
@@ -69,7 +78,7 @@ describe("FormatTab", () => {
   it("clicking the sort-direction toggle cycles null -> asc -> desc -> null", async () => {
     const onChange = vi.fn();
     const widget = makeWidget();
-    render(<FormatTab widget={widget} onChange={onChange} />);
+    renderFormatTab(<FormatTab widget={widget} onChange={onChange} />);
 
     await userEvent.click(screen.getByRole("button", { name: /sort/i }));
 
@@ -79,7 +88,7 @@ describe("FormatTab", () => {
   });
 
   it("shows a 'Value formats' section with each field collapsed, summarizing its current format", () => {
-    render(<FormatTab widget={makeWidget()} onChange={vi.fn()} />);
+    renderFormatTab(<FormatTab widget={makeWidget()} onChange={vi.fn()} />);
 
     expect(screen.getByText("Revenue")).toBeInTheDocument();
     const row = screen.getByRole("button", { name: "Revenue format, currently Auto (text)" });
@@ -89,7 +98,7 @@ describe("FormatTab", () => {
   });
 
   it("shows the native type inferred by Auto in the collapsed row's summary", () => {
-    render(<FormatTab widget={makeWidget()} onChange={vi.fn()} columns={[{ name: "Revenue", nativeType: "decimal" }]} />);
+    renderFormatTab(<FormatTab widget={makeWidget()} onChange={vi.fn()} columns={[{ name: "Revenue", nativeType: "decimal" }]} />);
 
     expect(screen.getByRole("button", { name: "Revenue format, currently Auto (decimal)" })).toBeInTheDocument();
   });
@@ -166,7 +175,7 @@ describe("FormatTab", () => {
   });
 
   it("does not show the renamed badge when no display name is set", () => {
-    render(<FormatTab widget={makeWidget()} onChange={vi.fn()} />);
+    renderFormatTab(<FormatTab widget={makeWidget()} onChange={vi.fn()} />);
 
     expect(screen.queryByText("renamed")).not.toBeInTheDocument();
   });
@@ -201,14 +210,14 @@ describe("FormatTab", () => {
   });
 
   it("shows a Table layout section with a Row height input only for a Table widget", () => {
-    render(<FormatTab widget={makeWidget("Table")} onChange={vi.fn()} />);
+    renderFormatTab(<FormatTab widget={makeWidget("Table")} onChange={vi.fn()} />);
 
     expect(screen.getByText("Table layout")).toBeInTheDocument();
     expect(screen.getByLabelText("Row height (px)")).toHaveValue(null);
   });
 
   it("does not show the Table layout section for a non-Table widget", () => {
-    render(<FormatTab widget={makeWidget("Bar")} onChange={vi.fn()} />);
+    renderFormatTab(<FormatTab widget={makeWidget("Bar")} onChange={vi.fn()} />);
 
     expect(screen.queryByText("Table layout")).not.toBeInTheDocument();
   });
@@ -229,7 +238,7 @@ describe("FormatTab", () => {
       { name: "DocDate", nativeType: "datetime" },
     ];
 
-    render(<FormatTab widget={widget} onChange={vi.fn()} columns={columns} />);
+    renderFormatTab(<FormatTab widget={widget} onChange={vi.fn()} columns={columns} />);
 
     expect(screen.getByText("Value formats")).toBeInTheDocument();
     expect(screen.getByText("DocAmount")).toBeInTheDocument();
@@ -241,7 +250,7 @@ describe("FormatTab", () => {
     widget.binding!.valueFields = [];
     const columns: ColumnDescriptor[] = [{ name: "DocAmount", nativeType: "decimal" }];
 
-    render(<FormatTab widget={widget} onChange={vi.fn()} columns={columns} />);
+    renderFormatTab(<FormatTab widget={widget} onChange={vi.fn()} columns={columns} />);
 
     expect(screen.queryByText("Value formats")).not.toBeInTheDocument();
   });
@@ -254,7 +263,7 @@ describe("FormatTab", () => {
       { name: "DocDate", nativeType: "datetime" },
     ];
 
-    render(<FormatTab widget={widget} onChange={vi.fn()} columns={columns} />);
+    renderFormatTab(<FormatTab widget={widget} onChange={vi.fn()} columns={columns} />);
 
     expect(screen.getByText("DocAmount")).toBeInTheDocument();
     expect(screen.queryByText("DocDate")).not.toBeInTheDocument();

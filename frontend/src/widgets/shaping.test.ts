@@ -121,9 +121,9 @@ describe("shapeBarOption legend/grid/palette options", () => {
   it("feeds the named palette's colors into ECharts' color array", () => {
     const option = shapeBarOption(result, "Month", ["Revenue"], { palette: "ocean" });
 
-    expect(option.color).toEqual(PALETTES.ocean);
+    expect(option.color).toEqual(PALETTES.light.ocean);
     // A different palette produces a different color array — proving it is load-bearing.
-    expect(shapeBarOption(result, "Month", ["Revenue"], { palette: "forest" }).color).toEqual(PALETTES.forest);
+    expect(shapeBarOption(result, "Month", ["Revenue"], { palette: "forest" }).color).toEqual(PALETTES.light.forest);
     expect(shapeBarOption(result, "Month", ["Revenue"]).color).toBeUndefined();
   });
 });
@@ -177,7 +177,7 @@ describe("shapePieOption legend/palette options", () => {
     const option = shapePieOption(result, "Month", "Revenue", { showLegend: true, palette: "sunset" });
 
     expect(option.legend).toBeDefined();
-    expect(option.color).toEqual(PALETTES.sunset);
+    expect(option.color).toEqual(PALETTES.light.sunset);
   });
 
   it("omits legend and color by default", () => {
@@ -195,8 +195,48 @@ describe("formatToSeriesOptions", () => {
     expect(mapped).toMatchObject({ sortDirection: "desc", dataLabels: true, showLegend: false, grid: false, palette: "forest" });
   });
 
-  it("returns an empty object when no format is given", () => {
-    expect(formatToSeriesOptions(undefined)).toEqual({});
+  it("returns just the (default light) mode when no format is given", () => {
+    expect(formatToSeriesOptions(undefined)).toEqual({ mode: "light" });
+  });
+
+  it("passes an explicit mode through even when no format is given", () => {
+    expect(formatToSeriesOptions(undefined, "dark")).toEqual({ mode: "dark" });
+  });
+});
+
+describe("PALETTES dark variants", () => {
+  const scatterResultForPalettes: QueryResult = {
+    columns: [
+      { name: "Segment", nativeType: "nvarchar(20)" },
+      { name: "Sales", nativeType: "decimal(18,2)" },
+      { name: "Profit", nativeType: "decimal(18,2)" },
+    ],
+    rows: [["Consumer", 100, 20]],
+  };
+
+  it("feeds the dark palette's colors into the chart when mode is dark", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], { palette: "ocean", mode: "dark" });
+
+    expect(option.color).toEqual(PALETTES.dark.ocean);
+    expect(option.color).not.toEqual(PALETTES.light.ocean);
+  });
+
+  it("shapePieOption resolves the dark palette when mode is dark", () => {
+    const option = shapePieOption(result, "Month", "Revenue", { palette: "sunset", mode: "dark" });
+
+    expect(option.color).toEqual(PALETTES.dark.sunset);
+  });
+
+  it("shapeScatterOption resolves the dark palette when mode is dark", () => {
+    const option = shapeScatterOption(scatterResultForPalettes, "Sales", "Profit", "Segment", { palette: "meridian", mode: "dark" });
+
+    expect(option.color).toEqual(PALETTES.dark.meridian);
+  });
+
+  it("defaults to the light palette when mode is omitted", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], { palette: "forest" });
+
+    expect(option.color).toEqual(PALETTES.light.forest);
   });
 });
 
@@ -242,7 +282,7 @@ describe("shapeScatterOption", () => {
     const option = shapeScatterOption(scatterResult, "Sales", "Profit", "Segment", { showLegend: true, palette: "meridian", grid: false });
 
     expect(option.legend).toBeDefined();
-    expect(option.color).toEqual(PALETTES.meridian);
+    expect(option.color).toEqual(PALETTES.light.meridian);
     expect((option.xAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: false });
     expect((option.yAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: false });
   });

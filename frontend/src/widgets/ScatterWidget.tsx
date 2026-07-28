@@ -2,11 +2,12 @@ import { useRef } from "react";
 import { Paper, Typography } from "@mui/material";
 import type { QueryResult } from "../api/datasets";
 import type { WidgetFormatOptions } from "../api/widgets";
+import type { ThemeMode } from "../appearance/AppearanceContext";
 import { formatToSeriesOptions, shapeScatterOption } from "./shaping";
 import { useECharts } from "./useECharts";
 
 function ScatterWidget({
-  title, result, xField, yField, detailsField, format, onDataPointClick,
+  title, result, xField, yField, detailsField, format, mode, onDataPointClick,
 }: {
   title: string;
   result: QueryResult;
@@ -14,10 +15,11 @@ function ScatterWidget({
   yField: string;
   detailsField: string | null;
   format?: WidgetFormatOptions;
+  mode?: ThemeMode;
   onDataPointClick?: (categoryValue: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  useECharts(containerRef, shapeScatterOption(result, xField, yField, detailsField, formatToSeriesOptions(format)), onDataPointClick);
+  useECharts(containerRef, shapeScatterOption(result, xField, yField, detailsField, formatToSeriesOptions(format, mode)), onDataPointClick);
 
   return (
     <Paper sx={{ p: 2, height: "100%" }}>

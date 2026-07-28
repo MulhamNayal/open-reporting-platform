@@ -1,6 +1,7 @@
 import type { EChartsOption } from "echarts";
 import type { QueryResult } from "../api/datasets";
 import type { WidgetFormatOptions } from "../api/widgets";
+import type { ThemeMode } from "../appearance/AppearanceContext";
 import { formatFieldValue, getFieldFormat, resolveDisplayName } from "./fieldFormat";
 
 export interface ShapedTableRows {
@@ -17,6 +18,7 @@ export interface CategorySeriesOptions {
   showLegend?: boolean;
   grid?: boolean;
   palette?: string;
+  mode?: ThemeMode;
   // The full format (not just the subset above) so builders can resolve a per-field format —
   // needs the specific field name and its native type, both only known inside each builder.
   format?: WidgetFormatOptions;
@@ -29,25 +31,33 @@ function resolveFieldFormat(result: QueryResult, format: WidgetFormatOptions | u
   return getFieldFormat(format, field, nativeType);
 }
 
-// Named colour themes selectable in the Format tab. The first entry of each
-// array is the palette's swatch colour shown in FormatTab.
-export const PALETTES: Record<string, string[]> = {
-  meridian: ["#5b4fe6", "#8b7ff0", "#b3a9f7", "#7c6ff2", "#4a3fd0", "#c9c2fa"],
-  ocean: ["#0ea5e9", "#38bdf8", "#0284c7", "#7dd3fc", "#0369a1", "#bae6fd"],
-  sunset: ["#f5a524", "#fb923c", "#f97316", "#fbbf24", "#ea580c", "#fed7aa"],
-  forest: ["#46a758", "#65b874", "#2f8f43", "#86c98f", "#227d38", "#b7e0bd"],
+// Named colour themes selectable in the Format tab, one color set per theme mode. The first
+// entry of each array is the palette's swatch colour shown in FormatTab.
+export const PALETTES: Record<ThemeMode, Record<string, string[]>> = {
+  light: {
+    meridian: ["#5b4fe6", "#8b7ff0", "#b3a9f7", "#7c6ff2", "#4a3fd0", "#c9c2fa"],
+    ocean: ["#0ea5e9", "#38bdf8", "#0284c7", "#7dd3fc", "#0369a1", "#bae6fd"],
+    sunset: ["#f5a524", "#fb923c", "#f97316", "#fbbf24", "#ea580c", "#fed7aa"],
+    forest: ["#46a758", "#65b874", "#2f8f43", "#86c98f", "#227d38", "#b7e0bd"],
+  },
+  dark: {
+    meridian: ["#8b7ff0", "#a89cf5", "#c9c2fa", "#7c6ff2", "#6a5ce8", "#d6d0fc"],
+    ocean: ["#38bdf8", "#7dd3fc", "#0ea5e9", "#bae6fd", "#0284c7", "#e0f2fe"],
+    sunset: ["#fb923c", "#fbbf24", "#f97316", "#fed7aa", "#ea580c", "#ffedd5"],
+    forest: ["#65b874", "#86c98f", "#46a758", "#b7e0bd", "#2f8f43", "#d5f0d9"],
+  },
 };
 
-function paletteColors(name: string | undefined): string[] | undefined {
-  return name ? PALETTES[name] : undefined;
+function paletteColors(name: string | undefined, mode: ThemeMode = "light"): string[] | undefined {
+  return name ? PALETTES[mode][name] : undefined;
 }
 
 // Maps the persisted WidgetFormatOptions onto the subset of shaping options the
 // chart builders understand. Type-derived flags (stacked/horizontal/area/donut)
 // are supplied separately by each widget component.
-export function formatToSeriesOptions(format?: WidgetFormatOptions): CategorySeriesOptions {
+export function formatToSeriesOptions(format?: WidgetFormatOptions, mode: ThemeMode = "light"): CategorySeriesOptions {
   if (!format) {
-    return {};
+    return { mode };
   }
   return {
     sortDirection: format.sortDirection,
@@ -55,6 +65,7 @@ export function formatToSeriesOptions(format?: WidgetFormatOptions): CategorySer
     showLegend: format.showLegend,
     grid: format.grid,
     palette: format.palette,
+    mode,
     format,
   };
 }
@@ -130,7 +141,7 @@ function buildCategorySeriesOption(
     axisLabel: { formatter: (value: number) => formatSeriesValue(valueFields[0], value) },
   };
 
-  const colors = paletteColors(options?.palette);
+  const colors = paletteColors(options?.palette, options?.mode);
   const axes = options?.horizontal
     ? { yAxis: categoryAxis, xAxis: valueAxis }
     : { xAxis: categoryAxis, yAxis: valueAxis };
@@ -192,7 +203,7 @@ export function shapePieOption(
     data = [...data].sort((a, b) => (options.sortDirection === "asc" ? a.value - b.value : b.value - a.value));
   }
 
-  const colors = paletteColors(options?.palette);
+  const colors = paletteColors(options?.palette, options?.mode);
   const fieldFormat = resolveFieldFormat(result, options?.format, valueField);
   const formatValue = (value: unknown) => formatFieldValue(value, fieldFormat);
 
@@ -247,7 +258,7 @@ export function shapeScatterOption(
   const splitLine = options?.grid !== undefined ? { splitLine: { show: options.grid } } : {};
   const xAxis = { type: "value" as const, name: xDisplayName, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, xFieldFormat) } };
   const yAxis = { type: "value" as const, name: yDisplayName, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, yFieldFormat) } };
-  const colors = paletteColors(options?.palette);
+  const colors = paletteColors(options?.palette, options?.mode);
   const label = options?.dataLabels
     ? {
         label: {

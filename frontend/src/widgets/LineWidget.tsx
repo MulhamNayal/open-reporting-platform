@@ -2,11 +2,12 @@ import { useRef } from "react";
 import { Paper, Typography } from "@mui/material";
 import type { QueryResult } from "../api/datasets";
 import type { WidgetFormatOptions } from "../api/widgets";
+import type { ThemeMode } from "../appearance/AppearanceContext";
 import { formatToSeriesOptions, shapeLineOption } from "./shaping";
 import { useECharts } from "./useECharts";
 
 function LineWidget({
-  title, result, categoryField, valueFields, area = false, format, onDataPointClick,
+  title, result, categoryField, valueFields, area = false, format, mode, onDataPointClick,
 }: {
   title: string;
   result: QueryResult;
@@ -14,10 +15,11 @@ function LineWidget({
   valueFields: string[];
   area?: boolean;
   format?: WidgetFormatOptions;
+  mode?: ThemeMode;
   onDataPointClick?: (categoryValue: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  useECharts(containerRef, shapeLineOption(result, categoryField, valueFields, { ...formatToSeriesOptions(format), area }), onDataPointClick);
+  useECharts(containerRef, shapeLineOption(result, categoryField, valueFields, { ...formatToSeriesOptions(format, mode), area }), onDataPointClick);
 
   return (
     <Paper sx={{ p: 2, height: "100%" }}>
