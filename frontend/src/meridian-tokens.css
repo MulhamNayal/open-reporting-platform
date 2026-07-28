@@ -28,6 +28,33 @@
   --r: 8px;
 }
 
+:root[data-theme="dark"] {
+  --ink: #e7e9ee;
+  --rail: #0f1015;
+  --rail-hover: #1a1c24;
+  --rail-line: #22242e;
+  --panel: #1b1e27;
+  --panel-2: #20232d;
+  --groove: #252834;
+  --line: #2f333f;
+  --line-strong: #3d4250;
+  --canvas: #14151c;
+  --page: #1b1e27;
+  --text: #e7e9ee;
+  --muted: #9aa1ad;
+  --faint: #6c7480;
+  --accent: #7b70f0;
+  --accent-ink: #8f86f5;
+  --accent-soft: #2a2650;
+  --accent-line: #4b3f8f;
+  --good: #2dd4bf;
+  --warn: #f5a35c;
+  --good-soft: #123330;
+  --warn-soft: #3a2a18;
+  --bad: #f2777a;
+  --bad-soft: #3a1e1f;
+}
+
 body {
   font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--text);
