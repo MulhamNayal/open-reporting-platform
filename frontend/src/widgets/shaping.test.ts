@@ -256,6 +256,90 @@ describe("shapeScatterOption", () => {
   });
 });
 
+describe("shapeBarOption value formatting (tooltip/axis-label/data-label)", () => {
+  const format = { ...DEFAULT_FORMAT_OPTIONS, fieldFormats: { Revenue: { type: "decimal" as const, decimalPlaces: 1, prefix: "$" } } };
+
+  it("formats the axis label using the first value field's format", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], { format });
+
+    const axisLabel = (option.yAxis as { axisLabel: { formatter: (v: number) => string } }).axisLabel;
+    expect(axisLabel.formatter(1234.5)).toBe("$1,234.5");
+  });
+
+  it("formats each series' data label using that series' own field format", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue"], { format, dataLabels: true });
+
+    const series = option.series as Array<{ label: { formatter: (p: { value: unknown }) => string } }>;
+    expect(series[0].label.formatter({ value: 100 })).toBe("$100.0");
+  });
+
+  it("formats each series' tooltip line using that series' own field format", () => {
+    const option = shapeBarOption(result, "Month", ["Revenue", "Cost"], { format });
+
+    const tooltip = option.tooltip as { formatter: (params: unknown) => string };
+    const text = tooltip.formatter([
+      { axisValue: "Jan", marker: "●", seriesName: "Revenue", value: 100 },
+      { axisValue: "Jan", marker: "●", seriesName: "Cost", value: 40 },
+    ]);
+    expect(text).toContain("$100.0");
+    // Cost has no configured format, so it falls back to plain text (native type unknown here).
+    expect(text).toContain("Cost: 40");
+  });
+});
+
+describe("shapePieOption value formatting (tooltip/data-label)", () => {
+  it("formats the data label and tooltip using the value field's format", () => {
+    const format = { ...DEFAULT_FORMAT_OPTIONS, fieldFormats: { Revenue: { type: "decimal" as const, decimalPlaces: 0, suffix: " USD" } } };
+    const option = shapePieOption(result, "Month", "Revenue", { format, dataLabels: true, showLegend: false });
+
+    const series = option.series as Array<{ label: { formatter: (p: { value: unknown }) => string } }>;
+    expect(series[0].label.formatter({ value: 100 })).toBe("100 USD");
+
+    const tooltip = option.tooltip as { formatter: (params: unknown) => string };
+    expect(tooltip.formatter({ name: "Jan", marker: "●", value: 100, percent: 40 })).toBe("●Jan: 100 USD (40%)");
+  });
+});
+
+describe("shapeScatterOption value formatting (tooltip/axis-label/data-label)", () => {
+  const scatterResult: QueryResult = {
+    columns: [
+      { name: "Segment", nativeType: "nvarchar(20)" },
+      { name: "Sales", nativeType: "decimal(18,2)" },
+      { name: "Profit", nativeType: "decimal(18,2)" },
+    ],
+    rows: [["Consumer", 100, 20]],
+  };
+  const format = {
+    ...DEFAULT_FORMAT_OPTIONS,
+    fieldFormats: { Sales: { type: "decimal" as const, decimalPlaces: 0, prefix: "$" }, Profit: { type: "decimal" as const, decimalPlaces: 0, prefix: "$" } },
+  };
+
+  it("formats each axis independently using that field's own format", () => {
+    const option = shapeScatterOption(scatterResult, "Sales", "Profit", null, { format });
+
+    const xAxis = option.xAxis as { axisLabel: { formatter: (v: number) => string } };
+    const yAxis = option.yAxis as { axisLabel: { formatter: (v: number) => string } };
+    expect(xAxis.axisLabel.formatter(1000)).toBe("$1,000");
+    expect(yAxis.axisLabel.formatter(250)).toBe("$250");
+  });
+
+  it("formats the data label showing both formatted coordinates", () => {
+    const option = shapeScatterOption(scatterResult, "Sales", "Profit", null, { format, dataLabels: true });
+
+    const series = option.series as Array<{ label: { formatter: (p: unknown) => string } }>;
+    expect(series[0].label.formatter({ value: [1000, 250] })).toBe("($1,000, $250)");
+  });
+
+  it("formats the tooltip showing both fields with their own formats", () => {
+    const option = shapeScatterOption(scatterResult, "Sales", "Profit", null, { format });
+
+    const tooltip = option.tooltip as { formatter: (p: unknown) => string };
+    const text = tooltip.formatter({ marker: "●", value: [1000, 250] });
+    expect(text).toContain("Sales: $1,000");
+    expect(text).toContain("Profit: $250");
+  });
+});
+
 describe("shapeKpiValue", () => {
   it("returns the first row's value for the given field", () => {
     expect(shapeKpiValue(result, "Revenue")).toBe(100);

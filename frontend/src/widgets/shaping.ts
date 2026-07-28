@@ -1,6 +1,7 @@
 import type { EChartsOption } from "echarts";
 import type { QueryResult } from "../api/datasets";
 import type { WidgetFormatOptions } from "../api/widgets";
+import { formatFieldValue, getFieldFormat } from "./fieldFormat";
 
 export interface ShapedTableRows {
   columns: string[];
@@ -16,6 +17,16 @@ export interface CategorySeriesOptions {
   showLegend?: boolean;
   grid?: boolean;
   palette?: string;
+  // The full format (not just the subset above) so builders can resolve a per-field format —
+  // needs the specific field name and its native type, both only known inside each builder.
+  format?: WidgetFormatOptions;
+}
+
+// Resolves a value field's format using its native SQL type from the query result, for tooltip/
+// axis-label/data-label formatting inside the chart option builders below.
+function resolveFieldFormat(result: QueryResult, format: WidgetFormatOptions | undefined, field: string) {
+  const nativeType = result.columns.find((c) => c.name === field)?.nativeType;
+  return getFieldFormat(format, field, nativeType);
 }
 
 // Named colour themes selectable in the Format tab. The first entry of each
@@ -44,6 +55,7 @@ export function formatToSeriesOptions(format?: WidgetFormatOptions): CategorySer
     showLegend: format.showLegend,
     grid: format.grid,
     palette: format.palette,
+    format,
   };
 }
 
@@ -96,19 +108,25 @@ function buildCategorySeriesOption(
 
   ({ categories, seriesValues } = sortCategoriesAndSeries(categories, seriesValues, options?.sortDirection));
 
+  const fieldFormats = new Map(valueFields.map((field) => [field, resolveFieldFormat(result, options?.format, field)]));
+  const formatSeriesValue = (field: string, value: unknown) => formatFieldValue(value, fieldFormats.get(field)!);
+
   const series = valueFields.map((field, i) => ({
     name: field,
     type: seriesType,
     data: seriesValues[i],
     ...(options?.stacked ? { stack: "total" } : {}),
     ...(options?.area ? { areaStyle: {} } : {}),
-    ...(options?.dataLabels ? { label: { show: true } } : {}),
+    ...(options?.dataLabels ? { label: { show: true, formatter: (p: { value: unknown }) => formatSeriesValue(field, p.value) } } : {}),
   }));
 
   const categoryAxis = { type: "category" as const, data: categories };
   const valueAxis = {
     type: "value" as const,
     ...(options?.grid !== undefined ? { splitLine: { show: options.grid } } : {}),
+    // Series can mix native types (e.g. a decimal Revenue with an integer Count), but a shared
+    // axis can only render one format — the first value field's format wins.
+    axisLabel: { formatter: (value: number) => formatSeriesValue(valueFields[0], value) },
   };
 
   const colors = paletteColors(options?.palette);
@@ -119,6 +137,17 @@ function buildCategorySeriesOption(
   return {
     ...axes,
     series,
+    tooltip: {
+      trigger: "axis",
+      formatter: (params) => {
+        const list = (Array.isArray(params) ? params : [params]) as Array<{
+          axisValue?: unknown; name?: string; marker?: string; seriesName?: string; value?: unknown;
+        }>;
+        const header = String(list[0]?.axisValue ?? list[0]?.name ?? "");
+        const lines = list.map((p) => `${p.marker ?? ""}${p.seriesName}: ${formatSeriesValue(String(p.seriesName), p.value)}`);
+        return [header, ...lines].join("<br/>");
+      },
+    },
     ...(options?.showLegend ? { legend: { show: true } } : {}),
     ...(colors ? { color: colors } : {}),
   };
@@ -157,14 +186,25 @@ export function shapePieOption(
   }
 
   const colors = paletteColors(options?.palette);
+  const fieldFormat = resolveFieldFormat(result, options?.format, valueField);
+  const formatValue = (value: unknown) => formatFieldValue(value, fieldFormat);
 
   return {
+    tooltip: {
+      trigger: "item",
+      formatter: (params) => {
+        const p = Array.isArray(params) ? params[0] : params;
+        return `${p.marker ?? ""}${p.name}: ${formatValue(p.value)} (${p.percent}%)`;
+      },
+    },
     series: [
       {
         type: "pie",
         data,
         ...(options?.donut ? { radius: ["50%", "70%"] } : {}),
-        ...(options?.dataLabels ? { label: { show: true } } : { label: { show: false } }),
+        ...(options?.dataLabels
+          ? { label: { show: true, formatter: (p: { value: unknown }) => formatValue(p.value) } }
+          : { label: { show: false } }),
       },
     ],
     ...(options?.showLegend ? { legend: { show: true } } : {}),
@@ -192,13 +232,34 @@ export function shapeScatterOption(
   const xIndex = columnIndex(result, xField);
   const yIndex = columnIndex(result, yField);
 
+  const xFieldFormat = resolveFieldFormat(result, options?.format, xField);
+  const yFieldFormat = resolveFieldFormat(result, options?.format, yField);
+
   const splitLine = options?.grid !== undefined ? { splitLine: { show: options.grid } } : {};
-  const xAxis = { type: "value" as const, name: xField, ...splitLine };
-  const yAxis = { type: "value" as const, name: yField, ...splitLine };
+  const xAxis = { type: "value" as const, name: xField, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, xFieldFormat) } };
+  const yAxis = { type: "value" as const, name: yField, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, yFieldFormat) } };
   const colors = paletteColors(options?.palette);
-  const label = options?.dataLabels ? { label: { show: true } } : {};
+  const label = options?.dataLabels
+    ? {
+        label: {
+          show: true,
+          formatter: (p: unknown) => {
+            const [x, y] = (p as { value: [number, number] }).value;
+            return `(${formatFieldValue(x, xFieldFormat)}, ${formatFieldValue(y, yFieldFormat)})`;
+          },
+        },
+      }
+    : {};
 
   const seriesTail = {
+    tooltip: {
+      trigger: "item" as const,
+      formatter: (params: unknown) => {
+        const p = params as { marker?: string; seriesName?: string; value: [number, number] };
+        const seriesLine = p.seriesName ? `${p.seriesName}<br/>` : "";
+        return `${p.marker ?? ""}${seriesLine}${xField}: ${formatFieldValue(p.value[0], xFieldFormat)}<br/>${yField}: ${formatFieldValue(p.value[1], yFieldFormat)}`;
+      },
+    },
     ...(options?.showLegend ? { legend: { show: true } } : {}),
     ...(colors ? { color: colors } : {}),
   };

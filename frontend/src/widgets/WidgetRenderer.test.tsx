@@ -277,6 +277,47 @@ describe("WidgetRenderer", () => {
     expect(screen.queryByText("Widget")).not.toBeInTheDocument();
   });
 
+  it("renders a Kpi's value formatted per its fieldFormats entry", () => {
+    const result: QueryResult = { columns: [{ name: "Revenue", nativeType: "decimal(18,2)" }], rows: [[1234.5]] };
+    const formatOptions = JSON.stringify({
+      ...DEFAULT_FORMAT_OPTIONS,
+      fieldFormats: { Revenue: { type: "decimal", decimalPlaces: 2, thousandsSeparator: true, prefix: "$" } },
+    });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Kpi", binding: { categoryField: null, valueFields: ["Revenue"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.getByText("$1,234.50")).toBeInTheDocument();
+  });
+
+  it("renders a Table's cells formatted per each column's fieldFormats entry", () => {
+    const result: QueryResult = {
+      columns: [
+        { name: "Region", nativeType: "nvarchar(20)" },
+        { name: "Revenue", nativeType: "decimal(18,2)" },
+      ],
+      rows: [["North", 1234.5]],
+    };
+    const formatOptions = JSON.stringify({
+      ...DEFAULT_FORMAT_OPTIONS,
+      fieldFormats: { Revenue: { type: "decimal", decimalPlaces: 0, suffix: " USD" } },
+    });
+
+    render(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Table", binding: { categoryField: null, valueFields: ["Region", "Revenue"], formatOptions } })}
+        result={result}
+      />,
+    );
+
+    expect(screen.getByText("North")).toBeInTheDocument();
+    expect(screen.getByText("1,235 USD")).toBeInTheDocument();
+  });
+
   it("renders a Scatter widget, using valueFields[0]/[1] positionally as X/Y", () => {
     const result: QueryResult = {
       columns: [

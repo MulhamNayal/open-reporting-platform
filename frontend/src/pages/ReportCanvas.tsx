@@ -339,6 +339,7 @@ function ReportCanvasInner() {
               : (
                 <FormatTab
                   widget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
+                  columns={filteredResult?.columns ?? []}
                   onChange={(binding) => {
                     if (selectedWidgetId !== null) {
                       dispatch({ type: "bindingChanged", id: selectedWidgetId, binding });

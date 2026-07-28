@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import type { ColumnDescriptor } from "../api/datasets";
 import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
-import type { WidgetDraft } from "../widgets/widgetDraftReducer";
+import type { WidgetBindingDraft, WidgetDraft } from "../widgets/widgetDraftReducer";
 import FormatTab from "./FormatTab";
 
 function makeWidget(): WidgetDraft {
@@ -10,6 +12,18 @@ function makeWidget(): WidgetDraft {
     id: 1, type: "Bar", x: 0, y: 0, w: 4, h: 3, title: "W", content: null,
     binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: DEFAULT_FORMAT_OPTIONS },
   };
+}
+
+// FormatTab is a pure prop-driven component — it renders conditional controls (e.g. decimal
+// places once type is "decimal") based on the widget prop it's given, not local state. A plain
+// vi.fn() onChange can't feed a selection back in, so tests that need to see UI react to an
+// interaction render this small stateful wrapper instead, matching how ReportCanvas really uses it.
+function ControlledFormatTab({ initialWidget, columns }: { initialWidget: WidgetDraft; columns?: ColumnDescriptor[] }) {
+  const [widget, setWidget] = useState(initialWidget);
+  function handleChange(binding: WidgetBindingDraft) {
+    setWidget((w) => ({ ...w, binding }));
+  }
+  return <FormatTab widget={widget} columns={columns} onChange={handleChange} />;
 }
 
 describe("FormatTab", () => {
@@ -61,5 +75,55 @@ describe("FormatTab", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
       formatOptions: expect.objectContaining({ sortDirection: "asc" }),
     }));
+  });
+
+  it("shows a 'Value formats' section listing each value field, defaulting to Auto", () => {
+    render(<FormatTab widget={makeWidget()} onChange={vi.fn()} />);
+
+    expect(screen.getByText("Revenue")).toBeInTheDocument();
+    expect(screen.getByLabelText("Format")).toHaveValue("auto");
+  });
+
+  it("shows the native type inferred by Auto when the column's type is known", () => {
+    render(<FormatTab widget={makeWidget()} onChange={vi.fn()} columns={[{ name: "Revenue", nativeType: "decimal" }]} />);
+
+    expect(screen.getByRole("option", { name: "Auto (decimal)" })).toBeInTheDocument();
+  });
+
+  it("selecting Decimal reveals decimal-specific controls and updates fieldFormats", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget()} />);
+
+    await userEvent.selectOptions(screen.getByLabelText("Format"), "decimal");
+
+    expect(screen.getByLabelText("Decimal places")).toBeInTheDocument();
+    expect(screen.getByLabelText("Thousands separator")).toBeInTheDocument();
+    expect(screen.getByLabelText("Prefix for Revenue")).toBeInTheDocument();
+  });
+
+  it("changing decimal places for a field updates its fieldFormats entry", async () => {
+    const widget = makeWidget();
+    widget.binding!.formatOptions = { ...widget.binding!.formatOptions, fieldFormats: { Revenue: { type: "decimal" } } };
+    render(<ControlledFormatTab initialWidget={widget} />);
+
+    await userEvent.clear(screen.getByLabelText("Decimal places"));
+    await userEvent.type(screen.getByLabelText("Decimal places"), "4");
+
+    expect(screen.getByLabelText("Decimal places")).toHaveValue(4);
+  });
+
+  it("selecting Date reveals the date-format dropdown", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget()} />);
+
+    await userEvent.selectOptions(screen.getByLabelText("Format"), "date");
+
+    expect(screen.getByLabelText("Date format")).toBeInTheDocument();
+  });
+
+  it("selecting Boolean reveals the boolean-style dropdown", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget()} />);
+
+    await userEvent.selectOptions(screen.getByLabelText("Format"), "boolean");
+
+    expect(screen.getByLabelText("Style")).toBeInTheDocument();
   });
 });

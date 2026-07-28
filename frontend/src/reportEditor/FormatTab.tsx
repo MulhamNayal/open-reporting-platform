@@ -1,3 +1,6 @@
+import type { ColumnDescriptor } from "../api/datasets";
+import type { BooleanStyle, DatePreset, FieldFormat, FieldFormatType } from "../api/widgets";
+import { DATE_PRESET_EXAMPLES, DEFAULT_FIELD_FORMAT, inferFormatType } from "../widgets/fieldFormat";
 import type { WidgetBindingDraft, WidgetDraft } from "../widgets/widgetDraftReducer";
 import "./reportEditor.css";
 
@@ -9,6 +12,15 @@ const PALETTE_SWATCH_COLORS: Record<string, string> = {
   forest: "#46a758",
 };
 
+const FORMAT_TYPE_OPTIONS: { value: FieldFormatType; label: string }[] = [
+  { value: "auto", label: "Auto" },
+  { value: "decimal", label: "Decimal" },
+  { value: "integer", label: "Integer" },
+  { value: "date", label: "Date" },
+  { value: "boolean", label: "Boolean" },
+  { value: "text", label: "Text" },
+];
+
 function nextSortDirection(current: "asc" | "desc" | null): "asc" | "desc" | null {
   if (current === null) {
     return "asc";
@@ -19,16 +31,28 @@ function nextSortDirection(current: "asc" | "desc" | null): "asc" | "desc" | nul
   return null;
 }
 
-function FormatTab({ widget, onChange }: { widget: WidgetDraft | null; onChange: (binding: WidgetBindingDraft) => void }) {
+function FormatTab({
+  widget, onChange, columns = [],
+}: {
+  widget: WidgetDraft | null;
+  onChange: (binding: WidgetBindingDraft) => void;
+  columns?: ColumnDescriptor[];
+}) {
   if (!widget || !widget.binding) {
     return <div className="no-visual">Select a visual to format it.</div>;
   }
 
   const binding = widget.binding;
   const options = binding.formatOptions;
+  const fieldFormats = options.fieldFormats ?? {};
 
   function update(partial: Partial<typeof options>) {
     onChange({ ...binding, formatOptions: { ...options, ...partial } });
+  }
+
+  function updateFieldFormat(field: string, patch: Partial<FieldFormat>) {
+    const current: FieldFormat = { ...DEFAULT_FIELD_FORMAT, ...fieldFormats[field] };
+    update({ fieldFormats: { ...fieldFormats, [field]: { ...current, ...patch } } });
   }
 
   return (
@@ -91,6 +115,114 @@ function FormatTab({ widget, onChange }: { widget: WidgetDraft | null; onChange:
           </div>
         </div>
       </details>
+
+      {binding.valueFields.length > 0 && (
+        <details className="fgroup" open>
+          <summary>Value formats</summary>
+          <div className="fbody">
+            {binding.valueFields.map((field) => {
+              const nativeType = columns.find((c) => c.name === field)?.nativeType;
+              const current: FieldFormat = { ...DEFAULT_FIELD_FORMAT, ...fieldFormats[field] };
+
+              return (
+                <div key={field} style={{ display: "flex", flexDirection: "column", gap: 6, borderBottom: "1px solid #eef0f4", paddingBottom: 8, marginBottom: 8 }}>
+                  <label style={{ fontWeight: 600 }}>{field}</label>
+                  <div className="frow">
+                    <label htmlFor={`format-type-${field}`}>Format</label>
+                    <select
+                      id={`format-type-${field}`}
+                      value={current.type}
+                      onChange={(e) => updateFieldFormat(field, { type: e.target.value as FieldFormatType })}
+                    >
+                      {FORMAT_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.value === "auto" ? `Auto (${inferFormatType(nativeType)})` : opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {(current.type === "decimal" || current.type === "integer") && (
+                    <>
+                      {current.type === "decimal" && (
+                        <div className="frow">
+                          <label htmlFor={`format-decimals-${field}`}>Decimal places</label>
+                          <input
+                            id={`format-decimals-${field}`}
+                            type="number"
+                            min={0}
+                            max={6}
+                            value={current.decimalPlaces}
+                            onChange={(e) => updateFieldFormat(field, { decimalPlaces: Number(e.target.value) })}
+                            style={{ width: 60 }}
+                          />
+                        </div>
+                      )}
+                      <div className="frow">
+                        <label htmlFor={`format-thousands-${field}`}>Thousands separator</label>
+                        <input
+                          id={`format-thousands-${field}`}
+                          type="checkbox"
+                          checked={current.thousandsSeparator}
+                          onChange={(e) => updateFieldFormat(field, { thousandsSeparator: e.target.checked })}
+                        />
+                      </div>
+                      <div className="frow">
+                        <input
+                          className="text-in"
+                          aria-label={`Prefix for ${field}`}
+                          placeholder="Prefix (e.g. $)"
+                          value={current.prefix}
+                          onChange={(e) => updateFieldFormat(field, { prefix: e.target.value })}
+                          style={{ width: "48%" }}
+                        />
+                        <input
+                          className="text-in"
+                          aria-label={`Suffix for ${field}`}
+                          placeholder="Suffix (e.g. %)"
+                          value={current.suffix}
+                          onChange={(e) => updateFieldFormat(field, { suffix: e.target.value })}
+                          style={{ width: "48%" }}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {current.type === "date" && (
+                    <div className="frow">
+                      <label htmlFor={`format-date-${field}`}>Date format</label>
+                      <select
+                        id={`format-date-${field}`}
+                        value={current.datePreset}
+                        onChange={(e) => updateFieldFormat(field, { datePreset: e.target.value as DatePreset })}
+                      >
+                        {Object.entries(DATE_PRESET_EXAMPLES).map(([preset, example]) => (
+                          <option key={preset} value={preset}>{example}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {current.type === "boolean" && (
+                    <div className="frow">
+                      <label htmlFor={`format-bool-${field}`}>Style</label>
+                      <select
+                        id={`format-bool-${field}`}
+                        value={current.booleanStyle}
+                        onChange={(e) => updateFieldFormat(field, { booleanStyle: e.target.value as BooleanStyle })}
+                      >
+                        <option value="trueFalse">True / False</option>
+                        <option value="yesNo">Yes / No</option>
+                        <option value="checkmark">✓ / ✗</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

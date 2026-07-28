@@ -3,6 +3,22 @@ import axios from "axios";
 export type WidgetType =
   | "Bar" | "ClusteredBar" | "StackedColumn" | "Line" | "Area" | "Pie" | "Donut" | "Scatter" | "Kpi" | "Table" | "Text";
 
+export type FieldFormatType = "auto" | "decimal" | "integer" | "date" | "boolean" | "text";
+export type DatePreset = "iso" | "isoDateTime" | "shortDate" | "longDate" | "monthYear";
+export type BooleanStyle = "trueFalse" | "yesNo" | "checkmark";
+
+// One entry per value field a widget plots — keyed by field name, since a single widget can mix
+// fields of different native types (e.g. a bar chart with a decimal Revenue and an integer Count).
+export interface FieldFormat {
+  type: FieldFormatType;
+  decimalPlaces: number;
+  thousandsSeparator: boolean;
+  prefix: string;
+  suffix: string;
+  datePreset: DatePreset;
+  booleanStyle: BooleanStyle;
+}
+
 export interface WidgetFormatOptions {
   showTitle: boolean;
   title: string | null;
@@ -12,6 +28,7 @@ export interface WidgetFormatOptions {
   sortField: string | null;
   sortDirection: "asc" | "desc" | null;
   dataLabels: boolean;
+  fieldFormats: Record<string, Partial<FieldFormat>>;
 }
 
 export const DEFAULT_FORMAT_OPTIONS: WidgetFormatOptions = {
@@ -23,6 +40,7 @@ export const DEFAULT_FORMAT_OPTIONS: WidgetFormatOptions = {
   sortField: null,
   sortDirection: null,
   dataLabels: false,
+  fieldFormats: {},
 };
 
 export interface WidgetBindingSummary {
