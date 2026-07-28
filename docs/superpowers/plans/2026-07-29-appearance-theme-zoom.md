@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an Appearance settings surface (Light/Dark theme + a 4-step, per-theme-remembered zoom) to the open-reporting-platform frontend, backed by `localStorage`, with dark-mode-aware variants of the 4 named chart color palettes.
+**Goal:** Add an Appearance settings surface (Light/Dark theme + a 4-step, per-theme-remembered zoom) to the open-reporting-platform frontend, backed by `localStorage`, with dark-mode-aware variants of the 4 named chart color palettes — and, while touching the shared theme, bring the under-styled Connections/Datasets/Reports pages and loading states up to the same Meridian visual standard the report designer already has.
 
-**Architecture:** A new `AppearanceContext` (React context) is the single source of truth for `{ mode, zoomByTheme }`, persisted to `localStorage` and applied to the DOM via a `data-theme` attribute (drives dark CSS custom properties) and a root `font-size` percentage (drives `rem`-based zoom). The existing static MUI theme becomes a `buildTheme(mode)` factory; the existing flat chart-palette map becomes theme-keyed; a shared `AppearanceMenu` component (Light/Dark toggle + zoom steps) is rendered in both `AppSidebar` and `Ribbon`, the app's two independent top-level chrome components.
+**Architecture:** A new `AppearanceContext` (React context) is the single source of truth for `{ mode, zoomByTheme }`, persisted to `localStorage` and applied to the DOM via a `data-theme` attribute (drives dark CSS custom properties) and a root `font-size` percentage (drives `rem`-based zoom). The existing static MUI theme becomes a `buildTheme(mode)` factory; the existing flat chart-palette map becomes theme-keyed; a shared `AppearanceMenu` component (Light/Dark toggle + zoom steps) is rendered in both `AppSidebar` and `Ribbon`, the app's two independent top-level chrome components. Task 6 is a smaller, independent cosmetic pass riding on the same `buildTheme` factory: a universal input/select background fix, card-style treatment for the two pages that never got one, and consistent loading states.
 
 **Tech Stack:** React 19 + TypeScript (`verbatimModuleSyntax: true`), MUI 9, Vitest + React Testing Library, plain CSS custom properties (no CSS-in-JS beyond MUI's own).
 
@@ -2288,13 +2288,270 @@ git commit -m "frontend: add the Appearance settings menu (Light/Dark + zoom) to
 
 ---
 
+### Task 6: Restyle the under-styled CRUD pages (Connections/Datasets/Reports) and loading states
+
+**Context:** the report designer/viewer got a real, dedicated Meridian styling pass (`reportEditor.css`) built up over this whole project. The Connections (`DataSourcesPage.tsx`), Reports (`ReportsPage.tsx`) pages never did — confirmed via `docs/superpowers/specs/2026-07-26-meridian-visual-restyle-design.md`, whose "Explicitly Out of Scope" section only covers the DataTable pager, the nav sidebar shell, and the report canvas. `DatasetsPage.tsx` got a *partial* pass (`datasetsPage.css` already styles its `.create-form` and `.dataset-list`, but only once a connection is picked — the initial bare "Connection" `<Select>` shown before that has no card around it). Concretely, live-checked via screenshot:
+- Every outlined `TextField`/`Select` across the app renders with a transparent background, so the page's own grey canvas color (`--canvas: #e7eaf1`) shows through the input box instead of a clean fill — this is the "grey dropdown" you saw.
+- `DataSourcesPage.tsx` and `ReportsPage.tsx` have no CSS file at all — their create-forms sit as bare `Box`/`TextField` elements directly on the grey canvas, with no card treatment (unlike `DatasetsPage.tsx`'s already-existing `.create-form`/`.dataset-list`).
+- The report page's loading state (`ReportCanvas.tsx`) is a literal unstyled `<div>Loading…</div>`; the viewer's (`ReportView.tsx`) is only slightly better (`<Box sx={{ p: 4 }}>`).
+
+This task fixes all of that using the exact conventions already established elsewhere in this codebase (the same CSS custom properties, the same per-page CSS file pattern `datasetsPage.css` already uses) — no new visual language is introduced.
+
+**Files:**
+- Modify: `frontend/src/theme.ts` (the version already updated by Task 2 — this task adds one more `components` entry to the same `buildTheme` factory)
+- Create: `frontend/src/pages/dataSourcesPage.css`
+- Modify: `frontend/src/pages/DataSourcesPage.tsx`
+- Create: `frontend/src/pages/reportsPage.css`
+- Modify: `frontend/src/pages/ReportsPage.tsx`
+- Modify: `frontend/src/reportEditor/reportEditor.css` (adds one new `.page-loading` rule; already imported by both files below)
+- Modify: `frontend/src/pages/ReportCanvas.tsx`
+- Modify: `frontend/src/pages/ReportView.tsx`
+
+**Interfaces:**
+- Consumes: `buildTheme(mode)` from Task 2 — this task's `theme.ts` change must be applied to Task 2's version of the file (which already has the `LIGHT_COLORS`/`DARK_COLORS`/`colors` structure), not the original pre-Task-2 file shown in Task 2's "current content" block.
+- Produces: nothing new consumed by other tasks — this is a leaf/cosmetic task, safe to do last.
+
+- [ ] **Step 1: Add a universal input/select background fix to `theme.ts`**
+
+In the `components: { ... }` object inside `buildTheme` (added by Task 2), add a new `MuiOutlinedInput` entry. Find:
+```typescript
+    components: {
+      MuiPaper: {
+        styleOverrides: {
+          root: { border: `1px solid ${colors.paperBorder}` },
+        },
+      },
+```
+and change it to:
+```typescript
+    components: {
+      MuiPaper: {
+        styleOverrides: {
+          root: { border: `1px solid ${colors.paperBorder}` },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          // Outlined TextField/Select boxes have a transparent background by default, so
+          // whatever page background sits behind them (this app's grey --canvas) shows through
+          // instead of a clean fill. This one override fixes every input/select app-wide.
+          root: { background: colors.backgroundPaper },
+        },
+      },
+```
+
+- [ ] **Step 2: Create `frontend/src/pages/dataSourcesPage.css`**
+
+```css
+.data-sources-page {
+  color: var(--text);
+}
+.data-sources-page h4 {
+  font-weight: 700;
+}
+.data-sources-page .create-form {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-sm);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.data-sources-page .list-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-sm);
+}
+.data-sources-page .list-panel th {
+  color: var(--muted);
+  font-weight: 600;
+}
+```
+
+- [ ] **Step 3: Wire the new CSS into `DataSourcesPage.tsx`**
+
+Add the import, alongside the existing ones:
+```tsx
+import "./dataSourcesPage.css";
+```
+
+Change:
+```tsx
+  return (
+    <Container maxWidth={false} sx={{ py: 4, px: 4 }}>
+      <Typography variant="h4" gutterBottom>Connections</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 3 }}>
+```
+to:
+```tsx
+  return (
+    <Container maxWidth={false} sx={{ py: 4, px: 4 }} className="data-sources-page">
+      <Typography variant="h4" gutterBottom>Connections</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Box component="form" onSubmit={handleSubmit} className="create-form" sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 3 }}>
+```
+
+Change:
+```tsx
+      <DataTable columns={connectionColumns} rows={connections} rowKey={(c) => c.id} />
+
+      <Dialog open={editingConnection !== null} maxWidth="sm" fullWidth onClose={closeEdit}>
+```
+to:
+```tsx
+      <div className="list-panel">
+        <DataTable columns={connectionColumns} rows={connections} rowKey={(c) => c.id} />
+      </div>
+
+      <Dialog open={editingConnection !== null} maxWidth="sm" fullWidth onClose={closeEdit}>
+```
+
+- [ ] **Step 4: Create `frontend/src/pages/reportsPage.css`**
+
+```css
+.reports-page {
+  color: var(--text);
+}
+.reports-page h4 {
+  font-weight: 700;
+}
+.reports-page .create-form {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-sm);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.reports-page .list-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-sm);
+}
+.reports-page .list-panel th {
+  color: var(--muted);
+  font-weight: 600;
+}
+```
+
+- [ ] **Step 5: Wire the new CSS into `ReportsPage.tsx`**
+
+Add the import, alongside the existing ones:
+```tsx
+import "./reportsPage.css";
+```
+
+Change:
+```tsx
+  return (
+    <Container maxWidth={false} sx={{ py: 4, px: 4 }}>
+      <Typography variant="h4" gutterBottom>Reports</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", gap: 2, mb: 3 }}>
+        <TextField label="Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
+        <TextField label="Description" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
+        <Button type="submit" variant="contained">Add</Button>
+      </Box>
+      <DataTable columns={reportColumns} rows={reports} rowKey={(r) => r.id} />
+```
+to:
+```tsx
+  return (
+    <Container maxWidth={false} sx={{ py: 4, px: 4 }} className="reports-page">
+      <Typography variant="h4" gutterBottom>Reports</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Box component="form" onSubmit={handleSubmit} className="create-form" sx={{ display: "flex", gap: 2, mb: 3 }}>
+        <TextField label="Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
+        <TextField label="Description" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
+        <Button type="submit" variant="contained">Add</Button>
+      </Box>
+      <div className="list-panel">
+        <DataTable columns={reportColumns} rows={reports} rowKey={(r) => r.id} />
+      </div>
+```
+
+- [ ] **Step 6: Add a shared `.page-loading` rule to `reportEditor.css`**
+
+Append to the end of `frontend/src/reportEditor/reportEditor.css`:
+```css
+.page-loading {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.875rem;
+  background: var(--canvas);
+}
+```
+
+- [ ] **Step 7: Use it in `ReportCanvas.tsx`**
+
+Change:
+```tsx
+  if (queryLoading) {
+    return <div>Loading…</div>;
+  }
+```
+to:
+```tsx
+  if (queryLoading) {
+    return <div className="page-loading">Loading…</div>;
+  }
+```
+
+- [ ] **Step 8: Use it in `ReportView.tsx`**
+
+Change:
+```tsx
+  if (queryLoading) {
+    return <Box sx={{ p: 4 }}><Typography>Loading…</Typography></Box>;
+  }
+```
+to:
+```tsx
+  if (queryLoading) {
+    return <div className="page-loading">Loading…</div>;
+  }
+```
+
+`Typography` is now unused in this file (its only use was the loading state just removed — `Box` is still used elsewhere, at the grid-layout lines further down, so keep it). Change:
+```tsx
+import { Alert, Box, Typography } from "@mui/material";
+```
+to:
+```tsx
+import { Alert, Box } from "@mui/material";
+```
+
+- [ ] **Step 9: Type-check and run the full suite**
+
+Run: `npx tsc -b && npx vitest run`
+Expected: all pass. This task changes no component logic and adds no new props, so no existing test should need updating — if any test asserted on the literal text/structure of a loading state or queried the DOM by a now-changed element type, fix that test's selector to match (e.g. `screen.getByText("Loading…")` still works unchanged since the text content is identical; only the wrapping element changed).
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add frontend/src/theme.ts frontend/src/pages/dataSourcesPage.css frontend/src/pages/DataSourcesPage.tsx frontend/src/pages/reportsPage.css frontend/src/pages/ReportsPage.tsx frontend/src/reportEditor/reportEditor.css frontend/src/pages/ReportCanvas.tsx frontend/src/pages/ReportView.tsx
+git commit -m "frontend: restyle Connections/Reports pages and loading states to match the Meridian design already used elsewhere"
+```
+
+---
+
 ## After all tasks: final review and live verification
 
-Once Tasks 1–5 are complete and reviewed, this feature needs the same live verification every other feature in this project's history has gotten before shipping (not a coding task — no diff of its own):
+Once Tasks 1–6 are complete and reviewed, this feature needs the same live verification every other feature in this project's history has gotten before shipping (not a coding task — no diff of its own):
 
 - Toggle Dark mode from both `AppSidebar` (on `/reports`, `/datasets`, `/datasources`) and `Ribbon` (on a report's designer `/reports/:id/edit` and viewer `/reports/:id`) and confirm the whole page — MUI components AND plain-CSS panels (Format tab, Data pane, Filters pane) — actually switches, not just half of it.
 - Click each zoom step and confirm text and padding visibly scale (not just the number label changing).
 - Reload the page after setting Dark + 110% and confirm both are still applied (persistence).
 - Switch Light → Dark → Light and confirm each theme's own remembered zoom re-applies correctly.
 - Open the Format tab's Color theme swatches in both Light and Dark and confirm the preview swatch colors (and an actual chart's rendered colors) differ appropriately between modes.
+- Confirm every outlined `TextField`/`Select` across `/datasources`, `/datasets`, and `/reports` now has a clean white (light) / dark-panel (dark) fill instead of showing the canvas grey through it.
+- Confirm `/datasources` and `/reports` now show their create-forms and list tables inside a bordered white/panel card, matching `/datasets`'s existing treatment.
+- Confirm the loading state on both a report's designer and its viewer is centered and consistently styled (not a plain unstyled top-left `Loading…`), in both Light and Dark.
 - Revert any live test data (widgets/report state) touched during this check back to its original state, per this project's established QA convention.
