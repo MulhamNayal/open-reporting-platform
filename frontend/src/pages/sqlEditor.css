@@ -2,7 +2,7 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--r);
   overflow: hidden;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .sql-editor .cm-editor {
   height: 100%;

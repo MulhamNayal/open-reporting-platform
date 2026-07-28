@@ -3,17 +3,17 @@
   align-items: center;
   gap: 10px;
   margin-top: 10px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--muted);
 }
 .pager .pbtn {
   border: 1px solid var(--line-strong);
   background: var(--panel);
   border-radius: 6px;
-  padding: 4px 10px;
+  padding: 0.25rem 0.625rem;
   font-weight: 600;
   color: var(--text);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-family: inherit;
   cursor: pointer;
 }
@@ -40,10 +40,10 @@
 .pager .prpp button {
   border: 0;
   background: none;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 600;
   color: var(--muted);
-  padding: 3px 8px;
+  padding: 0.1875rem 0.5rem;
   border-radius: 4px;
   font-family: inherit;
   cursor: pointer;
