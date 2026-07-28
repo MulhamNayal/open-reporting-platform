@@ -13,6 +13,7 @@ export interface DatasetSummary {
   name: string;
   description: string | null;
   mode: DatasetMode;
+  definitionJson: string;
   rowLimit: number | null;
   isSaved: boolean;
   columns: ColumnDescriptor[];
@@ -22,6 +23,14 @@ export interface DatasetSummary {
 
 export interface CreateDatasetRequest {
   dataSourceConnectionId: number;
+  name: string;
+  description: string | null;
+  mode: DatasetMode;
+  definitionJson: string;
+  rowLimit: number | null;
+}
+
+export interface UpdateDatasetRequest {
   name: string;
   description: string | null;
   mode: DatasetMode;
@@ -43,6 +52,11 @@ export async function getDatasets(connectionId: number): Promise<DatasetSummary[
 
 export async function createDataset(request: CreateDatasetRequest): Promise<DatasetSummary> {
   const res = await api.post<DatasetSummary>("/datasets", request);
+  return res.data;
+}
+
+export async function updateDataset(id: number, request: UpdateDatasetRequest): Promise<DatasetSummary> {
+  const res = await api.put<DatasetSummary>(`/datasets/${id}`, request);
   return res.data;
 }
 

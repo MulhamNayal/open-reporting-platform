@@ -37,33 +37,31 @@ public class DataSourcesController : ControllerBase
         return Created($"/api/datasources/{summary.Id}", summary);
     }
 
+    [HttpPut("{id}")]
+    public async Task<ActionResult<DataSourceConnectionSummary>> Update(int id, UpdateDataSourceConnectionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return BadRequest("Name is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Host))
+        {
+            return BadRequest("Host is required.");
+        }
+
+        return Ok(await _service.UpdateAsync(id, request));
+    }
+
     [HttpPost("{id}/test")]
     public async Task<ActionResult<ConnectionTestResult>> Test(int id)
     {
-        try
-        {
-            return Ok(await _service.TestAsync(id));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _service.TestAsync(id));
     }
 
     [HttpGet("{id}/schema")]
     public async Task<ActionResult<SchemaDescriptor>> Schema(int id)
     {
-        try
-        {
-            return Ok(await _service.DiscoverSchemaAsync(id));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            return Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway);
-        }
+        return Ok(await _service.DiscoverSchemaAsync(id));
     }
 }

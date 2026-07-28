@@ -5,6 +5,10 @@ import {
   Button,
   Checkbox,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   MenuItem,
   TextField,
@@ -17,12 +21,13 @@ import {
   discoverDatasetColumns,
   executeDataset,
   getDatasets,
+  updateDataset,
   type DatasetSummary,
   type QueryResult,
 } from "../api/datasets";
 import QueryResultGrid from "../components/QueryResultGrid";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
-import { buildTableQueryDefinition, ALLOWED_OPERATORS, type FilterRowDraft } from "./tableQueryDefinition";
+import { buildTableQueryDefinition, parseTableQueryDefinition, ALLOWED_OPERATORS, type FilterRowDraft } from "./tableQueryDefinition";
 import "./datasetsPage.css";
 
 function DatasetsPage() {
@@ -50,6 +55,27 @@ function DatasetsPage() {
   const [columnPreviewError, setColumnPreviewError] = useState<string | null>(null);
   const [pathSuffix, setPathSuffix] = useState("");
   const [queryParams, setQueryParams] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
+
+  // Edit dialog mirrors the create form's fields under their own state, so opening an
+  // in-progress "Add" draft's edit dialog for a different dataset doesn't clobber it. The
+  // dataset's mode is fixed during edit (not offered as a switch) — its definition fields are
+  // mode-specific and switching mid-edit would leave stale, mismatched state behind.
+  const [editingDataset, setEditingDataset] = useState<DatasetSummary | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editRowLimit, setEditRowLimit] = useState("");
+  const [editSelectedTable, setEditSelectedTable] = useState("");
+  const [editSelectedColumns, setEditSelectedColumns] = useState<string[]>([]);
+  const [editFilterRows, setEditFilterRows] = useState<FilterRowDraft[]>([]);
+  const [editSortField, setEditSortField] = useState("");
+  const [editSortDirection, setEditSortDirection] = useState<"ASC" | "DESC">("ASC");
+  const [editTopN, setEditTopN] = useState("");
+  const [editSqlText, setEditSqlText] = useState("");
+  const [editRoutineName, setEditRoutineName] = useState("");
+  const [editProcParams, setEditProcParams] = useState<{ name: string; value: string }[]>([{ name: "", value: "" }]);
+  const [editPathSuffix, setEditPathSuffix] = useState("");
+  const [editQueryParams, setEditQueryParams] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const selectedConnection = connections.find((c) => c.id === selectedConnectionId);
   const isRestConnection = selectedConnection?.type === "RestApi";
@@ -184,7 +210,98 @@ function DatasetsPage() {
     }
   }
 
+  function openEditDataset(dataset: DatasetSummary) {
+    setEditingDataset(dataset);
+    setEditName(dataset.name);
+    setEditDescription(dataset.description ?? "");
+    setEditRowLimit(dataset.rowLimit !== null ? String(dataset.rowLimit) : "");
+    setEditError(null);
+
+    if (dataset.mode === "TableQuery") {
+      const parsed = parseTableQueryDefinition(dataset.definitionJson);
+      setEditSelectedTable(parsed.table);
+      setEditSelectedColumns(parsed.columns);
+      setEditFilterRows(parsed.filterRows);
+      setEditSortField(parsed.sortField);
+      setEditSortDirection(parsed.sortDirection);
+      setEditTopN(parsed.top);
+    } else if (dataset.mode === "RawSql") {
+      const parsed = JSON.parse(dataset.definitionJson) as { sqlText: string };
+      setEditSqlText(parsed.sqlText);
+    } else if (dataset.mode === "StoredProcedure") {
+      const parsed = JSON.parse(dataset.definitionJson) as {
+        routineName: string;
+        parameters: { name: string; value: string }[];
+      };
+      setEditRoutineName(parsed.routineName);
+      setEditProcParams(parsed.parameters.length > 0 ? parsed.parameters : [{ name: "", value: "" }]);
+    } else {
+      const parsed = JSON.parse(dataset.definitionJson) as {
+        pathSuffix: string | null;
+        queryParams: { key: string; value: string }[];
+      };
+      setEditPathSuffix(parsed.pathSuffix ?? "");
+      setEditQueryParams(parsed.queryParams.length > 0 ? parsed.queryParams : [{ key: "", value: "" }]);
+    }
+  }
+
+  function closeEditDataset() {
+    setEditingDataset(null);
+  }
+
+  function updateEditFilterRow(index: number, patch: Partial<FilterRowDraft>) {
+    const next = [...editFilterRows];
+    next[index] = { ...next[index], ...patch };
+    setEditFilterRows(next);
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingDataset) {
+      return;
+    }
+    setEditError(null);
+
+    let definitionJson: string;
+    if (editingDataset.mode === "TableQuery") {
+      definitionJson = JSON.stringify(
+        buildTableQueryDefinition(editSelectedTable, editSelectedColumns, editFilterRows, editSortField, editSortDirection, editTopN),
+      );
+    } else if (editingDataset.mode === "RawSql") {
+      definitionJson = JSON.stringify({ sqlText: editSqlText });
+    } else if (editingDataset.mode === "StoredProcedure") {
+      definitionJson = JSON.stringify({
+        routineName: editRoutineName,
+        parameters: editProcParams.filter((p) => p.name !== ""),
+      });
+    } else {
+      definitionJson = JSON.stringify({
+        pathSuffix: editPathSuffix === "" ? null : editPathSuffix,
+        queryParams: editQueryParams.filter((p) => p.key !== ""),
+      });
+    }
+
+    try {
+      await updateDataset(editingDataset.id, {
+        name: editName,
+        description: editDescription === "" ? null : editDescription,
+        mode: editingDataset.mode,
+        definitionJson,
+        rowLimit: editRowLimit === "" ? null : Number(editRowLimit),
+      });
+      closeEditDataset();
+      await refreshDatasets(selectedConnectionId as number);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 400) {
+        setEditError(typeof err.response.data === "string" ? err.response.data : "Invalid input.");
+      } else {
+        setEditError("Something went wrong talking to the backend.");
+      }
+    }
+  }
+
   const selectedTableFields = tables.find((t) => t.name === selectedTable)?.fields ?? [];
+  const editSelectedTableFields = tables.find((t) => t.name === editSelectedTable)?.fields ?? [];
 
   const datasetColumns: DataTableColumn<DatasetSummary>[] = [
     { key: "name", label: "Name", value: (d) => d.name, render: (d) => d.name },
@@ -194,6 +311,11 @@ function DatasetsPage() {
       key: "preview",
       label: "Preview",
       render: (d) => <Button size="small" variant="outlined" onClick={() => handlePreview(d.id)}>Run</Button>,
+    },
+    {
+      key: "edit",
+      label: "Edit",
+      render: (d) => <Button size="small" onClick={() => openEditDataset(d)}>Edit</Button>,
     },
   ];
 
@@ -476,6 +598,234 @@ function DatasetsPage() {
           <QueryResultGrid result={previewResult} />
         </>
       )}
+
+      <Dialog open={editingDataset !== null} maxWidth="sm" fullWidth onClose={closeEditDataset}>
+        <DialogTitle>Edit dataset</DialogTitle>
+        <Box component="form" onSubmit={handleEditSubmit}>
+          <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {editError && <Alert severity="error">{editError}</Alert>}
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <TextField label="Dataset Name" size="small" value={editName} onChange={(e) => setEditName(e.target.value)} sx={{ flexGrow: 1 }} />
+              <TextField label="Row Limit" size="small" value={editRowLimit} onChange={(e) => setEditRowLimit(e.target.value)} />
+            </Box>
+            <TextField label="Description (optional)" size="small" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+
+            {editingDataset?.mode === "TableQuery" && (
+              <>
+                <TextField
+                  select
+                  label="Table"
+                  size="small"
+                  value={editSelectedTable}
+                  onChange={(e) => {
+                    setEditSelectedTable(e.target.value);
+                    setEditSelectedColumns([]);
+                  }}
+                >
+                  {tables.map((t) => (
+                    <MenuItem key={t.name} value={t.name}>{t.name}</MenuItem>
+                  ))}
+                </TextField>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  {editSelectedTableFields.map((f) => (
+                    <FormControlLabel
+                      key={f.name}
+                      control={
+                        <Checkbox
+                          checked={editSelectedColumns.includes(f.name)}
+                          onChange={() =>
+                            setEditSelectedColumns((prev) =>
+                              prev.includes(f.name) ? prev.filter((c) => c !== f.name) : [...prev, f.name],
+                            )
+                          }
+                        />
+                      }
+                      label={f.name}
+                    />
+                  ))}
+                </Box>
+                <details className="advanced-section" open>
+                  <summary>Advanced (filters, sort, Top N)</summary>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>Filters</Typography>
+                    {editFilterRows.map((row, i) => (
+                      <Box key={i} sx={{ display: "flex", gap: 1, mb: 1, alignItems: "center" }}>
+                        <TextField
+                          select
+                          label="Field"
+                          size="small"
+                          value={row.field}
+                          onChange={(e) => updateEditFilterRow(i, { field: e.target.value })}
+                          sx={{ minWidth: 140 }}
+                        >
+                          {editSelectedTableFields.map((f) => (
+                            <MenuItem key={f.name} value={f.name}>{f.name}</MenuItem>
+                          ))}
+                        </TextField>
+                        <TextField
+                          select
+                          label="Operator"
+                          size="small"
+                          value={row.operator}
+                          onChange={(e) => updateEditFilterRow(i, { operator: e.target.value as FilterRowDraft["operator"] })}
+                          sx={{ minWidth: 100 }}
+                        >
+                          {ALLOWED_OPERATORS.map((op) => (
+                            <MenuItem key={op} value={op}>{op}</MenuItem>
+                          ))}
+                        </TextField>
+                        <TextField
+                          label="Value"
+                          size="small"
+                          value={row.value}
+                          onChange={(e) => updateEditFilterRow(i, { value: e.target.value })}
+                        />
+                        <Button size="small" onClick={() => setEditFilterRows(editFilterRows.filter((_, idx) => idx !== i))}>
+                          Remove
+                        </Button>
+                      </Box>
+                    ))}
+                    <Button size="small" onClick={() => setEditFilterRows([...editFilterRows, { field: "", operator: "=", value: "" }])} sx={{ mb: 2 }}>
+                      + Add filter
+                    </Button>
+
+                    <Typography variant="subtitle2" gutterBottom>Sort</Typography>
+                    <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                      <TextField
+                        select
+                        label="Sort field"
+                        size="small"
+                        value={editSortField}
+                        onChange={(e) => setEditSortField(e.target.value)}
+                        sx={{ minWidth: 160 }}
+                      >
+                        <MenuItem value="">None</MenuItem>
+                        {editSelectedTableFields.map((f) => (
+                          <MenuItem key={f.name} value={f.name}>{f.name}</MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        select
+                        label="Direction"
+                        size="small"
+                        value={editSortDirection}
+                        onChange={(e) => setEditSortDirection(e.target.value as "ASC" | "DESC")}
+                        disabled={editSortField === ""}
+                        sx={{ minWidth: 120 }}
+                      >
+                        <MenuItem value="ASC">Ascending</MenuItem>
+                        <MenuItem value="DESC">Descending</MenuItem>
+                      </TextField>
+                    </Box>
+
+                    <Typography variant="subtitle2" gutterBottom>Top N</Typography>
+                    <TextField
+                      label="Top N (optional)"
+                      size="small"
+                      value={editTopN}
+                      onChange={(e) => setEditTopN(e.target.value)}
+                    />
+                  </Box>
+                </details>
+              </>
+            )}
+
+            {editingDataset?.mode === "RawSql" && (
+              <TextField
+                label="SQL"
+                multiline
+                minRows={3}
+                fullWidth
+                value={editSqlText}
+                onChange={(e) => setEditSqlText(e.target.value)}
+              />
+            )}
+
+            {editingDataset?.mode === "StoredProcedure" && (
+              <Box>
+                <TextField
+                  label="Procedure or Function Name"
+                  size="small"
+                  value={editRoutineName}
+                  onChange={(e) => setEditRoutineName(e.target.value)}
+                  sx={{ mb: 1, display: "block" }}
+                />
+                {editProcParams.map((p, i) => (
+                  <Box key={i} sx={{ display: "flex", gap: 1, mb: 1 }}>
+                    <TextField
+                      label="Parameter Name"
+                      size="small"
+                      value={p.name}
+                      onChange={(e) => {
+                        const next = [...editProcParams];
+                        next[i] = { ...next[i], name: e.target.value };
+                        setEditProcParams(next);
+                      }}
+                    />
+                    <TextField
+                      label="Value"
+                      size="small"
+                      value={p.value}
+                      onChange={(e) => {
+                        const next = [...editProcParams];
+                        next[i] = { ...next[i], value: e.target.value };
+                        setEditProcParams(next);
+                      }}
+                    />
+                  </Box>
+                ))}
+                <Button size="small" onClick={() => setEditProcParams([...editProcParams, { name: "", value: "" }])}>
+                  Add Parameter
+                </Button>
+              </Box>
+            )}
+
+            {editingDataset?.mode === "RestQuery" && (
+              <Box>
+                <TextField
+                  label="Path Suffix (optional)"
+                  size="small"
+                  placeholder="/users"
+                  value={editPathSuffix}
+                  onChange={(e) => setEditPathSuffix(e.target.value)}
+                  sx={{ mb: 1, display: "block" }}
+                />
+                {editQueryParams.map((p, i) => (
+                  <Box key={i} sx={{ display: "flex", gap: 1, mb: 1 }}>
+                    <TextField
+                      label="Param Key"
+                      size="small"
+                      value={p.key}
+                      onChange={(e) => {
+                        const next = [...editQueryParams];
+                        next[i] = { ...next[i], key: e.target.value };
+                        setEditQueryParams(next);
+                      }}
+                    />
+                    <TextField
+                      label="Param Value"
+                      size="small"
+                      value={p.value}
+                      onChange={(e) => {
+                        const next = [...editQueryParams];
+                        next[i] = { ...next[i], value: e.target.value };
+                        setEditQueryParams(next);
+                      }}
+                    />
+                  </Box>
+                ))}
+                <Button size="small" onClick={() => setEditQueryParams([...editQueryParams, { key: "", value: "" }])}>
+                  Add Query Param
+                </Button>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeEditDataset}>Cancel</Button>
+            <Button type="submit" variant="contained">Save</Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Container>
   );
 }

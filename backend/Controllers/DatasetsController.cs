@@ -29,29 +29,26 @@ public class DatasetsController : ControllerBase
             return BadRequest("Name is required.");
         }
 
-        try
+        var summary = await _service.CreateAsync(request with { IsSaved = true });
+        return Created($"/api/datasets/{summary.Id}", summary);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult<DatasetSummary>> Update(int id, UpdateDatasetRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
         {
-            var summary = await _service.CreateAsync(request with { IsSaved = true });
-            return Created($"/api/datasets/{summary.Id}", summary);
+            return BadRequest("Name is required.");
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+
+        return Ok(await _service.UpdateAsync(id, request));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        try
-        {
-            await _service.DeleteAsync(id);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _service.DeleteAsync(id);
+        return NoContent();
     }
 
     [HttpPost("{id}/promote")]
@@ -62,51 +59,18 @@ public class DatasetsController : ControllerBase
             return BadRequest("Name is required.");
         }
 
-        try
-        {
-            return Ok(await _service.PromoteAsync(id, request.Name!));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _service.PromoteAsync(id, request.Name!));
     }
 
     [HttpPost("{id}/columns")]
     public async Task<ActionResult<IEnumerable<ColumnDescriptor>>> DiscoverColumns(int id)
     {
-        try
-        {
-            return Ok(await _service.DiscoverColumnsAsync(id));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            return Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway);
-        }
+        return Ok(await _service.DiscoverColumnsAsync(id));
     }
 
     [HttpPost("{id}/execute")]
     public async Task<ActionResult<QueryResult>> Execute(int id)
     {
-        try
-        {
-            return Ok(await _service.ExecuteAsync(id));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (UnsupportedQueryOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            return Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway);
-        }
+        return Ok(await _service.ExecuteAsync(id));
     }
 }

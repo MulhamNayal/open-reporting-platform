@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Backend.Data;
+using Backend.Exceptions;
 using Backend.Models;
 using Backend.Services.DataSources;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,7 @@ public class DatasetService : IDatasetService
     {
         var connection = await GetConnectionAsync(request.DataSourceConnectionId);
         ValidateModeMatchesConnectionType(request.Mode, connection.Type);
+        var decryptedConnection = WithDecryptedCredentials(connection);
 
         var now = DateTime.UtcNow;
         var dataset = new Dataset
@@ -48,7 +50,39 @@ public class DatasetService : IDatasetService
             UpdatedAtUtc = now
         };
 
+        // Runs the dataset's own query/procedure before the row ever exists, so a broken
+        // definition (wrong table, nonexistent stored procedure, bad SQL) never gets persisted —
+        // previously this only happened via a separate discover-columns call made after creation,
+        // leaving a saved-but-broken dataset behind whenever that follow-up call failed.
+        var columns = await DiscoverColumnsForAsync(decryptedConnection, dataset);
+        dataset.Columns = JsonSerializer.Serialize(columns);
+
         _context.Datasets.Add(dataset);
+        await _context.SaveChangesAsync();
+
+        return ToSummary(dataset);
+    }
+
+    public async Task<DatasetSummary> UpdateAsync(int id, UpdateDatasetRequest request)
+    {
+        var dataset = await GetDatasetAsync(id);
+        var connection = await GetConnectionAsync(dataset.DataSourceConnectionId);
+        ValidateModeMatchesConnectionType(request.Mode, connection.Type);
+        var decryptedConnection = WithDecryptedCredentials(connection);
+
+        dataset.Name = request.Name;
+        dataset.Description = request.Description;
+        dataset.Mode = request.Mode;
+        dataset.Definition = request.DefinitionJson;
+        dataset.RowLimit = request.RowLimit;
+
+        // Same validate-before-persist principle as CreateAsync: run the updated definition
+        // before saving, so an edit that breaks the dataset (wrong table, bad SQL, nonexistent
+        // procedure) is rejected instead of overwriting a previously-working definition.
+        var columns = await DiscoverColumnsForAsync(decryptedConnection, dataset);
+        dataset.Columns = JsonSerializer.Serialize(columns);
+        dataset.UpdatedAtUtc = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
 
         return ToSummary(dataset);
@@ -87,14 +121,7 @@ public class DatasetService : IDatasetService
         var connection = await GetConnectionAsync(dataset.DataSourceConnectionId);
         var decryptedConnection = WithDecryptedCredentials(connection);
 
-        IReadOnlyList<ColumnDescriptor> columns = dataset.Mode switch
-        {
-            DatasetMode.TableQuery => await DiscoverTableQueryColumnsAsync(decryptedConnection, dataset),
-            DatasetMode.RawSql => await DiscoverRawSqlColumnsAsync(decryptedConnection, dataset),
-            DatasetMode.StoredProcedure => await DiscoverStoredProcedureColumnsAsync(decryptedConnection, dataset),
-            DatasetMode.RestQuery => await DiscoverRestQueryColumnsAsync(decryptedConnection, dataset),
-            _ => throw new InvalidOperationException($"Unsupported dataset mode: {dataset.Mode}.")
-        };
+        var columns = await DiscoverColumnsForAsync(decryptedConnection, dataset);
 
         dataset.Columns = JsonSerializer.Serialize(columns);
         dataset.UpdatedAtUtc = DateTime.UtcNow;
@@ -117,6 +144,18 @@ public class DatasetService : IDatasetService
         await _context.SaveChangesAsync();
 
         return result;
+    }
+
+    private async Task<IReadOnlyList<ColumnDescriptor>> DiscoverColumnsForAsync(DataSourceConnection connection, Dataset dataset)
+    {
+        return dataset.Mode switch
+        {
+            DatasetMode.TableQuery => await DiscoverTableQueryColumnsAsync(connection, dataset),
+            DatasetMode.RawSql => await DiscoverRawSqlColumnsAsync(connection, dataset),
+            DatasetMode.StoredProcedure => await DiscoverStoredProcedureColumnsAsync(connection, dataset),
+            DatasetMode.RestQuery => await DiscoverRestQueryColumnsAsync(connection, dataset),
+            _ => throw new InvalidOperationException($"Unsupported dataset mode: {dataset.Mode}.")
+        };
     }
 
     private async Task<IReadOnlyList<ColumnDescriptor>> DiscoverTableQueryColumnsAsync(DataSourceConnection connection, Dataset dataset)
@@ -172,7 +211,7 @@ public class DatasetService : IDatasetService
         var connection = await _context.DataSourceConnections.FirstOrDefaultAsync(c => c.Id == id);
         if (connection is null)
         {
-            throw new InvalidOperationException($"No data source connection found with id {id}.");
+            throw new NotFoundException($"No data source connection found with id {id}.");
         }
 
         return connection;
@@ -183,7 +222,7 @@ public class DatasetService : IDatasetService
         var dataset = await _context.Datasets.FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null)
         {
-            throw new InvalidOperationException($"No dataset found with id {id}.");
+            throw new NotFoundException($"No dataset found with id {id}.");
         }
 
         return dataset;
@@ -226,6 +265,7 @@ public class DatasetService : IDatasetService
             dataset.Name,
             dataset.Description,
             dataset.Mode,
+            dataset.Definition,
             dataset.RowLimit,
             dataset.IsSaved,
             columns,

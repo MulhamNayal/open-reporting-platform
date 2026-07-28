@@ -1,4 +1,5 @@
 using Backend.Data;
+using Backend.Exceptions;
 using Backend.Models;
 using Backend.Services.Datasets;
 using Backend.Services.ReportPages;
@@ -106,7 +107,7 @@ public class ReportService : IReportService
         var report = await _context.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null)
         {
-            throw new InvalidOperationException($"No report found with id {id}.");
+            throw new NotFoundException($"No report found with id {id}.");
         }
 
         return report;

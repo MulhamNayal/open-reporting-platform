@@ -9,6 +9,7 @@ public record DatasetSummary(
     string Name,
     string? Description,
     DatasetMode Mode,
+    string DefinitionJson,
     int? RowLimit,
     bool IsSaved,
     IReadOnlyList<ColumnDescriptor> Columns,

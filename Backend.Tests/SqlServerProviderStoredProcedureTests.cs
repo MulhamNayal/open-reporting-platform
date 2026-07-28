@@ -46,4 +46,27 @@ public class SqlServerProviderStoredProcedureTests
         Assert.Equal("EXEC [usp_GetTopReports] @MinCount, @Region", sql);
         Assert.Equal(2, sqlParameters.Count);
     }
+
+    [Fact]
+    public void BuildStoredProcedureCommandText_BracketsEachPartOfASchemaQualifiedName()
+    {
+        // Bracketing the whole "PowerBI.EXSIMConversion" as one unit ("[PowerBI.EXSIMConversion]")
+        // makes SQL Server look for a single object literally named with a dot in the default
+        // schema, which doesn't exist — each part must be bracketed separately.
+        var provider = new SqlServerProvider();
+
+        var (sql, _) = provider.BuildStoredProcedureCommand("PowerBI.EXSIMConversion", Array.Empty<StoredProcedureParameter>());
+
+        Assert.Equal("EXEC [PowerBI].[EXSIMConversion]", sql);
+    }
+
+    [Fact]
+    public void BuildStoredProcedureCommandText_DoesNotDoubleBracketAPartTheCallerAlreadyBracketed()
+    {
+        var provider = new SqlServerProvider();
+
+        var (sql, _) = provider.BuildStoredProcedureCommand("[PowerBI].[EXSIMConversion]", Array.Empty<StoredProcedureParameter>());
+
+        Assert.Equal("EXEC [PowerBI].[EXSIMConversion]", sql);
+    }
 }

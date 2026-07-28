@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Backend.Data;
+using Backend.Exceptions;
 using Backend.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -87,7 +88,7 @@ public class WidgetService : IWidgetService
         var exists = await _context.ReportPages.AnyAsync(p => p.Id == reportPageId);
         if (!exists)
         {
-            throw new InvalidOperationException($"No report page found with id {reportPageId}.");
+            throw new NotFoundException($"No report page found with id {reportPageId}.");
         }
     }
 

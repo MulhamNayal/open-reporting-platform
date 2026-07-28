@@ -227,6 +227,29 @@ describe("DataTable", () => {
     expect(within(table).queryByText("Bob")).not.toBeInTheDocument();
   });
 
+  it("caps the number of rendered checkboxes for a high-cardinality column and shows a count", async () => {
+    const manyRows: Row[] = Array.from({ length: 300 }, (_, i) => ({ id: i, name: `Item${String(i).padStart(3, "0")}` }));
+    render(<DataTable columns={columns} rows={manyRows} rowKey={(r) => r.id} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+
+    // "Select all" + 200 value checkboxes, not one per each of the 300 distinct values
+    expect(screen.getAllByRole("checkbox")).toHaveLength(201);
+    expect(screen.getByText("Showing 200 of 300 — type to narrow further")).toBeInTheDocument();
+  });
+
+  it("'Select all' still applies to every value beyond the rendered cap, not just what's shown", async () => {
+    const manyRows: Row[] = Array.from({ length: 300 }, (_, i) => ({ id: i, name: `Item${String(i).padStart(3, "0")}` }));
+    render(<DataTable columns={columns} rows={manyRows} rowKey={(r) => r.id} />);
+    const table = screen.getByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter Name" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select all" }));
+
+    // Item250 is well beyond the first 200 rendered checkboxes, but should still be excluded
+    expect(within(table).queryByText("Item250")).not.toBeInTheDocument();
+  });
+
   it("exporting as Excel calls exportRows with the current filtered/sorted rows and value-bearing columns", async () => {
     render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} exportFileName="my-file" />);
 

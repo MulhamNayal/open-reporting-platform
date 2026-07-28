@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.DataProtection;
 using Backend.Data;
+using Backend.Middleware;
 using Backend.Services;
 using Backend.Services.DataSources;
 using Backend.Services.Datasets;
@@ -45,6 +46,9 @@ builder.Services.AddScoped<IWidgetBindingValidator, WidgetBindingValidator>();
 builder.Services.AddScoped<IWidgetService, WidgetService>();
 builder.Services.AddScoped<IReportPageService, ReportPageService>();
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -62,7 +66,14 @@ if (app.Environment.IsDevelopment())
     app.UseCors("Frontend");
 }
 
+app.UseExceptionHandler();
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Required so WebApplicationFactory<Program> (used by integration tests) can reference the
+// top-level-statement Program class, which the compiler otherwise generates as internal.
+public partial class Program
+{
+}

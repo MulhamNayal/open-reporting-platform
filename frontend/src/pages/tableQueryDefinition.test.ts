@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTableQueryDefinition, type FilterRowDraft } from "./tableQueryDefinition";
+import { buildTableQueryDefinition, parseTableQueryDefinition, type FilterRowDraft } from "./tableQueryDefinition";
 
 describe("buildTableQueryDefinition", () => {
   it("builds a definition with no filters, no sort, no top when nothing is set", () => {
@@ -55,5 +55,38 @@ describe("buildTableQueryDefinition", () => {
 
   it("treats a decimal top as null (backend Top is an int)", () => {
     expect(buildTableQueryDefinition("Reports", ["Id"], [], "", "ASC", "2.5").query.top).toBeNull();
+  });
+});
+
+describe("parseTableQueryDefinition", () => {
+  it("round-trips a definition with no filters, no sort, no top back to its flat fields", () => {
+    const built = buildTableQueryDefinition("Reports", ["Id", "Name"], [], "", "ASC", "");
+
+    const parsed = parseTableQueryDefinition(JSON.stringify(built));
+
+    expect(parsed).toEqual({
+      table: "Reports",
+      columns: ["Id", "Name"],
+      filterRows: [],
+      sortField: "",
+      sortDirection: "ASC",
+      top: "",
+    });
+  });
+
+  it("round-trips filters, sort, and top back to their flat fields", () => {
+    const rows: FilterRowDraft[] = [{ field: "Name", operator: "=", value: "X" }];
+    const built = buildTableQueryDefinition("Reports", ["Id"], rows, "Id", "DESC", "10");
+
+    const parsed = parseTableQueryDefinition(JSON.stringify(built));
+
+    expect(parsed).toEqual({
+      table: "Reports",
+      columns: ["Id"],
+      filterRows: rows,
+      sortField: "Id",
+      sortDirection: "DESC",
+      top: "10",
+    });
   });
 });

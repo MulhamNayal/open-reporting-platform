@@ -47,3 +47,30 @@ export function buildTableQueryDefinition(
 
   return { query: { table, columns, filters, sort, top: topValue } };
 }
+
+// Inverse of buildTableQueryDefinition — reconstructs the flat editable fields from a
+// previously-saved TableQuery dataset's definitionJson, so the edit form can prefill them.
+export function parseTableQueryDefinition(definitionJson: string): {
+  table: string;
+  columns: string[];
+  filterRows: FilterRowDraft[];
+  sortField: string;
+  sortDirection: "ASC" | "DESC";
+  top: string;
+} {
+  const parsed: TableQueryDefinition = JSON.parse(definitionJson);
+  const filterRows: FilterRowDraft[] = parsed.query.filters.map((f) => ({
+    field: f.field,
+    operator: f.operator as FilterOperator,
+    value: f.value,
+  }));
+
+  return {
+    table: parsed.query.table,
+    columns: parsed.query.columns,
+    filterRows,
+    sortField: parsed.query.sort?.field ?? "",
+    sortDirection: parsed.query.sort?.direction ?? "ASC",
+    top: parsed.query.top !== null ? String(parsed.query.top) : "",
+  };
+}

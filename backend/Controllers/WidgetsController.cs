@@ -17,30 +17,12 @@ public class WidgetsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<WidgetSummary>>> GetWidgets(int reportPageId)
     {
-        try
-        {
-            return Ok(await _service.GetWidgetsAsync(reportPageId));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _service.GetWidgetsAsync(reportPageId));
     }
 
     [HttpPut]
     public async Task<ActionResult<IReadOnlyList<WidgetSummary>>> SaveWidgets(int reportPageId, SaveWidgetsRequest request)
     {
-        try
-        {
-            return Ok(await _service.SaveWidgetsAsync(reportPageId, request));
-        }
-        catch (WidgetValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _service.SaveWidgetsAsync(reportPageId, request));
     }
 }

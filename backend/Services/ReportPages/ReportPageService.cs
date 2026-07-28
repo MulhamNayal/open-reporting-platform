@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Backend.Data;
+using Backend.Exceptions;
 using Backend.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -92,7 +93,7 @@ public class ReportPageService : IReportPageService
         var exists = await _context.Reports.AnyAsync(r => r.Id == reportId);
         if (!exists)
         {
-            throw new InvalidOperationException($"No report found with id {reportId}.");
+            throw new NotFoundException($"No report found with id {reportId}.");
         }
     }
 
@@ -101,7 +102,7 @@ public class ReportPageService : IReportPageService
         var page = await _context.ReportPages.FirstOrDefaultAsync(p => p.Id == pageId && p.ReportId == reportId);
         if (page is null)
         {
-            throw new InvalidOperationException($"No page found with id {pageId} on report {reportId}.");
+            throw new NotFoundException($"No page found with id {pageId} on report {reportId}.");
         }
 
         return page;

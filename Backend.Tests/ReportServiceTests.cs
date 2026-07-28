@@ -1,4 +1,5 @@
 using Backend.Data;
+using Backend.Exceptions;
 using Backend.Models;
 using Backend.Services.DataSources;
 using Backend.Services.Datasets;
@@ -17,18 +18,15 @@ public class ReportServiceTests
         public string Unprotect(string protectedText) => protectedText.Replace("encrypted:", "");
     }
 
-    private class StubSqlServerProvider : IDataSourceProvider
+    // Extends the real SqlServerProvider (not just IDataSourceProvider) because DatasetService's
+    // RawSql discovery casts the resolved provider to this concrete type to reach SQL-Server-only
+    // helpers that aren't part of the interface. Only DiscoverRawSqlColumnsAsync is overridden —
+    // it's the only one these tests exercise (CreateAsync now validates a dataset by running
+    // discovery on it before persisting), and overriding it avoids a real SQL connection attempt.
+    private class StubSqlServerProvider : SqlServerProvider
     {
-        public DataSourceType SupportedType => DataSourceType.SqlServer;
-
-        public Task<ConnectionTestResult> TestConnectionAsync(DataSourceConnection connection) =>
-            Task.FromResult(new ConnectionTestResult(true, null));
-
-        public Task<SchemaDescriptor> DiscoverSchemaAsync(DataSourceConnection connection) =>
-            throw new NotImplementedException();
-
-        public Task<QueryResult> ExecuteQueryAsync(DataSourceConnection connection, Dataset dataset, int rowLimit, CancellationToken cancellationToken) =>
-            throw new NotImplementedException();
+        public override Task<IReadOnlyList<ColumnDescriptor>> DiscoverRawSqlColumnsAsync(DataSourceConnection connection, string sqlText, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<ColumnDescriptor>>(new List<ColumnDescriptor> { new("Value", "int") });
     }
 
     private static (IReportService Service, ReportingDbContext Context) CreateService(string databaseName)
@@ -76,7 +74,7 @@ public class ReportServiceTests
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetByIdAsync(999));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.GetByIdAsync(999));
     }
 
     [Fact]

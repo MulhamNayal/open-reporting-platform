@@ -6,6 +6,8 @@ public interface IDatasetService
 {
     Task<DatasetSummary> CreateAsync(CreateDatasetRequest request);
 
+    Task<DatasetSummary> UpdateAsync(int id, UpdateDatasetRequest request);
+
     Task<IReadOnlyList<DatasetSummary>> ListAsync(int connectionId);
 
     Task<IReadOnlyList<ColumnDescriptor>> DiscoverColumnsAsync(int datasetId);

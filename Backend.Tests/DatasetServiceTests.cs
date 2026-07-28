@@ -1,4 +1,5 @@
 using Backend.Data;
+using Backend.Exceptions;
 using Backend.Models;
 using Backend.Services.DataSources;
 using Backend.Services.Datasets;
@@ -95,6 +96,21 @@ public class DatasetServiceTests
         Assert.Equal(50, stored.RowLimit);
         Assert.NotEqual(default, stored.CreatedAtUtc);
         Assert.NotEqual(default, stored.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public async Task CreateAsync_DoesNotPersistWhenTheQueryFailsValidation()
+    {
+        var (service, context) = CreateService(Guid.NewGuid().ToString());
+
+        var definitionSelectingUnknownTable = new TableQueryDefinition(
+            new SelectQuery("NoSuchTable", new[] { "Id" }, Array.Empty<QueryFilter>(), null, null));
+        var definitionJson = JsonSerializer.Serialize(definitionSelectingUnknownTable);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateAsync(new CreateDatasetRequest(1, "Broken", null, DatasetMode.TableQuery, definitionJson, null)));
+
+        Assert.Equal(0, await context.Datasets.CountAsync());
     }
 
     [Fact]
@@ -229,7 +245,7 @@ public class DatasetServiceTests
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteAsync(999));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.DeleteAsync(999));
     }
 
     [Fact]
@@ -249,6 +265,6 @@ public class DatasetServiceTests
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.PromoteAsync(999, "Name"));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.PromoteAsync(999, "Name"));
     }
 }

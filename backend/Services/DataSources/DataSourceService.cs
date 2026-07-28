@@ -1,4 +1,5 @@
 using Backend.Data;
+using Backend.Exceptions;
 using Backend.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,6 +36,23 @@ public class DataSourceService : IDataSourceService
         return ToSummary(connection);
     }
 
+    public async Task<DataSourceConnectionSummary> UpdateAsync(int id, UpdateDataSourceConnectionRequest request)
+    {
+        var connection = await GetConnectionAsync(id);
+
+        connection.Name = request.Name;
+        connection.Host = request.Host;
+        connection.DatabaseName = request.DatabaseName;
+        if (!string.IsNullOrWhiteSpace(request.CredentialsJson))
+        {
+            connection.EncryptedCredentials = _credentialProtector.Protect(request.CredentialsJson);
+        }
+
+        await _context.SaveChangesAsync();
+
+        return ToSummary(connection);
+    }
+
     public async Task<ConnectionTestResult> TestAsync(int id)
     {
         var connection = await GetConnectionAsync(id);
@@ -60,7 +78,7 @@ public class DataSourceService : IDataSourceService
         var connection = await _context.DataSourceConnections.FirstOrDefaultAsync(c => c.Id == id);
         if (connection is null)
         {
-            throw new InvalidOperationException($"No data source connection found with id {id}.");
+            throw new NotFoundException($"No data source connection found with id {id}.");
         }
 
         return connection;

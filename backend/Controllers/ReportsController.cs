@@ -23,14 +23,7 @@ public class ReportsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<ReportSummary>> GetById(int id)
     {
-        try
-        {
-            return Ok(await _service.GetByIdAsync(id));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _service.GetByIdAsync(id));
     }
 
     [HttpPost]
@@ -53,40 +46,19 @@ public class ReportsController : ControllerBase
             return BadRequest("Name is required.");
         }
 
-        try
-        {
-            return Ok(await _service.RenameAsync(id, request));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _service.RenameAsync(id, request));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        try
-        {
-            await _service.DeleteAsync(id);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _service.DeleteAsync(id);
+        return NoContent();
     }
 
     [HttpPut("{id}/dataset")]
     public async Task<ActionResult<ReportSummary>> SetDataset(int id, SetReportDatasetRequest request)
     {
-        try
-        {
-            return Ok(await _service.SetDatasetAsync(id, request));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _service.SetDatasetAsync(id, request));
     }
 }

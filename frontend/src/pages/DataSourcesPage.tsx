@@ -4,6 +4,10 @@ import {
   Box,
   Button,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   MenuItem,
   TextField,
   Typography,
@@ -14,6 +18,7 @@ import {
   createDataSource,
   getDataSources,
   testDataSource,
+  updateDataSource,
   type ConnectionTestResult,
   type DataSourceConnectionSummary,
   type DataSourceType,
@@ -29,6 +34,14 @@ function DataSourcesPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<number, ConnectionTestResult>>({});
+
+  const [editingConnection, setEditingConnection] = useState<DataSourceConnectionSummary | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editHost, setEditHost] = useState("");
+  const [editDatabaseName, setEditDatabaseName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
 
   async function refresh() {
     setConnections(await getDataSources());
@@ -73,6 +86,54 @@ function DataSourcesPage() {
     setTestResults((prev) => ({ ...prev, [id]: result }));
   }
 
+  function openEdit(connection: DataSourceConnectionSummary) {
+    setEditingConnection(connection);
+    setEditName(connection.name);
+    setEditHost(connection.host);
+    setEditDatabaseName(connection.databaseName ?? "");
+    setEditUsername("");
+    setEditPassword("");
+    setEditError(null);
+  }
+
+  function closeEdit() {
+    setEditingConnection(null);
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingConnection) {
+      return;
+    }
+    setEditError(null);
+
+    // Blank credential fields mean "keep what's already there" — the plaintext is never sent
+    // back from the API to prefill them, so there's nothing to compare against locally.
+    const hasNewCredentials = editingConnection.type === "SqlServer" ? editUsername !== "" || editPassword !== "" : editPassword !== "";
+    const credentialsJson = hasNewCredentials
+      ? editingConnection.type === "SqlServer"
+        ? JSON.stringify({ username: editUsername, password: editPassword })
+        : JSON.stringify({ token: editPassword })
+      : undefined;
+
+    try {
+      await updateDataSource(editingConnection.id, {
+        name: editName,
+        host: editHost,
+        databaseName: editingConnection.type === "SqlServer" ? editDatabaseName : null,
+        credentialsJson,
+      });
+      closeEdit();
+      await refresh();
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 400) {
+        setEditError(typeof err.response.data === "string" ? err.response.data : "Invalid input.");
+      } else {
+        setEditError("Something went wrong talking to the backend.");
+      }
+    }
+  }
+
   const connectionColumns: DataTableColumn<DataSourceConnectionSummary>[] = [
     { key: "name", label: "Name", value: (c) => c.name, render: (c) => c.name },
     { key: "type", label: "Type", value: (c) => c.type, render: (c) => c.type },
@@ -93,6 +154,11 @@ function DataSourcesPage() {
           </>
         );
       },
+    },
+    {
+      key: "edit",
+      label: "Edit",
+      render: (c) => <Button size="small" onClick={() => openEdit(c)}>Edit</Button>,
     },
   ];
 
@@ -151,6 +217,59 @@ function DataSourcesPage() {
         <Button type="submit" variant="contained">Add</Button>
       </Box>
       <DataTable columns={connectionColumns} rows={connections} rowKey={(c) => c.id} />
+
+      <Dialog open={editingConnection !== null} maxWidth="sm" fullWidth onClose={closeEdit}>
+        <DialogTitle>Edit connection</DialogTitle>
+        <Box component="form" onSubmit={handleEditSubmit}>
+          <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {editError && <Alert severity="error">{editError}</Alert>}
+            <TextField label="Name" size="small" value={editName} onChange={(e) => setEditName(e.target.value)} />
+            <TextField
+              label={editingConnection?.type === "SqlServer" ? "Host" : "URL"}
+              size="small"
+              value={editHost}
+              onChange={(e) => setEditHost(e.target.value)}
+            />
+            {editingConnection?.type === "SqlServer" && (
+              <TextField
+                label="Database Name"
+                size="small"
+                value={editDatabaseName}
+                onChange={(e) => setEditDatabaseName(e.target.value)}
+              />
+            )}
+            {editingConnection?.type === "SqlServer" ? (
+              <>
+                <TextField
+                  label="Username (leave blank to keep current)"
+                  size="small"
+                  value={editUsername}
+                  onChange={(e) => setEditUsername(e.target.value)}
+                />
+                <TextField
+                  label="Password (leave blank to keep current)"
+                  type="password"
+                  size="small"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                />
+              </>
+            ) : (
+              <TextField
+                label="API Token (leave blank to keep current)"
+                type="password"
+                size="small"
+                value={editPassword}
+                onChange={(e) => setEditPassword(e.target.value)}
+              />
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeEdit}>Cancel</Button>
+            <Button type="submit" variant="contained">Save</Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Container>
   );
 }

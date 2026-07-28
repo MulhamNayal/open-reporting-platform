@@ -26,16 +26,6 @@ public class WidgetsControllerTests
     }
 
     [Fact]
-    public async Task GetWidgets_ReportPageNotFound_Returns404()
-    {
-        var controller = CreateController(Guid.NewGuid().ToString());
-
-        var result = await controller.GetWidgets(999);
-
-        Assert.IsType<NotFoundObjectResult>(result.Result);
-    }
-
-    [Fact]
     public async Task GetWidgets_ReportPageWithNoWidgets_ReturnsEmptyOk()
     {
         var controller = CreateController(Guid.NewGuid().ToString());
@@ -45,31 +35,6 @@ public class WidgetsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var widgets = Assert.IsAssignableFrom<IReadOnlyList<WidgetSummary>>(ok.Value);
         Assert.Empty(widgets);
-    }
-
-    [Fact]
-    public async Task SaveWidgets_InvalidBinding_Returns400()
-    {
-        var controller = CreateController(Guid.NewGuid().ToString());
-        var badWidget = new SaveWidgetRequest(
-            WidgetType.Pie, 0, 0, 4, 3, "Bad Pie", null,
-            new SaveWidgetBindingRequest("Region", new List<string> { "A", "B" }, null));
-        var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { badWidget });
-
-        var result = await controller.SaveWidgets(1, request);
-
-        Assert.IsType<BadRequestObjectResult>(result.Result);
-    }
-
-    [Fact]
-    public async Task SaveWidgets_ReportPageNotFound_Returns404()
-    {
-        var controller = CreateController(Guid.NewGuid().ToString());
-        var request = new SaveWidgetsRequest(new List<SaveWidgetRequest>());
-
-        var result = await controller.SaveWidgets(999, request);
-
-        Assert.IsType<NotFoundObjectResult>(result.Result);
     }
 
     [Fact]

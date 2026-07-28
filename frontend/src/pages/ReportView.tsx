@@ -75,7 +75,7 @@ function ReportViewInner() {
         />
         <div className="stage">
           <div className="scroll">
-            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 2, width: 960 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 2, width: "100%" }}>
               {widgets.map((w) => (
                 <Box key={w.id} sx={{ gridColumn: `${w.x + 1} / span ${w.w}`, gridRow: `${w.y + 1} / span ${w.h}` }}>
                   <WidgetRenderer

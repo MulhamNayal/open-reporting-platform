@@ -45,16 +45,6 @@ public class ReportsControllerTests
     }
 
     [Fact]
-    public async Task GetById_NotFound_Returns404()
-    {
-        var controller = CreateController(Guid.NewGuid().ToString());
-
-        var result = await controller.GetById(999);
-
-        Assert.IsType<NotFoundObjectResult>(result.Result);
-    }
-
-    [Fact]
     public async Task Create_BlankName_Returns400()
     {
         var controller = CreateController(Guid.NewGuid().ToString());
@@ -99,16 +89,4 @@ public class ReportsControllerTests
         Assert.IsType<BadRequestObjectResult>(result.Result);
     }
 
-    [Fact]
-    public async Task Delete_ThenGetById_Returns404()
-    {
-        var controller = CreateController(Guid.NewGuid().ToString());
-        var created = await controller.Create(new CreateReportRequest("Churn", ""));
-        var report = (ReportSummary)((CreatedResult)created.Result!).Value!;
-
-        await controller.Delete(report.Id);
-        var result = await controller.GetById(report.Id);
-
-        Assert.IsType<NotFoundObjectResult>(result.Result);
-    }
 }

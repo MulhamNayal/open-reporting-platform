@@ -24,6 +24,15 @@ export interface CreateDataSourceConnectionRequest {
   credentialsJson: string;
 }
 
+export interface UpdateDataSourceConnectionRequest {
+  name: string;
+  host: string;
+  databaseName: string | null;
+  // Leave undefined/blank to keep the existing (still-encrypted) credentials — the plaintext is
+  // never sent back from the API to populate this field, so there's nothing to prefill it with.
+  credentialsJson?: string;
+}
+
 const api = axios.create({ baseURL: import.meta.env.DEV ? "http://localhost:5198/api" : "/reporting/api" });
 
 export async function getDataSources(): Promise<DataSourceConnectionSummary[]> {
@@ -33,6 +42,11 @@ export async function getDataSources(): Promise<DataSourceConnectionSummary[]> {
 
 export async function createDataSource(request: CreateDataSourceConnectionRequest): Promise<DataSourceConnectionSummary> {
   const res = await api.post<DataSourceConnectionSummary>("/datasources", request);
+  return res.data;
+}
+
+export async function updateDataSource(id: number, request: UpdateDataSourceConnectionRequest): Promise<DataSourceConnectionSummary> {
+  const res = await api.put<DataSourceConnectionSummary>(`/datasources/${id}`, request);
   return res.data;
 }
 

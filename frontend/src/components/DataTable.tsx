@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Box, Button, Checkbox, ClickAwayListener, FormControlLabel, IconButton, Menu, MenuItem, Paper, Popper, Table,
@@ -16,6 +16,14 @@ export interface DataTableColumn<T> {
 }
 
 const MIN_COLUMN_WIDTH = 60;
+
+// A high-cardinality column (e.g. a near-unique text field) can have thousands of distinct
+// values. Mounting a real Checkbox + FormControlLabel per value made the popover itself the
+// bottleneck — not the filtering logic — since React has to render/reconcile every one of them
+// on each interaction. Capping what's actually rendered keeps the popover responsive regardless
+// of how large the underlying column's distinct-value count is; "Select all" still applies to
+// the full search-narrowed set, not just the rendered slice.
+const MAX_RENDERED_FILTER_VALUES = 200;
 
 function distinctValues<T>(column: DataTableColumn<T>, rows: T[]): (string | number)[] {
   const seen = new Set<string | number>();
@@ -72,11 +80,30 @@ function DataTable<T>({
 
   const paged = sorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
+  // Distinct values only depend on rows/columns, not on the filter/search/sort/page state
+  // that changes on every keystroke or checkbox click — memoized so those interactions don't
+  // re-scan every filterable column's full row set on every render.
+  const distinctValuesByColumn = useMemo(() => {
+    const map = new Map<string, (string | number)[]>();
+    columns.forEach((column) => {
+      if (column.value) {
+        map.set(column.key, distinctValues(column, rows));
+      }
+    });
+    return map;
+  }, [columns, rows]);
+
+  function distinctValuesFor(column: DataTableColumn<T>): (string | number)[] {
+    return distinctValuesByColumn.get(column.key) ?? [];
+  }
+
   const activeFilterColumn = filterMenuColumnKey ? columns.find((c) => c.key === filterMenuColumnKey) : undefined;
-  const activeFilterValues = activeFilterColumn ? distinctValues(activeFilterColumn, rows) : [];
+  const activeFilterValues = activeFilterColumn ? distinctValuesFor(activeFilterColumn) : [];
   const visibleFilterValues = activeFilterValues.filter((v) =>
     String(v).toLowerCase().includes(filterSearchText.toLowerCase()),
   );
+  const renderedFilterValues = visibleFilterValues.slice(0, MAX_RENDERED_FILTER_VALUES);
+  const hiddenFilterValueCount = visibleFilterValues.length - renderedFilterValues.length;
   const allVisibleFilterValuesSelected = activeFilterColumn
     ? visibleFilterValues.length > 0 && visibleFilterValues.every((v) => isValueSelected(activeFilterColumn.key, v))
     : false;
@@ -94,7 +121,7 @@ function DataTable<T>({
     if (!selected) {
       return false;
     }
-    return selected.size < distinctValues(column, rows).length;
+    return selected.size < distinctValuesFor(column).length;
   }
 
   function openFilterMenu(column: DataTableColumn<T>, anchor: HTMLElement) {
@@ -110,7 +137,7 @@ function DataTable<T>({
 
   function toggleFilterValue(column: DataTableColumn<T>, value: string | number) {
     setColumnFilters((prev) => {
-      const allValues = distinctValues(column, rows);
+      const allValues = distinctValuesFor(column);
       const current = prev[column.key] ?? new Set(allValues);
       const next = new Set(current);
       if (next.has(value)) {
@@ -127,7 +154,7 @@ function DataTable<T>({
   // value hidden by that search untouched — same "Select All applies to what's visible" behaviour as Excel.
   function setFilterValues(column: DataTableColumn<T>, values: (string | number)[], selected: boolean) {
     setColumnFilters((prev) => {
-      const allValues = distinctValues(column, rows);
+      const allValues = distinctValuesFor(column);
       const current = prev[column.key] ?? new Set(allValues);
       const next = new Set(current);
       values.forEach((v) => (selected ? next.add(v) : next.delete(v)));
@@ -310,7 +337,7 @@ function DataTable<T>({
               label="Select all"
             />
             <div style={{ display: "flex", flexDirection: "column", maxHeight: 200, overflowY: "auto" }}>
-              {visibleFilterValues.map((value) => (
+              {renderedFilterValues.map((value) => (
                 <FormControlLabel
                   key={String(value)}
                   sx={{ display: "flex", width: "100%", m: 0 }}
@@ -324,6 +351,11 @@ function DataTable<T>({
                   label={String(value)}
                 />
               ))}
+              {hiddenFilterValueCount > 0 && (
+                <Typography variant="caption" sx={{ color: "text.secondary", mt: 0.5, px: 1 }}>
+                  Showing {renderedFilterValues.length} of {visibleFilterValues.length} — type to narrow further
+                </Typography>
+              )}
             </div>
           </Paper>
         </ClickAwayListener>

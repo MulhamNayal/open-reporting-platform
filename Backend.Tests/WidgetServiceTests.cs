@@ -1,4 +1,5 @@
 using Backend.Data;
+using Backend.Exceptions;
 using Backend.Models;
 using Backend.Services.Widgets;
 using Microsoft.EntityFrameworkCore;
@@ -49,7 +50,7 @@ public class WidgetServiceTests
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetWidgetsAsync(999));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.GetWidgetsAsync(999));
     }
 
     [Fact]
@@ -68,7 +69,7 @@ public class WidgetServiceTests
         var (service, _) = CreateService(Guid.NewGuid().ToString());
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest>());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveWidgetsAsync(999, request));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.SaveWidgetsAsync(999, request));
     }
 
     [Fact]

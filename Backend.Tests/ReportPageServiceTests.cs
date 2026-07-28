@@ -1,4 +1,5 @@
 using Backend.Data;
+using Backend.Exceptions;
 using Backend.Models;
 using Backend.Services.ReportPages;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +27,7 @@ public class ReportPageServiceTests
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetPagesAsync(999));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.GetPagesAsync(999));
     }
 
     [Fact]

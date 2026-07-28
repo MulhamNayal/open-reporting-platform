@@ -173,7 +173,7 @@ public class SqlServerProvider : IDataSourceProvider
             : $"SELECT TOP ({rowLimit}) * FROM ({trimmed}) AS x";
     }
 
-    public async Task<IReadOnlyList<ColumnDescriptor>> DiscoverRawSqlColumnsAsync(DataSourceConnection connection, string sqlText, CancellationToken cancellationToken)
+    public virtual async Task<IReadOnlyList<ColumnDescriptor>> DiscoverRawSqlColumnsAsync(DataSourceConnection connection, string sqlText, CancellationToken cancellationToken)
     {
         var connectionString = BuildConnectionString(connection);
         await using var sqlConnection = new SqlConnection(connectionString);
@@ -270,12 +270,26 @@ public class SqlServerProvider : IDataSourceProvider
             .Select(p => new SqlParameter($"@{p.Name}", p.Value))
             .ToList();
 
+        var quotedRoutineName = QuoteRoutineName(routineName);
         var parameterNames = string.Join(", ", sqlParameters.Select(p => p.ParameterName));
         var sql = parameterNames.Length > 0
-            ? $"EXEC [{routineName}] {parameterNames}"
-            : $"EXEC [{routineName}]";
+            ? $"EXEC {quotedRoutineName} {parameterNames}"
+            : $"EXEC {quotedRoutineName}";
 
         return (sql, sqlParameters);
+    }
+
+    // A schema-qualified name (e.g. "PowerBI.EXSIMConversion") must bracket each part
+    // separately ("[PowerBI].[EXSIMConversion]") — bracketing the whole string as one unit
+    // ("[PowerBI.EXSIMConversion]") makes SQL Server treat the dot as part of a single object
+    // name in the default schema, which doesn't exist, and fails with a misleading
+    // "could not find stored procedure" error even though the real procedure exists.
+    // A part the caller already bracketed (e.g. pasted from SSMS as "[PowerBI].[EXSIMConversion]")
+    // is left as-is rather than double-bracketed into invalid syntax.
+    private static string QuoteRoutineName(string routineName)
+    {
+        return string.Join(".", routineName.Split('.').Select(part =>
+            part.StartsWith('[') && part.EndsWith(']') ? part : $"[{part}]"));
     }
 
     public async Task<IReadOnlyList<ColumnDescriptor>> DiscoverStoredProcedureColumnsAsync(DataSourceConnection connection, string routineName, IReadOnlyList<StoredProcedureParameter> parameters, CancellationToken cancellationToken)
