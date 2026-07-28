@@ -8,6 +8,7 @@ import { createReport, getReports, setReportDataset, type Report } from "../api/
 import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { executeDataset, type QueryResult } from "../api/datasets";
 import QueryDefinitionForm, { type QueryDefinitionValue } from "./QueryDefinitionForm";
+import "./reportsPage.css";
 
 function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -86,15 +87,17 @@ function ReportsPage() {
   ];
 
   return (
-    <Container maxWidth={false} sx={{ py: 4, px: 4 }}>
+    <Container maxWidth={false} sx={{ py: 4, px: 4 }} className="reports-page">
       <Typography variant="h4" gutterBottom>Reports</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", gap: 2, mb: 3 }}>
+      <Box component="form" onSubmit={handleSubmit} className="create-form" sx={{ display: "flex", gap: 2, mb: 3 }}>
         <TextField label="Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
         <TextField label="Description" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
         <Button type="submit" variant="contained">Add</Button>
       </Box>
-      <DataTable columns={reportColumns} rows={reports} rowKey={(r) => r.id} />
+      <div className="list-panel">
+        <DataTable columns={reportColumns} rows={reports} rowKey={(r) => r.id} />
+      </div>
 
       <Dialog open={pendingReport !== null} maxWidth="sm" fullWidth onClose={() => {}}>
         <DialogTitle>Define this report's query</DialogTitle>

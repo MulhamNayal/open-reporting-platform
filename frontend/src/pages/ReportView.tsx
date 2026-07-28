@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Alert, Box, Typography } from "@mui/material";
+import { Alert, Box } from "@mui/material";
 import { getWidgets, type WidgetSummary } from "../api/widgets";
 import WidgetRenderer from "../widgets/WidgetRenderer";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
@@ -46,7 +46,7 @@ function ReportViewInner() {
   }
 
   if (queryLoading) {
-    return <Box sx={{ p: 4 }}><Typography>Loading…</Typography></Box>;
+    return <div className="page-loading">Loading…</div>;
   }
 
   return (

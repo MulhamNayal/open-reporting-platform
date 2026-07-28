@@ -226,7 +226,7 @@ function ReportCanvasInner() {
   }
 
   if (queryLoading) {
-    return <div>Loading…</div>;
+    return <div className="page-loading">Loading…</div>;
   }
 
   return (

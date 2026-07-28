@@ -1,0 +1,24 @@
+.data-sources-page {
+  color: var(--text);
+}
+.data-sources-page h4 {
+  font-weight: 700;
+}
+.data-sources-page .create-form {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-sm);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.data-sources-page .list-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-sm);
+}
+.data-sources-page .list-panel th {
+  color: var(--muted);
+  font-weight: 600;
+}

@@ -813,3 +813,14 @@
   background: var(--groove);
   color: var(--text);
 }
+
+.page-loading {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.875rem;
+  background: var(--canvas);
+}

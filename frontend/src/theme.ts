@@ -73,6 +73,14 @@ export function buildTheme(mode: ThemeMode): Theme {
           root: { border: `1px solid ${colors.paperBorder}` },
         },
       },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          // Outlined TextField/Select boxes have a transparent background by default, so
+          // whatever page background sits behind them (this app's grey --canvas) shows through
+          // instead of a clean fill. This one override fixes every input/select app-wide.
+          root: { background: colors.backgroundPaper },
+        },
+      },
       MuiTableCell: {
         styleOverrides: {
           root: { padding: "6px 9px", fontSize: "0.71875rem", borderBottom: `1px solid ${colors.tableCellBorder}` },

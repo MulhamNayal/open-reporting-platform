@@ -23,6 +23,7 @@ import {
   type DataSourceConnectionSummary,
   type DataSourceType,
 } from "../api/datasources";
+import "./dataSourcesPage.css";
 
 function DataSourcesPage() {
   const [connections, setConnections] = useState<DataSourceConnectionSummary[]>([]);
@@ -163,10 +164,10 @@ function DataSourcesPage() {
   ];
 
   return (
-    <Container maxWidth={false} sx={{ py: 4, px: 4 }}>
+    <Container maxWidth={false} sx={{ py: 4, px: 4 }} className="data-sources-page">
       <Typography variant="h4" gutterBottom>Connections</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 3 }}>
+      <Box component="form" onSubmit={handleSubmit} className="create-form" sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 3 }}>
         <TextField label="Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
         <TextField
           select
@@ -216,7 +217,9 @@ function DataSourcesPage() {
         )}
         <Button type="submit" variant="contained">Add</Button>
       </Box>
-      <DataTable columns={connectionColumns} rows={connections} rowKey={(c) => c.id} />
+      <div className="list-panel">
+        <DataTable columns={connectionColumns} rows={connections} rowKey={(c) => c.id} />
+      </div>
 
       <Dialog open={editingConnection !== null} maxWidth="sm" fullWidth onClose={closeEdit}>
         <DialogTitle>Edit connection</DialogTitle>
