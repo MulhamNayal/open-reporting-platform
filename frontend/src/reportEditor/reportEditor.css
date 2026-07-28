@@ -249,6 +249,28 @@
   width: 256px;
   flex: 0 0 256px;
 }
+.pane-divider {
+  width: 6px;
+  flex: 0 0 6px;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+}
+.pane-divider::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 1px;
+  background: var(--line);
+}
+.pane-divider:hover::after,
+.pane-divider:active::after {
+  left: 0;
+  width: 2px;
+  background: var(--accent);
+}
 .viz-picker {
   padding: 10px 10px 12px;
   border-bottom: 1px solid var(--line);

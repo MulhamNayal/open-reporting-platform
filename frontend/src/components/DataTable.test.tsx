@@ -293,6 +293,33 @@ describe("DataTable", () => {
     expect(nameHeaderCell).toHaveStyle({ width: "60px" });
   });
 
+  it("truncates a long header label with ellipsis and a title tooltip by default", () => {
+    const longColumns: DataTableColumn<Row>[] = [
+      { key: "id", label: "StagingSubsaleInvoiceCustomerIdentifierColumn", value: (r) => r.id, render: (r) => r.id },
+    ];
+    render(<DataTable columns={longColumns} rows={rows} rowKey={(r) => r.id} />);
+
+    const label = screen.getByTitle("StagingSubsaleInvoiceCustomerIdentifierColumn");
+    expect(label).toHaveTextContent("StagingSubsaleInvoiceCustomerIdentifierColumn");
+    expect(label).toHaveStyle({ maxWidth: "200px", textOverflow: "ellipsis", whiteSpace: "nowrap" });
+  });
+
+  it("widens the header label's truncation width to match a manually resized column", () => {
+    const longColumns: DataTableColumn<Row>[] = [
+      { key: "id", label: "StagingSubsaleInvoiceCustomerIdentifierColumn", value: (r) => r.id, render: (r) => r.id },
+    ];
+    render(<DataTable columns={longColumns} rows={rows} rowKey={(r) => r.id} />);
+
+    const handle = screen.getByRole("separator", { name: "Resize StagingSubsaleInvoiceCustomerIdentifierColumn column" });
+    fireEvent.mouseDown(handle, { clientX: 100 });
+    fireEvent.mouseMove(window, { clientX: 400 });
+    fireEvent.mouseUp(window);
+
+    // Column resized to 300px (see the plain resize test above for how jsdom's zeroed
+    // getBoundingClientRect makes the drag delta the whole width) minus the icon allowance.
+    expect(screen.getByTitle("StagingSubsaleInvoiceCustomerIdentifierColumn")).toHaveStyle({ maxWidth: "266px" });
+  });
+
   it("a column marked numeric right-aligns its header and body cells", () => {
     const numericColumns: DataTableColumn<Row>[] = [
       columns[0],

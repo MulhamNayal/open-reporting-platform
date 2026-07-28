@@ -17,6 +17,14 @@ export interface DataTableColumn<T> {
 
 const MIN_COLUMN_WIDTH = 60;
 
+// Header text has no natural bound until a column is manually resized — a long column name
+// (or a narrowed column) previously just got hard-clipped by the table's own overflow with no
+// visual indication there was more, or forced the whole table wider until it overflowed its
+// container. Ellipsis + a title tooltip degrades gracefully either way. Leaves room for the
+// filter icon button next to it.
+const DEFAULT_HEADER_LABEL_MAX_WIDTH = 200;
+const HEADER_ICON_ALLOWANCE = 34;
+
 // A high-cardinality column (e.g. a near-unique text field) can have thousands of distinct
 // values. Mounting a real Checkbox + FormControlLabel per value made the popover itself the
 // bottleneck — not the filtering logic — since React has to render/reconcile every one of them
@@ -239,10 +247,34 @@ function DataTable<T>({
                       direction={sortKey === c.key ? sortDirection : "asc"}
                       onClick={() => handleHeaderClick(c)}
                     >
-                      {c.label}
+                      <span
+                        title={c.label}
+                        style={{
+                          display: "inline-block",
+                          maxWidth: columnWidths[c.key] ? columnWidths[c.key] - HEADER_ICON_ALLOWANCE : DEFAULT_HEADER_LABEL_MAX_WIDTH,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          verticalAlign: "bottom",
+                        }}
+                      >
+                        {c.label}
+                      </span>
                     </TableSortLabel>
                   ) : (
-                    c.label
+                    <span
+                      title={c.label}
+                      style={{
+                        display: "inline-block",
+                        maxWidth: columnWidths[c.key] ? columnWidths[c.key] - HEADER_ICON_ALLOWANCE : DEFAULT_HEADER_LABEL_MAX_WIDTH,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        verticalAlign: "bottom",
+                      }}
+                    >
+                      {c.label}
+                    </span>
                   )}
                   {c.value && (
                     <IconButton

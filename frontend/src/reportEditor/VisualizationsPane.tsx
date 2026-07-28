@@ -6,12 +6,13 @@ import { VIZ_ICON_PATHS, VIZ_LABELS, VIZ_PICKER_ORDER } from "./vizIcons";
 import "./reportEditor.css";
 
 function VisualizationsPane({
-  selectedWidget, onAddWidget, onChangeType, children,
+  selectedWidget, onAddWidget, onChangeType, children, width,
 }: {
   selectedWidget: WidgetDraft | null;
   onAddWidget: (type: WidgetType) => void;
   onChangeType: (type: WidgetType) => void;
   children: (tab: "build" | "format") => ReactNode;
+  width?: number;
 }) {
   const [tab, setTab] = useState<"build" | "format">("build");
 
@@ -24,7 +25,7 @@ function VisualizationsPane({
   }
 
   return (
-    <div className="pane pane-viz">
+    <div className="pane pane-viz" style={width ? { width, flex: `0 0 ${width}px` } : undefined}>
       <div className="pane-head">Visualizations</div>
       <div className="viz-picker">
         <div className="viz-grid">

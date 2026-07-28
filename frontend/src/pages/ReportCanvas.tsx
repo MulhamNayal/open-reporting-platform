@@ -12,6 +12,7 @@ import WidgetRenderer from "../widgets/WidgetRenderer";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
 import Ribbon from "../reportEditor/Ribbon";
 import VisualizationsPane from "../reportEditor/VisualizationsPane";
+import PaneDivider from "../reportEditor/PaneDivider";
 import BuildTab from "../reportEditor/BuildTab";
 import FormatTab from "../reportEditor/FormatTab";
 import DataPane from "../reportEditor/DataPane";
@@ -49,6 +50,7 @@ function ReportCanvasInner() {
   const [railView, setRailView] = useState<"Report" | "Data table">("Report");
   const [widgetsLoaded, setWidgetsLoaded] = useState(false);
   const [crossFilter, setCrossFilter] = useState<{ field: string; value: string } | null>(null);
+  const [vizPaneWidth, setVizPaneWidth] = useState(256);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   // Seed the ribbon title from the fetched report name once. Guarded so an
@@ -314,7 +316,9 @@ function ReportCanvasInner() {
             </div>
           )}
         </div>
+        <PaneDivider width={vizPaneWidth} onWidthChange={setVizPaneWidth} label="Resize Visualizations panel" />
         <VisualizationsPane
+          width={vizPaneWidth}
           selectedWidget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
           onAddWidget={(type) => addWidget(type)}
           onChangeType={(type) => {
