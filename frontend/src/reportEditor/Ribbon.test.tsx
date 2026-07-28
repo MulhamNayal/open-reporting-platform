@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AppearanceProvider } from "../appearance/AppearanceContext";
 import Ribbon from "./Ribbon";
 
 // This project doesn't enable Vitest globals, so RTL's automatic cleanup doesn't run.
@@ -10,16 +11,18 @@ describe("Ribbon", () => {
   it("calls onRename when File > Rename report is chosen", async () => {
     const onRename = vi.fn();
     render(
-      <Ribbon
-        reportName="My Report"
-        onRename={onRename}
-        onChangeDataSource={vi.fn()}
-        onBackToReports={vi.fn()}
-        onAddText={vi.fn()}
-        onToggleFilters={vi.fn()}
-        onRefresh={vi.fn()}
-        onSave={vi.fn()}
-      />,
+      <AppearanceProvider>
+        <Ribbon
+          reportName="My Report"
+          onRename={onRename}
+          onChangeDataSource={vi.fn()}
+          onBackToReports={vi.fn()}
+          onAddText={vi.fn()}
+          onToggleFilters={vi.fn()}
+          onRefresh={vi.fn()}
+          onSave={vi.fn()}
+        />
+      </AppearanceProvider>,
     );
 
     await userEvent.click(screen.getByRole("button", { name: "File" }));
@@ -31,16 +34,18 @@ describe("Ribbon", () => {
   it("calls onSave when the primary Save button is clicked", async () => {
     const onSave = vi.fn();
     render(
-      <Ribbon
-        reportName="My Report"
-        onRename={vi.fn()}
-        onChangeDataSource={vi.fn()}
-        onBackToReports={vi.fn()}
-        onAddText={vi.fn()}
-        onToggleFilters={vi.fn()}
-        onRefresh={vi.fn()}
-        onSave={onSave}
-      />,
+      <AppearanceProvider>
+        <Ribbon
+          reportName="My Report"
+          onRename={vi.fn()}
+          onChangeDataSource={vi.fn()}
+          onBackToReports={vi.fn()}
+          onAddText={vi.fn()}
+          onToggleFilters={vi.fn()}
+          onRefresh={vi.fn()}
+          onSave={onSave}
+        />
+      </AppearanceProvider>,
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -50,17 +55,19 @@ describe("Ribbon", () => {
 
   it("readOnly hides the File/Insert/View menus and the Save button", () => {
     render(
-      <Ribbon
-        reportName="My Report"
-        onRename={vi.fn()}
-        onChangeDataSource={vi.fn()}
-        onBackToReports={vi.fn()}
-        onAddText={vi.fn()}
-        onToggleFilters={vi.fn()}
-        onRefresh={vi.fn()}
-        onSave={vi.fn()}
-        readOnly
-      />,
+      <AppearanceProvider>
+        <Ribbon
+          reportName="My Report"
+          onRename={vi.fn()}
+          onChangeDataSource={vi.fn()}
+          onBackToReports={vi.fn()}
+          onAddText={vi.fn()}
+          onToggleFilters={vi.fn()}
+          onRefresh={vi.fn()}
+          onSave={vi.fn()}
+          readOnly
+        />
+      </AppearanceProvider>,
     );
 
     expect(screen.queryByRole("button", { name: "File" })).not.toBeInTheDocument();
@@ -72,17 +79,19 @@ describe("Ribbon", () => {
   it("readOnly still shows the report name and a working Refresh button", async () => {
     const onRefresh = vi.fn();
     render(
-      <Ribbon
-        reportName="My Report"
-        onRename={vi.fn()}
-        onChangeDataSource={vi.fn()}
-        onBackToReports={vi.fn()}
-        onAddText={vi.fn()}
-        onToggleFilters={vi.fn()}
-        onRefresh={onRefresh}
-        onSave={vi.fn()}
-        readOnly
-      />,
+      <AppearanceProvider>
+        <Ribbon
+          reportName="My Report"
+          onRename={vi.fn()}
+          onChangeDataSource={vi.fn()}
+          onBackToReports={vi.fn()}
+          onAddText={vi.fn()}
+          onToggleFilters={vi.fn()}
+          onRefresh={onRefresh}
+          onSave={vi.fn()}
+          readOnly
+        />
+      </AppearanceProvider>,
     );
 
     expect(screen.getByText("My Report")).toBeInTheDocument();

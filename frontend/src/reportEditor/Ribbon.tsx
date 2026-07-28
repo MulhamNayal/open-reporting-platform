@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Menu, MenuItem } from "@mui/material";
+import AppearanceMenu from "../appearance/AppearanceMenu";
 import "./reportEditor.css";
 
 function Ribbon({
@@ -46,6 +47,7 @@ function Ribbon({
       )}
       <div className="spacer" />
       <div className="tools">
+        <AppearanceMenu />
         <button className="iconbtn" title="Refresh data" onClick={onRefresh}>⟳</button>
         {!readOnly && (
           <>

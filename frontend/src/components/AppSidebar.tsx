@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import AppearanceMenu from "../appearance/AppearanceMenu";
 import "./appSidebar.css";
 
 const ITEMS = [
@@ -22,6 +23,10 @@ function AppSidebar() {
           </Link>
         );
       })}
+      <div className="app-nav-spacer" />
+      <div className="app-nav-appearance">
+        <AppearanceMenu />
+      </div>
     </nav>
   );
 }
