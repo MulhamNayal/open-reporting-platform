@@ -77,21 +77,34 @@ describe("FormatTab", () => {
     }));
   });
 
-  it("shows a 'Value formats' section listing each value field, defaulting to Auto", () => {
+  it("shows a 'Value formats' section with each field collapsed, summarizing its current format", () => {
     render(<FormatTab widget={makeWidget()} onChange={vi.fn()} />);
 
     expect(screen.getByText("Revenue")).toBeInTheDocument();
-    expect(screen.getByLabelText("Format")).toHaveValue("auto");
+    const row = screen.getByRole("button", { name: "Revenue format, currently Auto (text)" });
+    expect(row).toHaveAttribute("aria-expanded", "false");
+    // Collapsed by default — the actual Format control isn't mounted until expanded.
+    expect(screen.queryByLabelText("Format")).not.toBeInTheDocument();
   });
 
-  it("shows the native type inferred by Auto when the column's type is known", () => {
+  it("shows the native type inferred by Auto in the collapsed row's summary", () => {
     render(<FormatTab widget={makeWidget()} onChange={vi.fn()} columns={[{ name: "Revenue", nativeType: "decimal" }]} />);
 
-    expect(screen.getByRole("option", { name: "Auto (decimal)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revenue format, currently Auto (decimal)" })).toBeInTheDocument();
+  });
+
+  it("clicking a field's row expands it, revealing the Format control", async () => {
+    render(<ControlledFormatTab initialWidget={makeWidget()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Revenue format/ }));
+
+    expect(screen.getByRole("button", { name: /Revenue format/ })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByLabelText("Format")).toHaveValue("auto");
   });
 
   it("selecting Decimal reveals decimal-specific controls and updates fieldFormats", async () => {
     render(<ControlledFormatTab initialWidget={makeWidget()} />);
+    await userEvent.click(screen.getByRole("button", { name: /Revenue format/ }));
 
     await userEvent.selectOptions(screen.getByLabelText("Format"), "decimal");
 
@@ -104,6 +117,7 @@ describe("FormatTab", () => {
     const widget = makeWidget();
     widget.binding!.formatOptions = { ...widget.binding!.formatOptions, fieldFormats: { Revenue: { type: "decimal" } } };
     render(<ControlledFormatTab initialWidget={widget} />);
+    await userEvent.click(screen.getByRole("button", { name: /Revenue format/ }));
 
     await userEvent.clear(screen.getByLabelText("Decimal places"));
     await userEvent.type(screen.getByLabelText("Decimal places"), "4");
@@ -113,6 +127,7 @@ describe("FormatTab", () => {
 
   it("selecting Date reveals the date-format dropdown", async () => {
     render(<ControlledFormatTab initialWidget={makeWidget()} />);
+    await userEvent.click(screen.getByRole("button", { name: /Revenue format/ }));
 
     await userEvent.selectOptions(screen.getByLabelText("Format"), "date");
 
@@ -121,9 +136,24 @@ describe("FormatTab", () => {
 
   it("selecting Boolean reveals the boolean-style dropdown", async () => {
     render(<ControlledFormatTab initialWidget={makeWidget()} />);
+    await userEvent.click(screen.getByRole("button", { name: /Revenue format/ }));
 
     await userEvent.selectOptions(screen.getByLabelText("Format"), "boolean");
 
     expect(screen.getByLabelText("Style")).toBeInTheDocument();
+  });
+
+  it("collapsing a field's row hides its controls again without discarding the saved format", async () => {
+    const widget = makeWidget();
+    widget.binding!.formatOptions = { ...widget.binding!.formatOptions, fieldFormats: { Revenue: { type: "decimal", decimalPlaces: 3 } } };
+    render(<ControlledFormatTab initialWidget={widget} />);
+    const row = () => screen.getByRole("button", { name: /Revenue format/ });
+
+    await userEvent.click(row());
+    expect(screen.getByLabelText("Decimal places")).toHaveValue(3);
+
+    await userEvent.click(row());
+    expect(screen.queryByLabelText("Decimal places")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revenue format, currently Decimal" })).toBeInTheDocument();
   });
 });

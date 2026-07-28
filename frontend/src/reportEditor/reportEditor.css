@@ -497,6 +497,71 @@
   font-family: inherit;
   font-size: 12.5px;
 }
+.fbtn {
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.fbtn:hover {
+  background: var(--groove);
+}
+.facc {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+.facc:last-child {
+  margin-bottom: 0;
+}
+.facc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  cursor: pointer;
+  background: var(--panel);
+  user-select: none;
+}
+.facc-row:hover {
+  background: var(--panel-2);
+}
+.facc-row .fname {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.facc-row .cur {
+  font-size: 11.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chev {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s ease;
+  color: var(--faint);
+  flex: none;
+}
+.facc.open .chev {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+.facc-body {
+  padding: 10px;
+  background: var(--panel-2);
+  border-top: 1px solid var(--line);
+}
+.facc.open .facc-row {
+  background: var(--accent-soft);
+}
 .swatches {
   display: flex;
   gap: 6px;

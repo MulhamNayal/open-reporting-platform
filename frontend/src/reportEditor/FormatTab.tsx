@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ColumnDescriptor } from "../api/datasets";
 import type { BooleanStyle, DatePreset, FieldFormat, FieldFormatType } from "../api/widgets";
 import { DATE_PRESET_EXAMPLES, DEFAULT_FIELD_FORMAT, inferFormatType } from "../widgets/fieldFormat";
@@ -21,6 +22,15 @@ const FORMAT_TYPE_OPTIONS: { value: FieldFormatType; label: string }[] = [
   { value: "text", label: "Text" },
 ];
 
+// The collapsed row's summary label — e.g. "Decimal" or "Auto (date)" — so a wide table's
+// fields can be scanned at a glance without expanding each one.
+function formatSummary(current: FieldFormat, nativeType: string | undefined): string {
+  if (current.type === "auto") {
+    return `Auto (${inferFormatType(nativeType)})`;
+  }
+  return FORMAT_TYPE_OPTIONS.find((opt) => opt.value === current.type)?.label ?? current.type;
+}
+
 function nextSortDirection(current: "asc" | "desc" | null): "asc" | "desc" | null {
   if (current === null) {
     return "asc";
@@ -38,6 +48,10 @@ function FormatTab({
   onChange: (binding: WidgetBindingDraft) => void;
   columns?: ColumnDescriptor[];
 }) {
+  // Purely local UI state — which fields' controls are expanded in the Value formats
+  // accordion. Not persisted; every field starts collapsed.
+  const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
+
   if (!widget || !widget.binding) {
     return <div className="no-visual">Select a visual to format it.</div>;
   }
@@ -48,6 +62,18 @@ function FormatTab({
 
   function update(partial: Partial<typeof options>) {
     onChange({ ...binding, formatOptions: { ...options, ...partial } });
+  }
+
+  function toggleExpanded(field: string) {
+    setExpandedFields((prev) => {
+      const next = new Set(prev);
+      if (next.has(field)) {
+        next.delete(field);
+      } else {
+        next.add(field);
+      }
+      return next;
+    });
   }
 
   function updateFieldFormat(field: string, patch: Partial<FieldFormat>) {
@@ -105,7 +131,7 @@ function FormatTab({
         <div className="fbody">
           <div className="frow">
             <label>Sort ({options.sortDirection ?? "none"})</label>
-            <button type="button" aria-label="Sort direction" onClick={() => update({ sortDirection: nextSortDirection(options.sortDirection) })}>
+            <button type="button" className="fbtn" aria-label="Sort direction" onClick={() => update({ sortDirection: nextSortDirection(options.sortDirection) })}>
               Sort
             </button>
           </div>
@@ -123,10 +149,29 @@ function FormatTab({
             {binding.valueFields.map((field) => {
               const nativeType = columns.find((c) => c.name === field)?.nativeType;
               const current: FieldFormat = { ...DEFAULT_FIELD_FORMAT, ...fieldFormats[field] };
+              const isOpen = expandedFields.has(field);
 
               return (
-                <div key={field} style={{ display: "flex", flexDirection: "column", gap: 6, borderBottom: "1px solid #eef0f4", paddingBottom: 8, marginBottom: 8 }}>
-                  <label style={{ fontWeight: 600 }}>{field}</label>
+                <div key={field} className={"facc" + (isOpen ? " open" : "")}>
+                  <div
+                    className="facc-row"
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isOpen}
+                    aria-label={`${field} format, currently ${formatSummary(current, nativeType)}`}
+                    onClick={() => toggleExpanded(field)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleExpanded(field); } }}
+                  >
+                    <span className="fname">{field}</span>
+                    <span className="cur">
+                      {formatSummary(current, nativeType)}
+                      <svg className="chev" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                  </div>
+                  {isOpen && (
+                  <div className="facc-body">
                   <div className="frow">
                     <label htmlFor={`format-type-${field}`}>Format</label>
                     <select
@@ -223,6 +268,8 @@ function FormatTab({
                         <option value="checkmark">✓ / ✗</option>
                       </select>
                     </div>
+                  )}
+                  </div>
                   )}
                 </div>
               );
