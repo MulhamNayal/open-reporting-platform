@@ -221,6 +221,45 @@ describe("FormatTab", () => {
     expect(screen.getByLabelText("Row height (px)")).toHaveValue(40);
   });
 
+  it("falls back to every available column for Value formats when a Table has no explicit value fields", () => {
+    const widget = makeWidget("Table");
+    widget.binding!.valueFields = [];
+    const columns: ColumnDescriptor[] = [
+      { name: "DocAmount", nativeType: "decimal" },
+      { name: "DocDate", nativeType: "datetime" },
+    ];
+
+    render(<FormatTab widget={widget} onChange={vi.fn()} columns={columns} />);
+
+    expect(screen.getByText("Value formats")).toBeInTheDocument();
+    expect(screen.getByText("DocAmount")).toBeInTheDocument();
+    expect(screen.getByText("DocDate")).toBeInTheDocument();
+  });
+
+  it("does not fall back to every column for a non-Table widget with no value fields", () => {
+    const widget = makeWidget("Bar");
+    widget.binding!.valueFields = [];
+    const columns: ColumnDescriptor[] = [{ name: "DocAmount", nativeType: "decimal" }];
+
+    render(<FormatTab widget={widget} onChange={vi.fn()} columns={columns} />);
+
+    expect(screen.queryByText("Value formats")).not.toBeInTheDocument();
+  });
+
+  it("uses the explicit value fields for a Table instead of falling back, once fields are picked", () => {
+    const widget = makeWidget("Table");
+    widget.binding!.valueFields = ["DocAmount"];
+    const columns: ColumnDescriptor[] = [
+      { name: "DocAmount", nativeType: "decimal" },
+      { name: "DocDate", nativeType: "datetime" },
+    ];
+
+    render(<FormatTab widget={widget} onChange={vi.fn()} columns={columns} />);
+
+    expect(screen.getByText("DocAmount")).toBeInTheDocument();
+    expect(screen.queryByText("DocDate")).not.toBeInTheDocument();
+  });
+
   it("shows a Column width input inside a field's expanded row only for a Table widget", async () => {
     render(<ControlledFormatTab initialWidget={makeWidget("Table")} />);
 

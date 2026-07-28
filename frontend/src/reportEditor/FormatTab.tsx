@@ -60,6 +60,16 @@ function FormatTab({
   const options = binding.formatOptions;
   const fieldFormats = options.fieldFormats ?? {};
 
+  // A Table with no explicit value fields is a valid, complete binding meaning "show every
+  // column" (see ReportCanvas's addWidget) — its Value formats section needs to fall back to
+  // every available column too, or every per-field control (display name, column width, decimal
+  // places, ...) stays invisible for the most common Table state. Other widget types don't have
+  // this "empty means everything" convention — an empty valueFields there means "not configured
+  // yet", so they keep showing nothing until fields are actually picked.
+  const formatFields = widget.type === "Table" && binding.valueFields.length === 0
+    ? columns.map((c) => c.name)
+    : binding.valueFields;
+
   function update(partial: Partial<typeof options>) {
     onChange({ ...binding, formatOptions: { ...options, ...partial } });
   }
@@ -163,11 +173,11 @@ function FormatTab({
         </details>
       )}
 
-      {binding.valueFields.length > 0 && (
+      {formatFields.length > 0 && (
         <details className="fgroup" open>
           <summary>Value formats</summary>
           <div className="fbody">
-            {binding.valueFields.map((field) => {
+            {formatFields.map((field) => {
               const nativeType = columns.find((c) => c.name === field)?.nativeType;
               const current: FieldFormat = { ...DEFAULT_FIELD_FORMAT, ...fieldFormats[field] };
               const isOpen = expandedFields.has(field);
