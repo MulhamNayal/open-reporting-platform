@@ -12,6 +12,7 @@ public record SaveWidgetRequest(
     int H,
     string Title,
     string? Content,
+    int? DatasetId,
     SaveWidgetBindingRequest? Binding);
 
 public record SaveWidgetBindingRequest(string? CategoryField, IReadOnlyList<string> ValueFields, string? FormatOptions);

@@ -77,7 +77,7 @@ public class WidgetServiceTests
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
         var badWidget = new SaveWidgetRequest(
-            WidgetType.Kpi, 0, 0, 4, 3, "Bad Kpi", null,
+            WidgetType.Kpi, 0, 0, 4, 3, "Bad Kpi", null, null,
             new SaveWidgetBindingRequest("Region", new List<string> { "Revenue" }, null));
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { badWidget });
 
@@ -88,10 +88,10 @@ public class WidgetServiceTests
     public async Task SaveWidgetsAsync_MixedBatchWithInvalidLast_ThrowsAndPersistsNothing()
     {
         var (service, context) = CreateService(Guid.NewGuid().ToString());
-        var validWidgetOne = new SaveWidgetRequest(WidgetType.Text, 0, 0, 4, 2, "Valid Widget", "content", null);
-        var validWidgetTwo = new SaveWidgetRequest(WidgetType.Text, 4, 0, 4, 2, "Another Valid Widget", "content", null);
+        var validWidgetOne = new SaveWidgetRequest(WidgetType.Text, 0, 0, 4, 2, "Valid Widget", "content", null, null);
+        var validWidgetTwo = new SaveWidgetRequest(WidgetType.Text, 4, 0, 4, 2, "Another Valid Widget", "content", null, null);
         var badWidget = new SaveWidgetRequest(
-            WidgetType.Kpi, 0, 2, 4, 3, "Bad Kpi", null,
+            WidgetType.Kpi, 0, 2, 4, 3, "Bad Kpi", null, null,
             new SaveWidgetBindingRequest("Region", new List<string> { "Revenue" }, null));
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { validWidgetOne, validWidgetTwo, badWidget });
 
@@ -106,7 +106,7 @@ public class WidgetServiceTests
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
         var barWidget = new SaveWidgetRequest(
-            WidgetType.Bar, 0, 0, 4, 3, "Revenue by Month", null,
+            WidgetType.Bar, 0, 0, 4, 3, "Revenue by Month", null, null,
             new SaveWidgetBindingRequest("Month", new List<string> { "Revenue" }, null));
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { barWidget });
 
@@ -126,7 +126,7 @@ public class WidgetServiceTests
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
         var barWidget = new SaveWidgetRequest(
-            WidgetType.Bar, 0, 0, 4, 3, "Revenue by Month", null,
+            WidgetType.Bar, 0, 0, 4, 3, "Revenue by Month", null, null,
             new SaveWidgetBindingRequest("Month", new List<string> { "Revenue" }, "{\"showLegend\":false}"));
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { barWidget });
 
@@ -140,7 +140,7 @@ public class WidgetServiceTests
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
         var textWidget = new SaveWidgetRequest(
-            WidgetType.Text, 0, 0, 4, 2, "A note", "Hello",
+            WidgetType.Text, 0, 0, 4, 2, "A note", "Hello", null,
             new SaveWidgetBindingRequest(null, new List<string> { "Anything" }, null));
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { textWidget });
 
@@ -152,7 +152,7 @@ public class WidgetServiceTests
     {
         var (service, _) = CreateServiceWithValidator(Guid.NewGuid().ToString(), new AlwaysValidBindingValidator());
         var textWidget = new SaveWidgetRequest(
-            WidgetType.Text, 0, 0, 4, 2, "A note", "Hello",
+            WidgetType.Text, 0, 0, 4, 2, "A note", "Hello", null,
             new SaveWidgetBindingRequest(null, new List<string> { "Anything" }, null));
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { textWidget });
 
@@ -168,14 +168,14 @@ public class WidgetServiceTests
         var (service, context) = CreateService(Guid.NewGuid().ToString());
         var firstRequest = new SaveWidgetsRequest(new List<SaveWidgetRequest>
         {
-            new(WidgetType.Kpi, 0, 0, 2, 2, "Widget A", null, new SaveWidgetBindingRequest(null, new List<string> { "Revenue" }, null)),
-            new(WidgetType.Text, 2, 0, 2, 2, "Widget B", "note", null)
+            new(WidgetType.Kpi, 0, 0, 2, 2, "Widget A", null, null, new SaveWidgetBindingRequest(null, new List<string> { "Revenue" }, null)),
+            new(WidgetType.Text, 2, 0, 2, 2, "Widget B", "note", null, null)
         });
         await service.SaveWidgetsAsync(1, firstRequest);
 
         var secondRequest = new SaveWidgetsRequest(new List<SaveWidgetRequest>
         {
-            new(WidgetType.Text, 0, 0, 4, 2, "Only Widget", "replaced everything", null)
+            new(WidgetType.Text, 0, 0, 4, 2, "Only Widget", "replaced everything", null, null)
         });
         var saved = await service.SaveWidgetsAsync(1, secondRequest);
 
@@ -185,12 +185,106 @@ public class WidgetServiceTests
         Assert.Equal(0, await context.WidgetBindings.CountAsync());
     }
 
+    private static Dataset SeedDataset(ReportingDbContext context, int id, string name)
+    {
+        var dataset = new Dataset
+        {
+            Id = id,
+            DataSourceConnectionId = 1,
+            Name = name,
+            Mode = DatasetMode.RawSql,
+            Definition = "{\"sqlText\":\"select 1\"}",
+            IsSaved = true,
+            Columns = "[]",
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+        context.Datasets.Add(dataset);
+        context.SaveChanges();
+        return dataset;
+    }
+
+    [Fact]
+    public async Task SaveWidgetsAsync_WidgetWithDatasetId_PersistsAndReturnsIt()
+    {
+        var (service, context) = CreateService(Guid.NewGuid().ToString());
+        SeedDataset(context, 42, "Sales by month");
+        var widget = new SaveWidgetRequest(
+            WidgetType.Bar, 0, 0, 4, 3, "Revenue by Month", null, 42,
+            new SaveWidgetBindingRequest("Month", new List<string> { "Revenue" }, null));
+        var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { widget });
+
+        var saved = await service.SaveWidgetsAsync(1, request);
+
+        Assert.Equal(42, Assert.Single(saved).DatasetId);
+
+        var refetched = await service.GetWidgetsAsync(1);
+        Assert.Equal(42, Assert.Single(refetched).DatasetId);
+    }
+
+    [Fact]
+    public async Task SaveWidgetsAsync_WidgetWithNullDatasetId_PersistsNull()
+    {
+        var (service, _) = CreateService(Guid.NewGuid().ToString());
+        var widget = new SaveWidgetRequest(WidgetType.Text, 0, 0, 4, 2, "A note", "hello", null, null);
+        var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { widget });
+
+        var saved = await service.SaveWidgetsAsync(1, request);
+
+        // No dataset exists in this database at all — a null DatasetId must not trigger a lookup,
+        // since it means "use the report's default dataset".
+        Assert.Null(Assert.Single(saved).DatasetId);
+    }
+
+    [Fact]
+    public async Task SaveWidgetsAsync_ChangedDatasetIdOnResave_PersistsTheNewValue()
+    {
+        var (service, context) = CreateService(Guid.NewGuid().ToString());
+        SeedDataset(context, 1, "Dataset A");
+        SeedDataset(context, 2, "Dataset B");
+
+        await service.SaveWidgetsAsync(1, new SaveWidgetsRequest(new List<SaveWidgetRequest>
+        {
+            new(WidgetType.Text, 0, 0, 4, 2, "A note", "hello", 1, null)
+        }));
+
+        var saved = await service.SaveWidgetsAsync(1, new SaveWidgetsRequest(new List<SaveWidgetRequest>
+        {
+            new(WidgetType.Text, 0, 0, 4, 2, "A note", "hello", 2, null)
+        }));
+
+        Assert.Equal(2, Assert.Single(saved).DatasetId);
+    }
+
+    [Fact]
+    public async Task SaveWidgetsAsync_UnknownDatasetId_ThrowsNotFoundException()
+    {
+        var (service, context) = CreateService(Guid.NewGuid().ToString());
+        SeedDataset(context, 1, "Dataset A");
+        await service.SaveWidgetsAsync(1, new SaveWidgetsRequest(new List<SaveWidgetRequest>
+        {
+            new(WidgetType.Text, 0, 0, 4, 2, "Existing widget", "hello", 1, null)
+        }));
+
+        var request = new SaveWidgetsRequest(new List<SaveWidgetRequest>
+        {
+            new(WidgetType.Text, 0, 0, 4, 2, "New widget", "hello", 999, null)
+        });
+
+        await Assert.ThrowsAsync<NotFoundException>(() => service.SaveWidgetsAsync(1, request));
+
+        // The dataset check runs before the RemoveRange, so a rejected save must leave the
+        // page's existing widgets untouched rather than wiping them on the way out.
+        Assert.Equal(1, await context.Widgets.CountAsync());
+        Assert.Equal("Existing widget", (await service.GetWidgetsAsync(1))[0].Title);
+    }
+
     [Fact]
     public async Task SaveWidgetsAsync_TableWidgetWithEmptyValueFields_Persists()
     {
         var (service, _) = CreateService(Guid.NewGuid().ToString());
         var tableWidget = new SaveWidgetRequest(
-            WidgetType.Table, 0, 0, 6, 4, "All Columns", null,
+            WidgetType.Table, 0, 0, 6, 4, "All Columns", null, null,
             new SaveWidgetBindingRequest(null, new List<string>(), null));
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { tableWidget });
 

@@ -42,6 +42,8 @@ public class WidgetService : IWidgetService
             }
         }
 
+        await EnsureDatasetsExistAsync(request.Widgets);
+
         var existingWidgets = await _context.Widgets.Where(w => w.ReportPageId == reportPageId).ToListAsync();
         var existingWidgetIds = existingWidgets.Select(w => w.Id).ToList();
         var existingBindings = await _context.WidgetBindings.Where(b => existingWidgetIds.Contains(b.WidgetId)).ToListAsync();
@@ -60,7 +62,8 @@ public class WidgetService : IWidgetService
                 W = widgetRequest.W,
                 H = widgetRequest.H,
                 Title = widgetRequest.Title,
-                Content = widgetRequest.Content
+                Content = widgetRequest.Content,
+                DatasetId = widgetRequest.DatasetId
             };
 
             // Text widgets never persist a binding, even if one somehow got past validation above —
@@ -83,6 +86,34 @@ public class WidgetService : IWidgetService
         return await GetWidgetsAsync(reportPageId);
     }
 
+    // Validates every distinct dataset id in the payload in one round-trip, before any
+    // persistence — the same validate-before-persist shape DatasetService.CreateAsync uses.
+    // A null DatasetId means "use the report default" and needs no lookup.
+    private async Task EnsureDatasetsExistAsync(IReadOnlyList<SaveWidgetRequest> widgets)
+    {
+        var datasetIds = widgets
+            .Where(w => w.DatasetId.HasValue)
+            .Select(w => w.DatasetId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (datasetIds.Count == 0)
+        {
+            return;
+        }
+
+        var foundIds = await _context.Datasets
+            .Where(d => datasetIds.Contains(d.Id))
+            .Select(d => d.Id)
+            .ToListAsync();
+
+        var missingIds = datasetIds.Where(id => !foundIds.Contains(id)).ToList();
+        if (missingIds.Count > 0)
+        {
+            throw new NotFoundException($"No dataset found with id {missingIds[0]}.");
+        }
+    }
+
     private async Task EnsureReportPageExistsAsync(int reportPageId)
     {
         var exists = await _context.ReportPages.AnyAsync(p => p.Id == reportPageId);
@@ -101,6 +132,6 @@ public class WidgetService : IWidgetService
             bindingSummary = new WidgetBindingSummary(widget.Binding.CategoryField, valueFields, widget.Binding.FormatOptions);
         }
 
-        return new WidgetSummary(widget.Id, widget.Type, widget.X, widget.Y, widget.W, widget.H, widget.Title, widget.Content, bindingSummary);
+        return new WidgetSummary(widget.Id, widget.Type, widget.X, widget.Y, widget.W, widget.H, widget.Title, widget.Content, widget.DatasetId, bindingSummary);
     }
 }

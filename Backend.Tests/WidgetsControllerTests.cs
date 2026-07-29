@@ -41,7 +41,7 @@ public class WidgetsControllerTests
     public async Task SaveWidgets_ValidRequest_Returns200WithSavedWidgets()
     {
         var controller = CreateController(Guid.NewGuid().ToString());
-        var textWidget = new SaveWidgetRequest(WidgetType.Text, 0, 0, 4, 2, "A note", "hello", null);
+        var textWidget = new SaveWidgetRequest(WidgetType.Text, 0, 0, 4, 2, "A note", "hello", null, null);
         var request = new SaveWidgetsRequest(new List<SaveWidgetRequest> { textWidget });
 
         var result = await controller.SaveWidgets(1, request);
@@ -58,7 +58,7 @@ public class WidgetsControllerTests
     {
         var controller = CreateController(Guid.NewGuid().ToString());
         var kpiWidget = new SaveWidgetRequest(
-            WidgetType.Kpi, 0, 0, 2, 2, "Total Revenue", null,
+            WidgetType.Kpi, 0, 0, 2, 2, "Total Revenue", null, null,
             new SaveWidgetBindingRequest(null, new List<string> { "Revenue" }, null));
         await controller.SaveWidgets(1, new SaveWidgetsRequest(new List<SaveWidgetRequest> { kpiWidget }));
 

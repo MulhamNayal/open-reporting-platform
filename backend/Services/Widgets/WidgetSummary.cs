@@ -11,6 +11,7 @@ public record WidgetSummary(
     int H,
     string Title,
     string? Content,
+    int? DatasetId,
     WidgetBindingSummary? Binding);
 
 public record WidgetBindingSummary(string? CategoryField, IReadOnlyList<string> ValueFields, string FormatOptions);
