@@ -9,7 +9,7 @@ import type { WidgetDraft } from "../widgets/widgetDraftReducer";
 afterEach(cleanup);
 
 const kpiWidget: WidgetDraft = {
-  id: 1, type: "Kpi", x: 0, y: 0, w: 2, h: 2, title: "Total", content: null,
+  id: 1, type: "Kpi", x: 0, y: 0, w: 2, h: 2, title: "Total", content: null, datasetId: null,
   binding: { categoryField: null, valueFields: [], formatOptions: DEFAULT_FORMAT_OPTIONS },
 };
 

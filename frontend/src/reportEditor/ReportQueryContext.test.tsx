@@ -85,6 +85,137 @@ describe("ReportQueryProvider", () => {
   });
 });
 
+describe("ReportQueryProvider multi-dataset cache", () => {
+  const page = [{ id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{}" }];
+
+  function DatasetProbe({ ids }: { ids: Array<number | null> }) {
+    const { ensureDatasets, filteredResultFor, datasetErrors, loading } = useReportQuery();
+    if (loading) {
+      return <div>loading</div>;
+    }
+    return (
+      <div>
+        <button onClick={() => void ensureDatasets(ids)}>ensure</button>
+        <div>default: {filteredResultFor(null)?.rows.length ?? "none"}</div>
+        <div>seven: {filteredResultFor(7)?.rows.length ?? "none"}</div>
+        <div>err7: {datasetErrors.get(7) ?? "none"}</div>
+      </div>
+    );
+  }
+
+  function mockReport(datasetId: number | null) {
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId });
+    vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue(page);
+  }
+
+  it("resolves a null dataset id to the report default", async () => {
+    mockReport(5);
+    vi.spyOn(datasetsApi, "executeDataset").mockResolvedValue({
+      columns: [{ name: "Region", nativeType: "nvarchar(20)" }],
+      rows: [["North"], ["South"]],
+    });
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <DatasetProbe ids={[]} />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("default: 2")).toBeInTheDocument());
+  });
+
+  it("returns null for a dataset that hasn't loaded yet rather than throwing", async () => {
+    mockReport(5);
+    vi.spyOn(datasetsApi, "executeDataset").mockResolvedValue({ columns: [], rows: [] });
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <DatasetProbe ids={[]} />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("seven: none")).toBeInTheDocument());
+  });
+
+  it("ensureDatasets fetches an uncached dataset and exposes it via filteredResultFor", async () => {
+    mockReport(5);
+    vi.spyOn(datasetsApi, "executeDataset").mockImplementation(async (id: number) =>
+      id === 7
+        ? { columns: [{ name: "Team", nativeType: "nvarchar(20)" }], rows: [["Alpha"], ["Beta"], ["Gamma"]] }
+        : { columns: [{ name: "Region", nativeType: "nvarchar(20)" }], rows: [["North"]] },
+    );
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <DatasetProbe ids={[7]} />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("default: 1")).toBeInTheDocument());
+    await userEvent.setup().click(screen.getByText("ensure"));
+
+    expect(await screen.findByText("seven: 3")).toBeInTheDocument();
+  });
+
+  it("ensureDatasets called twice for the same id fetches it only once", async () => {
+    mockReport(5);
+    const executeSpy = vi.spyOn(datasetsApi, "executeDataset").mockResolvedValue({ columns: [], rows: [] });
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <DatasetProbe ids={[7]} />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("ensure")).toBeInTheDocument());
+    const user = userEvent.setup();
+    await user.click(screen.getByText("ensure"));
+    await user.click(screen.getByText("ensure"));
+
+    // One for the report default (id 5) on mount, one for id 7 — the second ensure is a no-op.
+    expect(executeSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not re-fetch the report default when it is passed to ensureDatasets", async () => {
+    mockReport(5);
+    const executeSpy = vi.spyOn(datasetsApi, "executeDataset").mockResolvedValue({ columns: [], rows: [] });
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <DatasetProbe ids={[null, 5]} />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("ensure")).toBeInTheDocument());
+    await userEvent.setup().click(screen.getByText("ensure"));
+
+    expect(executeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("records a per-dataset error without losing the default dataset's result", async () => {
+    mockReport(5);
+    vi.spyOn(datasetsApi, "executeDataset").mockImplementation(async (id: number) => {
+      if (id === 7) {
+        throw new Error("boom");
+      }
+      return { columns: [{ name: "Region", nativeType: "nvarchar(20)" }], rows: [["North"], ["South"]] };
+    });
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <DatasetProbe ids={[7]} />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("default: 2")).toBeInTheDocument());
+    await userEvent.setup().click(screen.getByText("ensure"));
+
+    expect(await screen.findByText(/err7: Could not load this dataset/)).toBeInTheDocument();
+    // The one broken query must not blank the rest of the report.
+    expect(screen.getByText("default: 2")).toBeInTheDocument();
+  });
+});
+
 describe("ReportQueryProvider saveFilterState", () => {
   function Probe2() {
     const { setFilterState, saveFilterState } = useReportQuery();

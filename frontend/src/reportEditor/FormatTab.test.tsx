@@ -11,7 +11,7 @@ import FormatTab from "./FormatTab";
 
 function makeWidget(type: WidgetType = "Bar"): WidgetDraft {
   return {
-    id: 1, type, x: 0, y: 0, w: 4, h: 3, title: "W", content: null,
+    id: 1, type, x: 0, y: 0, w: 4, h: 3, title: "W", content: null, datasetId: null,
     binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: DEFAULT_FORMAT_OPTIONS },
   };
 }

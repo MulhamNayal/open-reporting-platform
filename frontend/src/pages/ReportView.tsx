@@ -12,8 +12,8 @@ import "../reportEditor/reportEditor.css";
 
 function ReportViewInner() {
   const {
-    reportName, reportPageId, setReportPageId, reportPages, rawResult, filteredResult, filterState, setFilterState,
-    loading: queryLoading, refresh,
+    reportName, reportPageId, setReportPageId, reportPages, datasetResults, filteredResultFor, ensureDatasets,
+    filterState, setFilterState, loading: queryLoading, refresh,
   } = useReportQuery();
   const [widgets, setWidgets] = useState<WidgetSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +24,14 @@ function ReportViewInner() {
       return;
     }
 
-    getWidgets(reportPageId).then(setWidgets).catch(() => setError("Could not load this report's widgets."));
+    getWidgets(reportPageId)
+      .then((loaded) => {
+        setWidgets(loaded);
+        void ensureDatasets(loaded.map((w) => w.datasetId));
+      })
+      .catch(() => setError("Could not load this report's widgets."));
+    // ensureDatasets omitted deliberately — see the matching note in ReportCanvas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportPageId]);
 
   function handleDataPointClick(field: string, value: string) {
@@ -66,7 +73,7 @@ function ReportViewInner() {
       <div className="body" style={{ flex: 1 }}>
         <FiltersPane
           visible
-          rawResult={rawResult}
+          results={[...datasetResults.values()]}
           filterState={filterState}
           onChange={setFilterState}
           crossFilter={crossFilter}
@@ -80,7 +87,7 @@ function ReportViewInner() {
                 <Box key={w.id} sx={{ gridColumn: `${w.x + 1} / span ${w.w}`, gridRow: `${w.y + 1} / span ${w.h}` }}>
                   <WidgetRenderer
                     widget={w}
-                    result={filteredResult}
+                    result={filteredResultFor(w.datasetId)}
                     onDataPointClick={handleDataPointClick}
                   />
                 </Box>

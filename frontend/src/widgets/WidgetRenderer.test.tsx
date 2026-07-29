@@ -17,6 +17,7 @@ function makeWidget(overrides: Partial<WidgetSummary>): WidgetSummary {
     h: 2,
     title: "Widget",
     content: null,
+    datasetId: null,
     binding: null,
     ...overrides,
   };

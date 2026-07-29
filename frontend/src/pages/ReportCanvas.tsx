@@ -5,6 +5,7 @@ import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 import axios from "axios";
 import { getWidgets, saveWidgets, parseFormatOptions, DEFAULT_FORMAT_OPTIONS, type SaveWidgetRequest, type WidgetSummary, type WidgetType } from "../api/widgets";
+import { getDataset, getDatasets, type DatasetSummary } from "../api/datasets";
 import { renameReport, setReportDataset } from "../api/reports";
 import { createReportPage, deleteReportPage, updateReportPage } from "../api/reportPages";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
@@ -30,6 +31,7 @@ let tempIdCounter = -1;
 function toWidgetDrafts(summaries: WidgetSummary[]): WidgetDraft[] {
   return summaries.map((s) => ({
     id: s.id, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h, title: s.title, content: s.content,
+    datasetId: s.datasetId,
     binding: s.binding
       ? { categoryField: s.binding.categoryField, valueFields: s.binding.valueFields, formatOptions: parseFormatOptions(s.binding.formatOptions) }
       : null,
@@ -38,7 +40,7 @@ function toWidgetDrafts(summaries: WidgetSummary[]): WidgetDraft[] {
 
 function ReportCanvasInner() {
   const navigate = useNavigate();
-  const { reportId, reportName: fetchedReportName, reportPages, reportPageId, setReportPageId, filteredResult, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
+  const { reportId, reportName: fetchedReportName, reportDatasetId, reportPages, reportPageId, setReportPageId, filteredResult, filteredResultFor, datasetResults, ensureDatasets, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
 
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
@@ -73,12 +75,51 @@ function ReportCanvasInner() {
       .then((summaries) => {
         dispatch({ type: "loaded", widgets: toWidgetDrafts(summaries) });
         setWidgetsLoaded(true);
+        void ensureDatasets(summaries.map((s) => s.datasetId));
       })
       .catch(() => {
         setError("Could not load this report's widgets.");
         setWidgetsLoaded(true);
       });
+    // ensureDatasets is deliberately omitted: its identity changes whenever a dataset finishes
+    // loading, which would re-fetch this page's widgets on every one. It's idempotent, and only
+    // its value at call time matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportPageId]);
+
+  // The widget dataset picker's options: every saved dataset on the same connection as the
+  // report's default, plus that default itself even when it's an unsaved ad-hoc dataset (the
+  // "Change data source" dialog creates those, and a widget's real source must always be
+  // listed). Scoped to one connection because getDatasets requires a connectionId.
+  const [availableDatasets, setAvailableDatasets] = useState<DatasetSummary[]>([]);
+
+  useEffect(() => {
+    if (reportDatasetId === null) {
+      setAvailableDatasets([]);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const defaultDataset = await getDataset(reportDatasetId);
+        const saved = await getDatasets(defaultDataset.dataSourceConnectionId);
+        if (cancelled) {
+          return;
+        }
+        const withDefault = saved.some((d) => d.id === defaultDataset.id) ? saved : [defaultDataset, ...saved];
+        setAvailableDatasets([...withDefault].sort((a, b) => a.name.localeCompare(b.name)));
+      } catch {
+        if (!cancelled) {
+          setAvailableDatasets([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reportDatasetId]);
 
   const widgetIds = widgets.map((w) => w.id).join(",");
 
@@ -148,6 +189,7 @@ function ReportCanvasInner() {
         h: 3,
         title: `New ${type} widget`,
         content: type === "Text" ? "" : null,
+        datasetId: null,
         // Table's empty ValueFields is a valid, complete binding ("show every column"),
         // so it should render immediately with no field configuration required. Every
         // other bindable type genuinely needs the user to pick fields first.
@@ -175,6 +217,7 @@ function ReportCanvasInner() {
     setError(null);
     const payload: SaveWidgetRequest[] = widgets.map((w) => ({
       type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
+      datasetId: w.datasetId,
       binding: w.binding
         ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
         : null,
@@ -191,7 +234,9 @@ function ReportCanvasInner() {
       setSelectedWidgetId(null);
       await saveFilterState();
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 400) {
+      // 404 as well as 400: a widget naming a since-deleted dataset is rejected with
+      // NotFoundException, whose message is the useful thing to show.
+      if (axios.isAxiosError(err) && (err.response?.status === 400 || err.response?.status === 404)) {
         setError(typeof err.response.data === "string" ? err.response.data : "Could not save this report's widgets.");
       } else {
         setError("Could not save this report's widgets.");
@@ -229,6 +274,12 @@ function ReportCanvasInner() {
     return <div className="page-loading">Loading…</div>;
   }
 
+  const selectedWidget = widgets.find((w) => w.id === selectedWidgetId) ?? null;
+  // The panes describe the selected widget's own dataset. With nothing selected they fall back
+  // to the report default, which is what the drag-a-field-to-create path needs — the widget it
+  // creates has no dataset of its own and inherits that default.
+  const selectedColumns = (selectedWidget ? filteredResultFor(selectedWidget.datasetId) : filteredResult)?.columns ?? [];
+
   return (
     <div className="app" style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw" }}>
       <Ribbon
@@ -245,7 +296,7 @@ function ReportCanvasInner() {
       <div className="body">
         <FiltersPane
           visible={filtersVisible}
-          rawResult={rawResult}
+          results={[...datasetResults.values()]}
           filterState={filterState}
           onChange={setFilterState}
           crossFilter={crossFilter}
@@ -294,11 +345,12 @@ function ReportCanvasInner() {
                         <WidgetRenderer
                           widget={{
                             id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
+                            datasetId: w.datasetId,
                             binding: w.binding
                               ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
                               : null,
                           }}
-                          result={filteredResult}
+                          result={filteredResultFor(w.datasetId)}
                           onDataPointClick={handleDataPointClick}
                           hideTitle
                         />
@@ -319,7 +371,7 @@ function ReportCanvasInner() {
         <PaneDivider width={vizPaneWidth} onWidthChange={setVizPaneWidth} label="Resize Visualizations panel" />
         <VisualizationsPane
           width={vizPaneWidth}
-          selectedWidget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
+          selectedWidget={selectedWidget}
           onAddWidget={(type) => addWidget(type)}
           onChangeType={(type) => {
             if (selectedWidgetId !== null) {
@@ -331,8 +383,18 @@ function ReportCanvasInner() {
             tab === "build"
               ? (
                 <BuildTab
-                  widget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
-                  columns={filteredResult?.columns ?? []}
+                  widget={selectedWidget}
+                  columns={selectedColumns}
+                  datasets={availableDatasets}
+                  reportDatasetId={reportDatasetId}
+                  onDatasetChange={(datasetId) => {
+                    if (selectedWidgetId !== null) {
+                      dispatch({ type: "datasetChanged", id: selectedWidgetId, datasetId });
+                      // Fetch it now so the field list populates immediately, rather than only
+                      // after a save-and-reload.
+                      void ensureDatasets([datasetId]);
+                    }
+                  }}
                   onChange={(binding) => {
                     if (selectedWidgetId !== null) {
                       dispatch({ type: "bindingChanged", id: selectedWidgetId, binding });
@@ -342,8 +404,8 @@ function ReportCanvasInner() {
               )
               : (
                 <FormatTab
-                  widget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
-                  columns={filteredResult?.columns ?? []}
+                  widget={selectedWidget}
+                  columns={selectedColumns}
                   onChange={(binding) => {
                     if (selectedWidgetId !== null) {
                       dispatch({ type: "bindingChanged", id: selectedWidgetId, binding });
@@ -354,8 +416,8 @@ function ReportCanvasInner() {
           }
         </VisualizationsPane>
         <DataPane
-          columns={filteredResult?.columns ?? []}
-          selectedWidget={widgets.find((w) => w.id === selectedWidgetId) ?? null}
+          columns={selectedColumns}
+          selectedWidget={selectedWidget}
           onSmartAdd={(fieldName, fieldKind) => {
             if (selectedWidgetId === null) {
               const newId = tempIdCounter--;
@@ -367,18 +429,17 @@ function ReportCanvasInner() {
               );
               dispatch({
                 type: "added",
-                widget: { id: newId, type: "Bar", ...nextWidgetPosition(), w: 4, h: 3, title: "New Bar widget", content: null, binding },
+                widget: { id: newId, type: "Bar", ...nextWidgetPosition(), w: 4, h: 3, title: "New Bar widget", content: null, datasetId: null, binding },
               });
               setSelectedWidgetId(newId);
               return;
             }
 
-            const widget = widgets.find((w) => w.id === selectedWidgetId);
-            if (!widget || widget.type === "Text") {
+            if (!selectedWidget || selectedWidget.type === "Text") {
               return;
             }
-            const currentBinding = widget.binding ?? { categoryField: null, valueFields: [], formatOptions: DEFAULT_FORMAT_OPTIONS };
-            dispatch({ type: "bindingChanged", id: selectedWidgetId, binding: smartAdd(currentBinding, widget.type, fieldName, fieldKind) });
+            const currentBinding = selectedWidget.binding ?? { categoryField: null, valueFields: [], formatOptions: DEFAULT_FORMAT_OPTIONS };
+            dispatch({ type: "bindingChanged", id: selectedWidgetId, binding: smartAdd(currentBinding, selectedWidget.type, fieldName, fieldKind) });
           }}
         />
       </div>

@@ -1,25 +1,12 @@
 import type { QueryResult } from "../api/datasets";
-import { classify } from "../widgets/fieldClassification";
-import { normalizeCell } from "./crossFilter";
+import { mergeFilterableFields } from "./mergeFilterableFields";
 import "./reportEditor.css";
 
-// Above this many distinct values, a field isn't a usable checkbox/chip filter
-// regardless of layout — e.g. a near-unique document-number column classified
-// as "Categorical" purely by its text type. Such fields are excluded entirely
-// rather than dumped into the pane as an unbrowsable wall of chips.
-const MAX_FILTER_VALUES = 30;
-
-function distinctValues(result: QueryResult, field: string): string[] {
-  const index = result.columns.findIndex((c) => c.name === field);
-  const values = new Set(result.rows.map((row) => normalizeCell(row[index])));
-  return [...values].sort();
-}
-
 function FiltersPane({
-  visible, rawResult, filterState, onChange, crossFilter, onClearCrossFilter, onResetAll,
+  visible, results, filterState, onChange, crossFilter, onClearCrossFilter, onResetAll,
 }: {
   visible: boolean;
-  rawResult: QueryResult | null;
+  results: QueryResult[];
   filterState: Record<string, string[]>;
   onChange: (next: Record<string, string[]>) => void;
   crossFilter?: { field: string; value: string } | null;
@@ -30,7 +17,7 @@ function FiltersPane({
     return null;
   }
 
-  if (!rawResult) {
+  if (results.length === 0) {
     return (
       <div className="pane pane-filters">
         <div className="pane-head">Filters</div>
@@ -39,10 +26,9 @@ function FiltersPane({
     );
   }
 
-  const filterableFields = rawResult.columns
-    .filter((c) => classify(c.nativeType) === "Categorical")
-    .map((column) => ({ column, values: distinctValues(rawResult, column.name) }))
-    .filter(({ values }) => values.length <= MAX_FILTER_VALUES);
+  // Union across every loaded dataset, matched by column name — a filter group can therefore
+  // drive widgets bound to different datasets.
+  const filterableFields = mergeFilterableFields(results);
   const hasActiveFilters = Object.values(filterState).some((values) => values.length > 0) || Boolean(crossFilter);
 
   function toggle(field: string, value: string, checked: boolean) {

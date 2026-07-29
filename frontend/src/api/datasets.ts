@@ -50,6 +50,14 @@ export async function getDatasets(connectionId: number): Promise<DatasetSummary[
   return res.data;
 }
 
+// Unlike getDatasets this also returns unsaved (ad-hoc) datasets — a report's default dataset
+// is ad-hoc when it came from the "Change data source" dialog, and the widget dataset picker
+// needs its connection id to enumerate that connection's saved datasets.
+export async function getDataset(id: number): Promise<DatasetSummary> {
+  const res = await api.get<DatasetSummary>(`/datasets/${id}`);
+  return res.data;
+}
+
 export async function createDataset(request: CreateDatasetRequest): Promise<DatasetSummary> {
   const res = await api.post<DatasetSummary>("/datasets", request);
   return res.data;

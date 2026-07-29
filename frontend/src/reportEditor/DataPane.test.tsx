@@ -44,7 +44,7 @@ describe("DataPane", () => {
 
   it("marks a field's checkbox checked when it's already used in the selected widget's binding", () => {
     const widget: WidgetDraft = {
-      id: 1, type: "Bar", x: 0, y: 0, w: 4, h: 3, title: "W", content: null,
+      id: 1, type: "Bar", x: 0, y: 0, w: 4, h: 3, title: "W", content: null, datasetId: null,
       binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: DEFAULT_FORMAT_OPTIONS },
     };
 

@@ -65,6 +65,8 @@ export interface WidgetSummary {
   h: number;
   title: string;
   content: string | null;
+  // null means "use the report's default dataset" — see resolveWidgetDatasetId.
+  datasetId: number | null;
   binding: WidgetBindingSummary | null;
 }
 
@@ -82,6 +84,7 @@ export interface SaveWidgetRequest {
   h: number;
   title: string;
   content: string | null;
+  datasetId: number | null;
   binding: SaveWidgetBindingRequest | null;
 }
 

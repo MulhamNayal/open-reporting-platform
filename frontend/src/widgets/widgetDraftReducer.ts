@@ -15,6 +15,8 @@ export interface WidgetDraft {
   h: number;
   title: string;
   content: string | null;
+  // null means "use the report's default dataset" — see resolveWidgetDatasetId.
+  datasetId: number | null;
   binding: WidgetBindingDraft | null;
 }
 
@@ -26,6 +28,7 @@ export type WidgetDraftAction =
   | { type: "titleChanged"; id: number; title: string }
   | { type: "contentChanged"; id: number; content: string }
   | { type: "bindingChanged"; id: number; binding: WidgetBindingDraft | null }
+  | { type: "datasetChanged"; id: number; datasetId: number | null }
   | { type: "typeChanged"; id: number; newType: WidgetType; binding: WidgetBindingDraft | null };
 
 export function widgetDraftReducer(state: WidgetDraft[], action: WidgetDraftAction): WidgetDraft[] {
@@ -47,6 +50,13 @@ export function widgetDraftReducer(state: WidgetDraft[], action: WidgetDraftActi
       return state.map((widget) => (widget.id === action.id ? { ...widget, content: action.content } : widget));
     case "bindingChanged":
       return state.map((widget) => (widget.id === action.id ? { ...widget, binding: action.binding } : widget));
+    // Clears the binding: its field names refer to the previous dataset's columns and are
+    // near-certain to be wrong against the new one. Same rebuild-don't-guess call as
+    // migrateFieldsOnTypeChange, except here there's nothing worth carrying over.
+    case "datasetChanged":
+      return state.map((widget) =>
+        widget.id === action.id ? { ...widget, datasetId: action.datasetId, binding: null } : widget,
+      );
     case "typeChanged":
       return state.map((widget) =>
         widget.id === action.id ? { ...widget, type: action.newType, binding: action.binding } : widget,

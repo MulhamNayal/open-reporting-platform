@@ -3,7 +3,7 @@ import { widgetDraftReducer, type WidgetDraft } from "./widgetDraftReducer";
 import { DEFAULT_FORMAT_OPTIONS } from "../api/widgets";
 
 const baseWidget: WidgetDraft = {
-  id: 1, type: "Text", x: 0, y: 0, w: 4, h: 2, title: "A", content: "hi", binding: null,
+  id: 1, type: "Text", x: 0, y: 0, w: 4, h: 2, title: "A", content: "hi", datasetId: null, binding: null,
 };
 
 describe("widgetDraftReducer", () => {
@@ -48,5 +48,45 @@ describe("widgetDraftReducer", () => {
     const binding = { categoryField: "Month", valueFields: ["Revenue"], formatOptions: DEFAULT_FORMAT_OPTIONS };
     const result = widgetDraftReducer([baseWidget], { type: "bindingChanged", id: 1, binding });
     expect(result[0].binding).toEqual(binding);
+  });
+
+  it("datasetChanged sets the dataset and clears the binding", () => {
+    const bound: WidgetDraft = {
+      ...baseWidget,
+      type: "Bar",
+      binding: { categoryField: "Month", valueFields: ["Revenue"], formatOptions: DEFAULT_FORMAT_OPTIONS },
+    };
+
+    const result = widgetDraftReducer([bound], { type: "datasetChanged", id: 1, datasetId: 9 });
+
+    expect(result[0].datasetId).toBe(9);
+    expect(result[0].binding).toBeNull();
+  });
+
+  it("datasetChanged back to the report default sets null", () => {
+    const result = widgetDraftReducer(
+      [{ ...baseWidget, datasetId: 9 }],
+      { type: "datasetChanged", id: 1, datasetId: null },
+    );
+
+    expect(result[0].datasetId).toBeNull();
+  });
+
+  it("datasetChanged leaves other widgets untouched", () => {
+    const other: WidgetDraft = { ...baseWidget, id: 2, datasetId: 5 };
+
+    const result = widgetDraftReducer([baseWidget, other], { type: "datasetChanged", id: 1, datasetId: 9 });
+
+    expect(result[1].datasetId).toBe(5);
+  });
+
+  it("typeChanged preserves the widget's dataset while rebuilding its binding", () => {
+    const result = widgetDraftReducer(
+      [{ ...baseWidget, datasetId: 9 }],
+      { type: "typeChanged", id: 1, newType: "Bar", binding: null },
+    );
+
+    expect(result[0].type).toBe("Bar");
+    expect(result[0].datasetId).toBe(9);
   });
 });
