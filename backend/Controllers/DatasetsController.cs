@@ -21,6 +21,12 @@ public class DatasetsController : ControllerBase
         return Ok(await _service.ListAsync(connectionId));
     }
 
+    [HttpGet("{id}")]
+    public async Task<ActionResult<DatasetSummary>> GetById(int id)
+    {
+        return Ok(await _service.GetByIdAsync(id));
+    }
+
     [HttpPost]
     public async Task<ActionResult<DatasetSummary>> Create(CreateDatasetRequest request)
     {

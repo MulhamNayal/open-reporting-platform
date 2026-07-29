@@ -8,6 +8,8 @@ public interface IDatasetService
 
     Task<DatasetSummary> UpdateAsync(int id, UpdateDatasetRequest request);
 
+    Task<DatasetSummary> GetByIdAsync(int id);
+
     Task<IReadOnlyList<DatasetSummary>> ListAsync(int connectionId);
 
     Task<IReadOnlyList<ColumnDescriptor>> DiscoverColumnsAsync(int datasetId);

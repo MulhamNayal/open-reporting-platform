@@ -88,6 +88,14 @@ public class DatasetService : IDatasetService
         return ToSummary(dataset);
     }
 
+    // Unlike ListAsync this returns unsaved (ad-hoc) datasets too — a report's default dataset
+    // is ad-hoc when it came from the "Change data source" dialog, and callers still need to
+    // resolve its connection to enumerate that connection's saved datasets.
+    public async Task<DatasetSummary> GetByIdAsync(int id)
+    {
+        return ToSummary(await GetDatasetAsync(id));
+    }
+
     public async Task<IReadOnlyList<DatasetSummary>> ListAsync(int connectionId)
     {
         var datasets = await _context.Datasets
