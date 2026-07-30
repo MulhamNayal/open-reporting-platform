@@ -13,10 +13,11 @@ import ScatterWidget from "./ScatterWidget";
 import TextWidget from "./TextWidget";
 
 function WidgetRenderer({
-  widget, result, onDataPointClick, hideTitle = false,
+  widget, result, error = null, onDataPointClick, hideTitle = false,
 }: {
   widget: WidgetSummary;
   result: QueryResult | null;
+  error?: string | null;
   onDataPointClick?: (field: string, value: string) => void;
   hideTitle?: boolean;
 }) {
@@ -31,6 +32,17 @@ function WidgetRenderer({
       <Paper sx={{ p: 2, height: "100%" }}>
         {!hideTitle && <Typography variant="subtitle2">{widget.title}</Typography>}
         <Alert severity="info" sx={{ mt: 1 }}>Not bound to a field yet.</Alert>
+      </Paper>
+    );
+  }
+
+  // Checked before the null-result branch: a failed dataset never produces a result, so
+  // without this the widget would sit on Loading… indefinitely.
+  if (error) {
+    return (
+      <Paper sx={{ p: 2, height: "100%" }}>
+        {!hideTitle && <Typography variant="subtitle2">{widget.title}</Typography>}
+        <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>
       </Paper>
     );
   }

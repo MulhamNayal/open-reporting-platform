@@ -51,6 +51,30 @@ describe("WidgetRenderer", () => {
     expect(screen.getByText("Not bound to a field yet.")).toBeInTheDocument();
   });
 
+  it("shows the dataset error instead of Loading when that widget's dataset failed", () => {
+    renderWidget(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Kpi", binding: { categoryField: null, valueFields: ["Total"], formatOptions: formatOptionsJson } })}
+        result={null}
+        error="Could not load this dataset."
+      />,
+    );
+
+    expect(screen.getByText("Could not load this dataset.")).toBeInTheDocument();
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+  });
+
+  it("still shows Loading when there is no result and no error yet", () => {
+    renderWidget(
+      <WidgetRenderer
+        widget={makeWidget({ type: "Kpi", binding: { categoryField: null, valueFields: ["Total"], formatOptions: formatOptionsJson } })}
+        result={null}
+      />,
+    );
+
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+  });
+
   it("shows the stale-binding warning when a bound field no longer exists", () => {
     const result: QueryResult = { columns: [{ name: "Id", nativeType: "int" }], rows: [[1]] };
 

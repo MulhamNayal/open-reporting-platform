@@ -89,7 +89,7 @@ describe("ReportQueryProvider multi-dataset cache", () => {
   const page = [{ id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{}" }];
 
   function DatasetProbe({ ids }: { ids: Array<number | null> }) {
-    const { ensureDatasets, filteredResultFor, datasetErrors, loading } = useReportQuery();
+    const { ensureDatasets, filteredResultFor, datasetErrors, datasetErrorFor, loading } = useReportQuery();
     if (loading) {
       return <div>loading</div>;
     }
@@ -99,6 +99,8 @@ describe("ReportQueryProvider multi-dataset cache", () => {
         <div>default: {filteredResultFor(null)?.rows.length ?? "none"}</div>
         <div>seven: {filteredResultFor(7)?.rows.length ?? "none"}</div>
         <div>err7: {datasetErrors.get(7) ?? "none"}</div>
+        <div>errFor7: {datasetErrorFor(7) ?? "none"}</div>
+        <div>errForDefault: {datasetErrorFor(null) ?? "none"}</div>
       </div>
     );
   }
@@ -190,6 +192,28 @@ describe("ReportQueryProvider multi-dataset cache", () => {
     await userEvent.setup().click(screen.getByText("ensure"));
 
     expect(executeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("datasetErrorFor surfaces a failed dataset's error and leaves healthy ones clean", async () => {
+    mockReport(5);
+    vi.spyOn(datasetsApi, "executeDataset").mockImplementation(async (id: number) => {
+      if (id === 7) {
+        throw new Error("boom");
+      }
+      return { columns: [{ name: "Region", nativeType: "nvarchar(20)" }], rows: [["North"]] };
+    });
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <DatasetProbe ids={[7]} />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("ensure")).toBeInTheDocument());
+    await userEvent.setup().click(screen.getByText("ensure"));
+
+    expect(await screen.findByText("errFor7: Could not load this dataset.")).toBeInTheDocument();
+    expect(screen.getByText("errForDefault: none")).toBeInTheDocument();
   });
 
   it("records a per-dataset error without losing the default dataset's result", async () => {

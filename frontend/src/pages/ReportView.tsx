@@ -12,7 +12,7 @@ import "../reportEditor/reportEditor.css";
 
 function ReportViewInner() {
   const {
-    reportName, reportPageId, setReportPageId, reportPages, datasetResults, filteredResultFor, ensureDatasets,
+    reportName, reportPageId, setReportPageId, reportPages, datasetResults, filteredResultFor, datasetErrorFor, ensureDatasets,
     filterState, setFilterState, loading: queryLoading, refresh,
   } = useReportQuery();
   const [widgets, setWidgets] = useState<WidgetSummary[]>([]);
@@ -88,6 +88,7 @@ function ReportViewInner() {
                   <WidgetRenderer
                     widget={w}
                     result={filteredResultFor(w.datasetId)}
+                    error={datasetErrorFor(w.datasetId)}
                     onDataPointClick={handleDataPointClick}
                   />
                 </Box>

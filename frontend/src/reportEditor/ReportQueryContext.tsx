@@ -19,6 +19,7 @@ export interface ReportQueryContextValue {
   datasetErrors: Map<number, string>;
   ensureDatasets: (ids: Array<number | null>) => Promise<void>;
   filteredResultFor: (datasetId: number | null) => QueryResult | null;
+  datasetErrorFor: (datasetId: number | null) => string | null;
   filterState: Record<string, string[]>;
   setFilterState: (next: Record<string, string[]>) => void;
   saveFilterState: () => Promise<void>;
@@ -138,6 +139,17 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     [datasetResults, filterState, reportDatasetId],
   );
 
+  // Resolves the same way filteredResultFor does, so a widget on the report default sees the
+  // default's error. Without this the renderer can't tell "still fetching" from "fetch failed"
+  // and sits on Loading… forever.
+  const datasetErrorFor = useCallback(
+    (datasetId: number | null) => {
+      const resolved = resolveWidgetDatasetId(datasetId, reportDatasetId);
+      return resolved === null ? null : datasetErrors.get(resolved) ?? null;
+    },
+    [datasetErrors, reportDatasetId],
+  );
+
   // Defined in terms of filteredResultFor so the two can never disagree about the default.
   const filteredResult = useMemo(() => filteredResultFor(null), [filteredResultFor]);
 
@@ -154,6 +166,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     datasetErrors,
     ensureDatasets,
     filteredResultFor,
+    datasetErrorFor,
     filterState,
     setFilterState,
     saveFilterState,

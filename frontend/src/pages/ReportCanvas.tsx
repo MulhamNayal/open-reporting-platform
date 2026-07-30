@@ -40,7 +40,7 @@ function toWidgetDrafts(summaries: WidgetSummary[]): WidgetDraft[] {
 
 function ReportCanvasInner() {
   const navigate = useNavigate();
-  const { reportId, reportName: fetchedReportName, reportDatasetId, reportPages, reportPageId, setReportPageId, filteredResult, filteredResultFor, datasetResults, ensureDatasets, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
+  const { reportId, reportName: fetchedReportName, reportDatasetId, reportPages, reportPageId, setReportPageId, filteredResult, filteredResultFor, datasetErrorFor, datasetResults, ensureDatasets, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
 
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
@@ -351,6 +351,7 @@ function ReportCanvasInner() {
                               : null,
                           }}
                           result={filteredResultFor(w.datasetId)}
+                          error={datasetErrorFor(w.datasetId)}
                           onDataPointClick={handleDataPointClick}
                           hideTitle
                         />
