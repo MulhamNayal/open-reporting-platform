@@ -2,6 +2,7 @@ using System.Text.Json;
 using Backend.Models;
 using Backend.Services.Datasets;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Options;
 
 namespace Backend.Services.DataSources;
 
@@ -13,6 +14,18 @@ public class SqlServerProvider : IDataSourceProvider
 
     private static readonly HashSet<string> AllowedOperators = new() { "=", "!=", ">", "<", ">=", "<=", "LIKE" };
     private static readonly HashSet<string> AllowedSortDirections = new() { "ASC", "DESC" };
+
+    private readonly int _commandTimeoutSeconds;
+
+    // Optional so the many query-building tests can keep using `new SqlServerProvider()`; DI
+    // always supplies the options.
+    public SqlServerProvider(IOptions<SqlServerProviderOptions>? options = null)
+    {
+        _commandTimeoutSeconds = options?.Value.CommandTimeoutSeconds
+            ?? SqlServerProviderOptions.DefaultCommandTimeoutSeconds;
+    }
+
+    public int CommandTimeoutSeconds => _commandTimeoutSeconds;
 
     public DataSourceType SupportedType => DataSourceType.SqlServer;
 
@@ -63,7 +76,7 @@ public class SqlServerProvider : IDataSourceProvider
             ORDER BY TABLE_NAME, ORDINAL_POSITION
             """;
 
-        await using var command = new SqlCommand(sql, sqlConnection);
+        await using var command = new SqlCommand(sql, sqlConnection) { CommandTimeout = _commandTimeoutSeconds };
         await using var reader = await command.ExecuteReaderAsync();
 
         var fieldsByTable = new Dictionary<string, List<FieldDescriptor>>();
@@ -102,7 +115,7 @@ public class SqlServerProvider : IDataSourceProvider
             ORDER BY ROUTINE_SCHEMA, ROUTINE_NAME
             """;
 
-        await using var command = new SqlCommand(sql, sqlConnection);
+        await using var command = new SqlCommand(sql, sqlConnection) { CommandTimeout = _commandTimeoutSeconds };
         await using var reader = await command.ExecuteReaderAsync();
 
         var routines = new List<RoutineDescriptor>();
@@ -207,7 +220,7 @@ public class SqlServerProvider : IDataSourceProvider
 
         try
         {
-            await using var command = new SqlCommand(wrappedSql, sqlConnection);
+            await using var command = new SqlCommand(wrappedSql, sqlConnection) { CommandTimeout = _commandTimeoutSeconds };
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             var columns = new List<ColumnDescriptor>();
@@ -254,7 +267,7 @@ public class SqlServerProvider : IDataSourceProvider
                 throw new NotSupportedException($"SqlServerProvider.ExecuteQueryAsync does not yet support mode {dataset.Mode}.");
         }
 
-        await using var command = new SqlCommand(sql, sqlConnection);
+        await using var command = new SqlCommand(sql, sqlConnection) { CommandTimeout = _commandTimeoutSeconds };
         foreach (var parameter in parameters)
         {
             command.Parameters.Add(parameter);
@@ -324,7 +337,7 @@ public class SqlServerProvider : IDataSourceProvider
 
         var (sql, sqlParameters) = BuildStoredProcedureCommand(routineName, parameters);
 
-        await using var command = new SqlCommand(sql, sqlConnection);
+        await using var command = new SqlCommand(sql, sqlConnection) { CommandTimeout = _commandTimeoutSeconds };
         foreach (var parameter in sqlParameters)
         {
             command.Parameters.Add(parameter);

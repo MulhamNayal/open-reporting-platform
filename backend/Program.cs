@@ -38,6 +38,7 @@ builder.Services.AddDataProtection()
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "OpenReportingPlatform", "keys")))
     .SetApplicationName("OpenReportingPlatform");
 builder.Services.AddScoped<ICredentialProtector, CredentialProtector>();
+builder.Services.Configure<SqlServerProviderOptions>(builder.Configuration.GetSection("DataSources:SqlServer"));
 builder.Services.AddScoped<IDataSourceProvider, SqlServerProvider>();
 builder.Services.AddScoped<IDataSourceProvider, RestApiProvider>();
 builder.Services.AddScoped<IDataSourceService, DataSourceService>();
