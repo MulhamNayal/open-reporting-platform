@@ -74,9 +74,10 @@ public class DatasetsController : ControllerBase
         return Ok(await _service.DiscoverColumnsAsync(id));
     }
 
+    // refresh=true bypasses the result cache — used by the Ribbon's Refresh action.
     [HttpPost("{id}/execute")]
-    public async Task<ActionResult<QueryResult>> Execute(int id)
+    public async Task<ActionResult<QueryResult>> Execute(int id, [FromQuery] bool refresh = false)
     {
-        return Ok(await _service.ExecuteAsync(id));
+        return Ok(await _service.ExecuteAsync(id, refresh));
     }
 }

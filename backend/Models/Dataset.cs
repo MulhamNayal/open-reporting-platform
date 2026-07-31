@@ -23,4 +23,11 @@ public class Dataset
     public DateTime CreatedAtUtc { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }
+
+    /// <summary>
+    /// Bumped only when the definition actually changes, and used in the result cache key.
+    /// UpdatedAtUtc can't serve this purpose — ExecuteAsync bumps it on every run, which would
+    /// invalidate the cache on the very call that populated it.
+    /// </summary>
+    public int DefinitionVersion { get; set; } = 1;
 }

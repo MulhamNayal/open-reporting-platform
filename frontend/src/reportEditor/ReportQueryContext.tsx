@@ -44,8 +44,12 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
   // A ref, not state: two concurrent ensureDatasets calls (React re-invokes effects in dev
   // StrictMode) would both read the same stale `datasetResults` and both fire a request.
   const inFlightRef = useRef<Set<number>>(new Set());
+  // Every dataset id fetched so far. A ref, not derived from datasetResults, so `load` can
+  // re-fetch them on an explicit refresh without taking datasetResults as a dependency —
+  // which would re-create `load` on every fetch and re-trigger the mount effect.
+  const loadedIdsRef = useRef<Set<number>>(new Set());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
     try {
@@ -63,14 +67,37 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
       inFlightRef.current.clear();
       setDatasetErrors(new Map());
 
+      // A refresh has to re-query every dataset already on screen, not just the default —
+      // otherwise the other widgets would silently come back from the server-side cache and
+      // Refresh would appear to do nothing for them.
+      const alsoRefresh = forceRefresh
+        ? [...loadedIdsRef.current].filter((id) => id !== report.datasetId)
+        : [];
+      loadedIdsRef.current.clear();
+
+      const seeded = new Map<number, QueryResult>();
+
       if (report.datasetId !== null) {
-        const result = await executeDataset(report.datasetId);
+        const result = await executeDataset(report.datasetId, forceRefresh);
         setRawResult(result);
-        setDatasetResults(new Map([[report.datasetId, result]]));
+        seeded.set(report.datasetId, result);
+        loadedIdsRef.current.add(report.datasetId);
       } else {
         setRawResult(null);
-        setDatasetResults(new Map());
       }
+
+      await Promise.all(
+        alsoRefresh.map(async (id) => {
+          try {
+            seeded.set(id, await executeDataset(id, true));
+            loadedIdsRef.current.add(id);
+          } catch {
+            setDatasetErrors((prev) => new Map(prev).set(id, "Could not load this dataset."));
+          }
+        }),
+      );
+
+      setDatasetResults(seeded);
     } catch {
       setError("Could not load this report's data.");
     } finally {
@@ -96,6 +123,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
       wanted.map(async (id) => {
         try {
           const result = await executeDataset(id);
+          loadedIdsRef.current.add(id);
           setDatasetResults((prev) => new Map(prev).set(id, result));
         } catch {
           // Per-dataset, deliberately: one broken query must not blank the whole report.
@@ -121,8 +149,11 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
   }, [reportPages]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
+
+  // Wrapped so the Ribbon's onClick event object can never arrive as `forceRefresh`.
+  const refresh = useCallback(() => load(true), [load]);
 
   // The page's single filterState is applied to every dataset, matched by column name —
   // applyFilters already drops filters whose field isn't a column of the result, so a filter
@@ -172,7 +203,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     saveFilterState,
     loading,
     error,
-    refresh: load,
+    refresh,
   };
 
   return <ReportQueryContext.Provider value={value}>{children}</ReportQueryContext.Provider>;

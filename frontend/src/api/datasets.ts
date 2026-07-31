@@ -73,8 +73,9 @@ export async function discoverDatasetColumns(id: number): Promise<ColumnDescript
   return res.data;
 }
 
-export async function executeDataset(id: number): Promise<QueryResult> {
-  const res = await api.post<QueryResult>(`/datasets/${id}/execute`);
+// refresh bypasses the server-side result cache — pass it only for an explicit user refresh.
+export async function executeDataset(id: number, refresh = false): Promise<QueryResult> {
+  const res = await api.post<QueryResult>(`/datasets/${id}/execute${refresh ? "?refresh=true" : ""}`);
   return res.data;
 }
 

@@ -89,13 +89,14 @@ describe("ReportQueryProvider multi-dataset cache", () => {
   const page = [{ id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{}" }];
 
   function DatasetProbe({ ids }: { ids: Array<number | null> }) {
-    const { ensureDatasets, filteredResultFor, datasetErrors, datasetErrorFor, loading } = useReportQuery();
+    const { ensureDatasets, filteredResultFor, datasetErrors, datasetErrorFor, refresh, loading } = useReportQuery();
     if (loading) {
       return <div>loading</div>;
     }
     return (
       <div>
         <button onClick={() => void ensureDatasets(ids)}>ensure</button>
+        <button onClick={() => void refresh()}>refresh</button>
         <div>default: {filteredResultFor(null)?.rows.length ?? "none"}</div>
         <div>seven: {filteredResultFor(7)?.rows.length ?? "none"}</div>
         <div>err7: {datasetErrors.get(7) ?? "none"}</div>
@@ -192,6 +193,30 @@ describe("ReportQueryProvider multi-dataset cache", () => {
     await userEvent.setup().click(screen.getByText("ensure"));
 
     expect(executeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("refresh re-queries every loaded dataset with the cache bypassed, not just the default", async () => {
+    mockReport(5);
+    const executeSpy = vi.spyOn(datasetsApi, "executeDataset").mockResolvedValue({ columns: [], rows: [] });
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <DatasetProbe ids={[7]} />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("ensure")).toBeInTheDocument());
+    const user = userEvent.setup();
+    await user.click(screen.getByText("ensure"));
+    await waitFor(() => expect(executeSpy).toHaveBeenCalledWith(7));
+
+    executeSpy.mockClear();
+    await user.click(screen.getByText("refresh"));
+
+    // Both the report default (5) and the widget dataset (7) must bypass the server cache —
+    // otherwise Refresh would appear to do nothing for every non-default widget.
+    await waitFor(() => expect(executeSpy).toHaveBeenCalledWith(5, true));
+    await waitFor(() => expect(executeSpy).toHaveBeenCalledWith(7, true));
   });
 
   it("datasetErrorFor surfaces a failed dataset's error and leaves healthy ones clean", async () => {

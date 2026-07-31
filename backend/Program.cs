@@ -39,6 +39,9 @@ builder.Services.AddDataProtection()
     .SetApplicationName("OpenReportingPlatform");
 builder.Services.AddScoped<ICredentialProtector, CredentialProtector>();
 builder.Services.Configure<SqlServerProviderOptions>(builder.Configuration.GetSection("DataSources:SqlServer"));
+builder.Services.Configure<DatasetCacheOptions>(builder.Configuration.GetSection("DataSources:Cache"));
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IDatasetResultCache, MemoryDatasetResultCache>();
 builder.Services.AddScoped<IDataSourceProvider, SqlServerProvider>();
 builder.Services.AddScoped<IDataSourceProvider, RestApiProvider>();
 builder.Services.AddScoped<IDataSourceService, DataSourceService>();

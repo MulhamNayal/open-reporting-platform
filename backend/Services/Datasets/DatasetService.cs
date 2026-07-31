@@ -21,12 +21,20 @@ public class DatasetService : IDatasetService
     private readonly ReportingDbContext _context;
     private readonly ICredentialProtector _credentialProtector;
     private readonly IReadOnlyList<IDataSourceProvider> _providers;
+    private readonly IDatasetResultCache? _resultCache;
 
-    public DatasetService(ReportingDbContext context, ICredentialProtector credentialProtector, IEnumerable<IDataSourceProvider> providers)
+    public DatasetService(
+        ReportingDbContext context,
+        ICredentialProtector credentialProtector,
+        IEnumerable<IDataSourceProvider> providers,
+        // Optional so the existing service tests can keep constructing this directly; DI always
+        // supplies it. A null cache simply means every execute hits the source, as before.
+        IDatasetResultCache? resultCache = null)
     {
         _context = context;
         _credentialProtector = credentialProtector;
         _providers = providers.ToList();
+        _resultCache = resultCache;
     }
 
     public async Task<DatasetSummary> CreateAsync(CreateDatasetRequest request)
@@ -82,6 +90,8 @@ public class DatasetService : IDatasetService
         var columns = await DiscoverColumnsForAsync(decryptedConnection, dataset);
         dataset.Columns = JsonSerializer.Serialize(columns);
         dataset.UpdatedAtUtc = DateTime.UtcNow;
+        // Retires every cache entry for this dataset — the old key can no longer be built.
+        dataset.DefinitionVersion++;
 
         await _context.SaveChangesAsync();
 
@@ -138,21 +148,45 @@ public class DatasetService : IDatasetService
         return columns;
     }
 
-    public async Task<QueryResult> ExecuteAsync(int datasetId)
+    // refresh: the Ribbon's explicit Refresh must always re-query the source, otherwise the
+    // button silently does nothing for the rest of the TTL.
+    public async Task<QueryResult> ExecuteAsync(int datasetId, bool refresh = false)
     {
         var dataset = await GetDatasetAsync(datasetId);
+        var rowLimit = dataset.RowLimit ?? DefaultRowLimit;
+        var cacheKey = BuildCacheKey(dataset, rowLimit);
+
+        if (!refresh)
+        {
+            var cached = _resultCache?.Get(cacheKey);
+            if (cached is not null)
+            {
+                // Deliberately no SaveChangesAsync here: a cache hit changed nothing, and the
+                // write below would otherwise run on every page load of every report.
+                return cached;
+            }
+        }
+
         var connection = await GetConnectionAsync(dataset.DataSourceConnectionId);
         var decryptedConnection = WithDecryptedCredentials(connection);
         var provider = ResolveProvider(connection.Type);
 
-        var result = await provider.ExecuteQueryAsync(decryptedConnection, dataset, dataset.RowLimit ?? DefaultRowLimit, CancellationToken.None);
+        var result = await provider.ExecuteQueryAsync(decryptedConnection, dataset, rowLimit, CancellationToken.None);
 
         dataset.Columns = JsonSerializer.Serialize(result.Columns);
         dataset.UpdatedAtUtc = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
+        _resultCache?.Set(cacheKey, result);
+
         return result;
     }
+
+    // DefinitionVersion, not UpdatedAtUtc — see the comment on Dataset.DefinitionVersion. Because
+    // the version is part of the key, an edited dataset can never serve a stale entry and no
+    // explicit eviction is needed; the orphaned entry just expires.
+    private static string BuildCacheKey(Dataset dataset, int rowLimit) =>
+        $"dataset:{dataset.Id}:v{dataset.DefinitionVersion}:rows{rowLimit}";
 
     private async Task<IReadOnlyList<ColumnDescriptor>> DiscoverColumnsForAsync(DataSourceConnection connection, Dataset dataset)
     {
