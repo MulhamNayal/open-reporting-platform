@@ -3,6 +3,7 @@ import type { QueryResult } from "../api/datasets";
 import type { WidgetSummary } from "../api/widgets";
 import { parseFormatOptions } from "../api/widgets";
 import { useAppearance } from "../appearance/AppearanceContext";
+import { aggregateResult } from "./aggregate";
 import { findMissingFields, isBindingComplete } from "./staleBindingCheck";
 import TableWidget from "./TableWidget";
 import BarWidget from "./BarWidget";
@@ -77,6 +78,10 @@ function WidgetRenderer({
     );
   }
 
+  // After the missing-field check above, which must run against the source columns — and after
+  // the caller has already applied page filters, so a cross-filter click recomputes the totals.
+  const data = aggregateResult(result, widget.binding.categoryField, widget.binding.valueFields, widget.binding.aggregations);
+
   const format = parseFormatOptions(widget.binding.formatOptions);
   // showTitle toggles the displayed title; a non-empty format title overrides the widget's own.
   // hideTitle suppresses it regardless — used when a wrapping chrome (the report editor's
@@ -85,28 +90,28 @@ function WidgetRenderer({
 
   switch (widget.type) {
     case "Table":
-      return <TableWidget title={chartTitle} result={result} valueFields={widget.binding.valueFields} format={format} />;
+      return <TableWidget title={chartTitle} result={data} valueFields={widget.binding.valueFields} format={format} />;
     case "Bar":
-      return <BarWidget title={chartTitle} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
+      return <BarWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "StackedColumn":
-      return <BarWidget title={chartTitle} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} stacked format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
+      return <BarWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} stacked format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "ClusteredBar":
-      return <BarWidget title={chartTitle} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} horizontal format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
+      return <BarWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} horizontal format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Line":
-      return <LineWidget title={chartTitle} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
+      return <LineWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Pie":
-      return <PieWidget title={chartTitle} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
+      return <PieWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Area":
-      return <LineWidget title={chartTitle} result={result} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} area format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
+      return <LineWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} area format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Donut":
-      return <PieWidget title={chartTitle} result={result} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} donut format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
+      return <PieWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueField={widget.binding.valueFields[0]} donut format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "Kpi":
-      return <KpiWidget title={chartTitle} result={result} valueField={widget.binding.valueFields[0]} format={format} />;
+      return <KpiWidget title={chartTitle} result={data} valueField={widget.binding.valueFields[0]} format={format} />;
     case "Scatter":
       return (
         <ScatterWidget
           title={chartTitle}
-          result={result}
+          result={data}
           xField={widget.binding.valueFields[0]}
           yField={widget.binding.valueFields[1]}
           detailsField={widget.binding.categoryField}

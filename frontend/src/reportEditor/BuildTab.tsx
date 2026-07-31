@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { classify } from "../widgets/fieldClassification";
 import type { ColumnDescriptor, DatasetSummary } from "../api/datasets";
+import { AGGREGATION_FNS, type AggregationFn } from "../api/widgets";
 import type { WidgetBindingDraft, WidgetDraft } from "../widgets/widgetDraftReducer";
 import { assignField, removeField, WELL_SPECS } from "./fieldAssignment";
 import "./reportEditor.css";
@@ -14,6 +15,25 @@ function glyphFor(nativeType: string): { glyphClass: string; glyph: string } {
     return { glyphClass: "date", glyph: "▦" };
   }
   return { glyphClass: "dim", glyph: "Abc" };
+}
+
+// Aggregations are stored aligned by index with valueFields, so both helpers go through
+// the field's position rather than its name.
+function aggregationFor(binding: WidgetBindingDraft, fieldName: string): AggregationFn {
+  const index = binding.valueFields.indexOf(fieldName);
+  return (index === -1 ? "None" : binding.aggregations?.[index] ?? "None") as AggregationFn;
+}
+
+function setAggregation(binding: WidgetBindingDraft, fieldName: string, fn: AggregationFn): WidgetBindingDraft {
+  const index = binding.valueFields.indexOf(fieldName);
+  if (index === -1) {
+    return binding;
+  }
+  const next = binding.valueFields.map((_, i) => binding.aggregations?.[i] ?? "None");
+  next[index] = fn;
+  // Collapse back to null when nothing is aggregated, so the widget persists exactly what it
+  // would have before this feature existed.
+  return { ...binding, aggregations: next.every((f) => f === "None") ? null : next };
 }
 
 function fieldNamesInWell(binding: WidgetBindingDraft, wellKey: string): string[] {
@@ -125,6 +145,18 @@ function BuildTab({
                 <div className="pill" key={fieldName}>
                   <span className={`gl ${glyphClass}`}>{glyph}</span>
                   <span className="pname">{fieldName}</span>
+                  {well.key !== "category" && (
+                    <select
+                      aria-label={`Aggregate ${fieldName}`}
+                      className="agg"
+                      value={aggregationFor(binding, fieldName)}
+                      onChange={(e) => onChange(setAggregation(binding, fieldName, e.target.value as AggregationFn))}
+                    >
+                      {AGGREGATION_FNS.map((fn) => (
+                        <option key={fn} value={fn}>{fn === "None" ? "—" : fn}</option>
+                      ))}
+                    </select>
+                  )}
                   <button
                     type="button"
                     className="x"

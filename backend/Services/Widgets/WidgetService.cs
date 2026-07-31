@@ -74,6 +74,11 @@ public class WidgetService : IWidgetService
                 {
                     CategoryField = widgetRequest.Binding.CategoryField,
                     ValueFields = JsonSerializer.Serialize(widgetRequest.Binding.ValueFields),
+                    // Left null when nothing is aggregated, so an unaggregated widget stores
+                    // exactly what it stored before this column existed.
+                    Aggregations = widgetRequest.Binding.Aggregations is { Count: > 0 }
+                        ? JsonSerializer.Serialize(widgetRequest.Binding.Aggregations)
+                        : null,
                     FormatOptions = widgetRequest.Binding.FormatOptions ?? "{}"
                 };
             }
@@ -129,7 +134,10 @@ public class WidgetService : IWidgetService
         if (widget.Binding != null)
         {
             var valueFields = JsonSerializer.Deserialize<List<string>>(widget.Binding.ValueFields) ?? new List<string>();
-            bindingSummary = new WidgetBindingSummary(widget.Binding.CategoryField, valueFields, widget.Binding.FormatOptions);
+            var aggregations = widget.Binding.Aggregations is null
+                ? null
+                : JsonSerializer.Deserialize<List<string>>(widget.Binding.Aggregations);
+            bindingSummary = new WidgetBindingSummary(widget.Binding.CategoryField, valueFields, aggregations, widget.Binding.FormatOptions);
         }
 
         return new WidgetSummary(widget.Id, widget.Type, widget.X, widget.Y, widget.W, widget.H, widget.Title, widget.Content, widget.DatasetId, bindingSummary);

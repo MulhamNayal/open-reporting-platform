@@ -50,9 +50,18 @@ export const DEFAULT_FORMAT_OPTIONS: WidgetFormatOptions = {
   fieldFormats: {},
 };
 
+// Names match the backend enum and map 1:1 to SQL, so the same spec can later be pushed
+// into a GROUP BY instead of being applied in the browser.
+export type AggregationFn = "None" | "Sum" | "Count" | "CountDistinct" | "Avg" | "Min" | "Max";
+
+export const AGGREGATION_FNS: AggregationFn[] = ["None", "Sum", "Count", "CountDistinct", "Avg", "Min", "Max"];
+
 export interface WidgetBindingSummary {
   categoryField: string | null;
   valueFields: string[];
+  // Aligned by index with valueFields. Absent/null (or a short array) means "None" for the
+  // rest — which is how every widget behaved before aggregation existed.
+  aggregations?: AggregationFn[] | null;
   formatOptions: string;
 }
 
@@ -73,6 +82,7 @@ export interface WidgetSummary {
 export interface SaveWidgetBindingRequest {
   categoryField: string | null;
   valueFields: string[];
+  aggregations?: AggregationFn[] | null;
   formatOptions: string;
 }
 

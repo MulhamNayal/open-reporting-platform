@@ -1,8 +1,10 @@
-import type { WidgetFormatOptions, WidgetType } from "../api/widgets";
+import type { AggregationFn, WidgetFormatOptions, WidgetType } from "../api/widgets";
 
 export interface WidgetBindingDraft {
   categoryField: string | null;
   valueFields: string[];
+  // Aligned by index with valueFields; absent means every field is unaggregated.
+  aggregations?: AggregationFn[] | null;
   formatOptions: WidgetFormatOptions;
 }
 

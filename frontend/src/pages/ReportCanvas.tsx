@@ -33,7 +33,7 @@ function toWidgetDrafts(summaries: WidgetSummary[]): WidgetDraft[] {
     id: s.id, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h, title: s.title, content: s.content,
     datasetId: s.datasetId,
     binding: s.binding
-      ? { categoryField: s.binding.categoryField, valueFields: s.binding.valueFields, formatOptions: parseFormatOptions(s.binding.formatOptions) }
+      ? { categoryField: s.binding.categoryField, valueFields: s.binding.valueFields, aggregations: s.binding.aggregations ?? null, formatOptions: parseFormatOptions(s.binding.formatOptions) }
       : null,
   }));
 }
@@ -219,7 +219,7 @@ function ReportCanvasInner() {
       type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
       datasetId: w.datasetId,
       binding: w.binding
-        ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
+        ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, aggregations: w.binding.aggregations ?? null, formatOptions: JSON.stringify(w.binding.formatOptions) }
         : null,
     }));
 
@@ -347,7 +347,7 @@ function ReportCanvasInner() {
                             id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
                             datasetId: w.datasetId,
                             binding: w.binding
-                              ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, formatOptions: JSON.stringify(w.binding.formatOptions) }
+                              ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, aggregations: w.binding.aggregations ?? null, formatOptions: JSON.stringify(w.binding.formatOptions) }
                               : null,
                           }}
                           result={filteredResultFor(w.datasetId)}
