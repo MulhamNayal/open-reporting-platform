@@ -44,6 +44,7 @@ builder.Services.Configure<DatasetCacheOptions>(builder.Configuration.GetSection
 builder.Services.Configure<MaterializationOptions>(builder.Configuration.GetSection("Materialization"));
 builder.Services.AddScoped<IMaterializationStore, SqlMaterializationStore>();
 builder.Services.AddScoped<IMaterializationService, MaterializationService>();
+builder.Services.AddScoped<IDatasetQueryService, DatasetQueryService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IDatasetResultCache, MemoryDatasetResultCache>();
 builder.Services.AddScoped<IDataSourceProvider, SqlServerProvider>();

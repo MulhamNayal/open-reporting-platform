@@ -253,24 +253,27 @@ public class DatasetService : IDatasetService
         return await restApiProvider.DiscoverRestQueryColumnsAsync(connection, definition.PathSuffix, definition.QueryParams, CancellationToken.None);
     }
 
-    // A stored procedure's result set can't be filtered or paged inline — SELECT * FROM (EXEC ...)
-    // isn't valid SQL — so DirectQuery over one would re-run the whole procedure on every
-    // interaction. RestQuery is the same story over HTTP. Those modes must materialise.
-    private static bool RequiresImport(DatasetMode mode) =>
-        mode is DatasetMode.StoredProcedure or DatasetMode.RestQuery;
+    // Storage mode is the author's call, and both options are legitimate for every query mode:
+    // Import trades freshness for speed, DirectQuery the reverse. Defaults to DirectQuery so a
+    // dataset behaves exactly as it did before this setting existed until someone opts in.
+    //
+    // What does differ by query mode is the *capability*. A stored procedure's result set can't be
+    // filtered or paged inline — SELECT * FROM (EXEC ...) isn't valid SQL — so a DirectQuery
+    // procedure keeps the row cap and filters client-side, where a materialised one gets
+    // server-side paging. See CanPushDownQueries.
+    private static DatasetStorageMode ResolveStorageMode(DatasetMode mode, DatasetStorageMode? requested) =>
+        requested ?? DatasetStorageMode.DirectQuery;
 
-    private static DatasetStorageMode ResolveStorageMode(DatasetMode mode, DatasetStorageMode? requested)
-    {
-        var resolved = requested ?? (RequiresImport(mode) ? DatasetStorageMode.Import : DatasetStorageMode.DirectQuery);
-
-        if (resolved == DatasetStorageMode.DirectQuery && RequiresImport(mode))
-        {
-            throw new InvalidOperationException(
-                $"Dataset mode {mode} cannot use DirectQuery storage — its result set can't be filtered or paged at the source. Use Import.");
-        }
-
-        return resolved;
-    }
+    /// <summary>
+    /// Whether filtering, paging and aggregation can be expressed as SQL against this dataset.
+    /// Materialised datasets are a table, so always. RawSql can be wrapped in a derived table.
+    /// A stored procedure cannot — SELECT * FROM (EXEC ...) isn't valid SQL — so those fall back
+    /// to executing in full and doing the work in memory, subject to the row cap.
+    /// TableQuery is excluded for now only because building its SQL lives in the provider;
+    /// nothing about it prevents pushdown later.
+    /// </summary>
+    public static bool CanPushDownQueries(DatasetMode mode, DatasetStorageMode storageMode) =>
+        storageMode == DatasetStorageMode.Import || mode == DatasetMode.RawSql;
 
     private static void ValidateModeMatchesConnectionType(DatasetMode mode, DataSourceType connectionType)
     {

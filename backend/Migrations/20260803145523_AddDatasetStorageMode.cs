@@ -35,19 +35,15 @@ namespace Backend.Migrations
                 type: "nvarchar(max)",
                 nullable: true);
 
-            // 0 = DirectQuery, which keeps every existing dataset behaving exactly as it does today.
+            // 0 = DirectQuery, deliberately for every existing dataset regardless of query mode:
+            // that is exactly how they behave today, and switching one to Import is the author's
+            // decision to make per dataset, not something a migration should do on their behalf.
             migrationBuilder.AddColumn<int>(
                 name: "StorageMode",
                 table: "Datasets",
                 type: "int",
                 nullable: false,
                 defaultValue: 0);
-
-            // ...except stored-procedure and REST datasets, for which DirectQuery is not a legal
-            // combination — their result sets can't be filtered or paged at the source. Leaving them
-            // on the default would make every one of them fail validation on the next edit.
-            // Mode: 2 = StoredProcedure, 3 = RestQuery.  StorageMode: 1 = Import.
-            migrationBuilder.Sql("UPDATE [Datasets] SET [StorageMode] = 1 WHERE [Mode] IN (2, 3);");
         }
 
         /// <inheritdoc />

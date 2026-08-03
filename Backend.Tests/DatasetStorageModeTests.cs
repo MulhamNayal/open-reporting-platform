@@ -83,10 +83,10 @@ public class DatasetStorageModeTests
     }
 
     [Fact]
-    public async Task CreateAsync_StoredProcedureWithNoStorageMode_DefaultsToImport()
+    public async Task CreateAsync_StoredProcedureWithNoStorageMode_DefaultsToDirectQuery()
     {
-        // A procedure's result set can't be filtered or paged at the source, so Import is the
-        // only workable default.
+        // Not Import: switching a dataset to Import is the author's decision, and DirectQuery is
+        // how a procedure-backed dataset behaved before this setting existed.
         var service = CreateService();
         var definition = JsonSerializer.Serialize(
             new StoredProcedureDefinition("dbo.Thing", new List<StoredProcedureParameter>()));
@@ -94,19 +94,55 @@ public class DatasetStorageModeTests
         var created = await service.CreateAsync(new CreateDatasetRequest(
             1, "Ds", null, DatasetMode.StoredProcedure, definition, 100));
 
-        Assert.Equal(DatasetStorageMode.Import, created.StorageMode);
+        Assert.Equal(DatasetStorageMode.DirectQuery, created.StorageMode);
     }
 
     [Fact]
-    public async Task CreateAsync_StoredProcedureRequestingDirectQuery_IsRejected()
+    public async Task CreateAsync_StoredProcedureRequestingImport_IsAllowed()
     {
         var service = CreateService();
         var definition = JsonSerializer.Serialize(
             new StoredProcedureDefinition("dbo.Thing", new List<StoredProcedureParameter>()));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateAsync(
-            new CreateDatasetRequest(1, "Ds", null, DatasetMode.StoredProcedure, definition, 100,
-                IsSaved: true, StorageMode: DatasetStorageMode.DirectQuery)));
+        var created = await service.CreateAsync(new CreateDatasetRequest(
+            1, "Ds", null, DatasetMode.StoredProcedure, definition, 100,
+            IsSaved: true, StorageMode: DatasetStorageMode.Import));
+
+        Assert.Equal(DatasetStorageMode.Import, created.StorageMode);
+    }
+
+    [Fact]
+    public async Task CreateAsync_StoredProcedureRequestingDirectQuery_IsAllowed()
+    {
+        // Legitimate for a small result that must be current — it just can't push filtering or
+        // paging to the source, which CanPushDownQueries reports.
+        var service = CreateService();
+        var definition = JsonSerializer.Serialize(
+            new StoredProcedureDefinition("dbo.Thing", new List<StoredProcedureParameter>()));
+
+        var created = await service.CreateAsync(new CreateDatasetRequest(
+            1, "Ds", null, DatasetMode.StoredProcedure, definition, 100,
+            IsSaved: true, StorageMode: DatasetStorageMode.DirectQuery));
+
+        Assert.Equal(DatasetStorageMode.DirectQuery, created.StorageMode);
+    }
+
+    [Theory]
+    // Materialised datasets are a table, so everything can be pushed down regardless of source.
+    [InlineData(DatasetMode.StoredProcedure, DatasetStorageMode.Import, true)]
+    [InlineData(DatasetMode.RestQuery, DatasetStorageMode.Import, true)]
+    // Live, but wrappable in a derived table.
+    [InlineData(DatasetMode.RawSql, DatasetStorageMode.DirectQuery, true)]
+    // Live and not wrappable — SELECT * FROM (EXEC ...) isn't valid SQL, so the row cap applies
+    // and the work happens in memory.
+    [InlineData(DatasetMode.StoredProcedure, DatasetStorageMode.DirectQuery, false)]
+    [InlineData(DatasetMode.RestQuery, DatasetStorageMode.DirectQuery, false)]
+    // Buildable in principle; excluded only because its SQL builder lives in the provider.
+    [InlineData(DatasetMode.TableQuery, DatasetStorageMode.DirectQuery, false)]
+    public void CanPushDownQueries_ReflectsWhetherTheSourceCanBeFilteredAtSource(
+        DatasetMode mode, DatasetStorageMode storageMode, bool expected)
+    {
+        Assert.Equal(expected, DatasetService.CanPushDownQueries(mode, storageMode));
     }
 
     [Fact]

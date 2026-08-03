@@ -39,9 +39,13 @@ This plan was written after reading the approved design doc
   are orthogonal and both are needed.
 - **`StorageMode` defaults to `DirectQuery`.** Existing rows keep today's behaviour with no data
   migration — the same additive shape as `Widget.DatasetId` in the per-widget-datasets milestone.
-- **Storage mode is validated against query mode.** `StoredProcedure` and `RestQuery` datasets may
-  only be `Import`; DirectQuery over them re-runs the source per interaction and is always wrong.
-  Reject with `InvalidOperationException` (→ 400) rather than offering an unusable setting.
+- **Storage mode is the author's choice for every query mode, and defaults to `DirectQuery`.**
+  *(Revised 2026-08-03 — an earlier draft forbade DirectQuery on stored procedures. That conflated
+  storage mode with pushdown capability.)* What differs by query mode is what can be pushed to the
+  source: `Import` always can; `RawSql`/`TableQuery` can because the provider wraps them in a
+  derived table; `StoredProcedure`/`RestQuery` on DirectQuery cannot, so they keep the row cap and
+  filter client-side. `DatasetService.CanPushDownQueries` is the one place that decides.
+  **No migration backfill** — existing datasets stay DirectQuery, which is how they behave today.
 - **Materialised tables live in a platform-owned database, never in a user's data source.** Its
   connection string is configuration (`ConnectionStrings:MaterializationDatabase`), not a
   `DataSourceConnection` row, and must not appear in the Connections UI.

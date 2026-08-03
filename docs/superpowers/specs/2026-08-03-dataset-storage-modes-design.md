@@ -92,18 +92,31 @@ public int? MaterializedRowCount { get; set; }
 public string? LastMaterializeError { get; set; }
 ```
 
-### The mode is constrained by the dataset's query mode, not freely chosen
+### The mode is the author's choice, for every query mode
 
-| `Dataset.Mode` | Allowed storage modes | Default |
+**Revised 2026-08-03.** An earlier draft forbade DirectQuery on stored procedures. That was wrong,
+and conflated *storage mode* with *pushdown capability*.
+
+Both options are legitimate everywhere. Import trades freshness for speed; DirectQuery the reverse.
+A small procedure whose numbers must be current is a perfectly good DirectQuery dataset — and is
+exactly how every dataset behaves today. **The default is `DirectQuery` for all query modes**, so a
+dataset behaves as it did before this setting existed until someone deliberately opts in.
+
+What genuinely differs by query mode is what the platform *can* do with the dataset once chosen:
+
+| `Dataset.Mode` | Storage mode | Filtering, paging, aggregation |
 |---|---|---|
-| `StoredProcedure` | Import only | Import |
-| `RawSql`, `TableQuery` | Either | DirectQuery |
-| `RestQuery` | Import only | Import |
+| any | `Import` | pushed to SQL against the materialised table |
+| `RawSql`, `TableQuery` | `DirectQuery` | pushed to SQL, wrapped in a derived table |
+| `StoredProcedure`, `RestQuery` | `DirectQuery` | **not possible** — row cap applies, browser filters |
 
-DirectQuery over a stored procedure is technically expressible and practically unusable — every
-filter click re-runs a procedure that takes tens of seconds. The service rejects that combination
-rather than offering a setting that is always the wrong answer. `RestQuery` is Import-only for the
-same reason: an HTTP round-trip per interaction, with no server-side filtering available.
+That last row is the real constraint: `SELECT * FROM (EXEC proc) WHERE ...` is not valid SQL, and a
+REST source offers no server-side filtering. Those datasets keep today's behaviour — capped rows,
+client-side filtering — which is workable when the result is small and unworkable when it isn't.
+`DatasetService.CanPushDownQueries` is the single place that decides which path a dataset takes.
+
+So the guidance to a report author is simply: **if a report is slow, switch it to Import.** That is
+the whole user-facing model, and it is the same trade Power BI presents.
 
 ### Where materialised tables live
 
