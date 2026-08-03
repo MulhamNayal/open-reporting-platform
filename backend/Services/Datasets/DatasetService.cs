@@ -184,6 +184,18 @@ public class DatasetService : IDatasetService
         return result;
     }
 
+    public async Task<QueryResult> ExecuteRawAsync(int datasetId, int rowLimit, CancellationToken cancellationToken = default)
+    {
+        var dataset = await GetDatasetAsync(datasetId);
+        var connection = await GetConnectionAsync(dataset.DataSourceConnectionId);
+        var decryptedConnection = WithDecryptedCredentials(connection);
+        var provider = ResolveProvider(connection.Type);
+
+        // Deliberately no cache read or write: materialisation wants the source of truth, and its
+        // full result would evict every useful entry from a cache sized for request-path results.
+        return await provider.ExecuteQueryAsync(decryptedConnection, dataset, rowLimit, cancellationToken);
+    }
+
     // DefinitionVersion, not UpdatedAtUtc — see the comment on Dataset.DefinitionVersion. Because
     // the version is part of the key, an edited dataset can never serve a stale entry and no
     // explicit eviction is needed; the orphaned entry just expires.

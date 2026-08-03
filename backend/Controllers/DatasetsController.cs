@@ -1,4 +1,5 @@
 using Backend.Services.DataSources;
+using Backend.Services.Materialization;
 using Backend.Services.Datasets;
 using Microsoft.AspNetCore.Mvc;
 
@@ -72,6 +73,13 @@ public class DatasetsController : ControllerBase
     public async Task<ActionResult<IEnumerable<ColumnDescriptor>>> DiscoverColumns(int id)
     {
         return Ok(await _service.DiscoverColumnsAsync(id));
+    }
+
+    // Import datasets only — runs the source in full and replaces the materialised copy.
+    [HttpPost("{id}/materialize")]
+    public async Task<ActionResult<MaterializationResult>> Materialize(int id, [FromServices] IMaterializationService materialization)
+    {
+        return Ok(await materialization.MaterializeAsync(id, HttpContext.RequestAborted));
     }
 
     // refresh=true bypasses the result cache — used by the Ribbon's Refresh action.

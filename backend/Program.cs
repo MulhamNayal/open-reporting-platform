@@ -5,6 +5,7 @@ using Backend.Middleware;
 using Backend.Services;
 using Backend.Services.DataSources;
 using Backend.Services.Datasets;
+using Backend.Services.Materialization;
 using Backend.Services.ReportPages;
 using Backend.Services.Reports;
 using Backend.Services.Widgets;
@@ -40,6 +41,9 @@ builder.Services.AddDataProtection()
 builder.Services.AddScoped<ICredentialProtector, CredentialProtector>();
 builder.Services.Configure<SqlServerProviderOptions>(builder.Configuration.GetSection("DataSources:SqlServer"));
 builder.Services.Configure<DatasetCacheOptions>(builder.Configuration.GetSection("DataSources:Cache"));
+builder.Services.Configure<MaterializationOptions>(builder.Configuration.GetSection("Materialization"));
+builder.Services.AddScoped<IMaterializationStore, SqlMaterializationStore>();
+builder.Services.AddScoped<IMaterializationService, MaterializationService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IDatasetResultCache, MemoryDatasetResultCache>();
 builder.Services.AddScoped<IDataSourceProvider, SqlServerProvider>();
