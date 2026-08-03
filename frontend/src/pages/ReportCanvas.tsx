@@ -9,7 +9,7 @@ import { getDataset, getDatasets, type DatasetSummary } from "../api/datasets";
 import { renameReport, setReportDataset } from "../api/reports";
 import { createReportPage, deleteReportPage, updateReportPage } from "../api/reportPages";
 import { widgetDraftReducer, type WidgetDraft } from "../widgets/widgetDraftReducer";
-import WidgetRenderer from "../widgets/WidgetRenderer";
+import WidgetHost from "../reportEditor/WidgetHost";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
 import Ribbon from "../reportEditor/Ribbon";
 import VisualizationsPane from "../reportEditor/VisualizationsPane";
@@ -40,7 +40,7 @@ function toWidgetDrafts(summaries: WidgetSummary[]): WidgetDraft[] {
 
 function ReportCanvasInner() {
   const navigate = useNavigate();
-  const { reportId, reportName: fetchedReportName, reportDatasetId, reportPages, reportPageId, setReportPageId, filteredResult, filteredResultFor, datasetErrorFor, datasetResults, ensureDatasets, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
+  const { reportId, reportName: fetchedReportName, reportDatasetId, reportPages, reportPageId, setReportPageId, filteredResult, filteredResultFor, datasetResults, ensureDatasets, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
 
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
@@ -342,7 +342,7 @@ function ReportCanvasInner() {
                             onChange={(e) => dispatch({ type: "contentChanged", id: w.id, content: e.target.value })}
                           />
                         )}
-                        <WidgetRenderer
+                        <WidgetHost
                           widget={{
                             id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, title: w.title, content: w.content,
                             datasetId: w.datasetId,
@@ -350,8 +350,6 @@ function ReportCanvasInner() {
                               ? { categoryField: w.binding.categoryField, valueFields: w.binding.valueFields, aggregations: w.binding.aggregations ?? null, formatOptions: JSON.stringify(w.binding.formatOptions) }
                               : null,
                           }}
-                          result={filteredResultFor(w.datasetId)}
-                          error={datasetErrorFor(w.datasetId)}
                           onDataPointClick={handleDataPointClick}
                           hideTitle
                         />

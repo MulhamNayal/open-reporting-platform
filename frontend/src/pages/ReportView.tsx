@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Alert, Box } from "@mui/material";
 import { getWidgets, type WidgetSummary } from "../api/widgets";
 import { recordReportView } from "../api/reports";
-import WidgetRenderer from "../widgets/WidgetRenderer";
+import WidgetHost from "../reportEditor/WidgetHost";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
 import FiltersPane from "../reportEditor/FiltersPane";
 import PageTabsBar from "../reportEditor/PageTabsBar";
@@ -13,7 +13,7 @@ import "../reportEditor/reportEditor.css";
 
 function ReportViewInner() {
   const {
-    reportName, reportPageId, setReportPageId, reportPages, datasetResults, filteredResultFor, datasetErrorFor, ensureDatasets,
+    reportName, reportPageId, setReportPageId, reportPages, datasetResults, ensureDatasets,
     filterState, setFilterState, loading: queryLoading, refresh,
   } = useReportQuery();
   const [widgets, setWidgets] = useState<WidgetSummary[]>([]);
@@ -86,12 +86,7 @@ function ReportViewInner() {
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 2, width: "100%" }}>
               {widgets.map((w) => (
                 <Box key={w.id} sx={{ gridColumn: `${w.x + 1} / span ${w.w}`, gridRow: `${w.y + 1} / span ${w.h}` }}>
-                  <WidgetRenderer
-                    widget={w}
-                    result={filteredResultFor(w.datasetId)}
-                    error={datasetErrorFor(w.datasetId)}
-                    onDataPointClick={handleDataPointClick}
-                  />
+                  <WidgetHost widget={w} onDataPointClick={handleDataPointClick} />
                 </Box>
               ))}
             </Box>

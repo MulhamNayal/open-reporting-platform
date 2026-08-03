@@ -106,9 +106,22 @@ describe("ReportQueryProvider multi-dataset cache", () => {
     );
   }
 
+  // ensureDatasets reads the dataset's metadata before deciding whether to fetch its rows at all,
+  // so every test here needs one. DirectQuery keeps the fetch-the-whole-result path these tests
+  // were written against.
+  function mockDatasetInfo(storageMode: datasetsApi.DatasetStorageMode = "DirectQuery") {
+    vi.spyOn(datasetsApi, "getDataset").mockImplementation(async (id: number) => ({
+      id, dataSourceConnectionId: 1, name: `Ds ${id}`, description: null, mode: "RawSql",
+      definitionJson: "{}", rowLimit: null, isSaved: true, columns: [],
+      createdAtUtc: "2026-01-01T00:00:00Z", updatedAtUtc: "2026-01-01T00:00:00Z",
+      storageMode, lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null,
+    }));
+  }
+
   function mockReport(datasetId: number | null) {
     vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
     vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue(page);
+    mockDatasetInfo();
   }
 
   it("resolves a null dataset id to the report default", async () => {

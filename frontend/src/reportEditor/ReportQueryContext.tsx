@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { getReport } from "../api/reports";
-import { executeDataset, type QueryResult } from "../api/datasets";
+import { executeDataset, getDataset, type DatasetSummary, type QueryResult } from "../api/datasets";
 import { getReportPages, updateReportPage, type ReportPage } from "../api/reportPages";
 import { applyFilters } from "./crossFilter";
 import { resolveWidgetDatasetId } from "./widgetDataset";
@@ -20,6 +20,10 @@ export interface ReportQueryContextValue {
   ensureDatasets: (ids: Array<number | null>) => Promise<void>;
   filteredResultFor: (datasetId: number | null) => QueryResult | null;
   datasetErrorFor: (datasetId: number | null) => string | null;
+  /// The dataset's own metadata, needed to know whether its rows live on the server (Import)
+  /// or have been fetched whole (DirectQuery). Absent until ensureDatasets has run for it.
+  datasetInfoFor: (datasetId: number | null) => DatasetSummary | null;
+  resolveDatasetId: (datasetId: number | null) => number | null;
   filterState: Record<string, string[]>;
   setFilterState: (next: Record<string, string[]>) => void;
   saveFilterState: () => Promise<void>;
@@ -38,6 +42,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
   const [rawResult, setRawResult] = useState<QueryResult | null>(null);
   const [datasetResults, setDatasetResults] = useState<Map<number, QueryResult>>(new Map());
   const [datasetErrors, setDatasetErrors] = useState<Map<number, string>>(new Map());
+  const [datasetInfo, setDatasetInfo] = useState<Map<number, DatasetSummary>>(new Map());
   const [filterState, setFilterState] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +116,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
   const ensureDatasets = useCallback(async (ids: Array<number | null>) => {
     const wanted = [...new Set(ids.map((id) => resolveWidgetDatasetId(id, reportDatasetId)))]
       .filter((id): id is number => id !== null)
-      .filter((id) => !datasetResults.has(id) && !inFlightRef.current.has(id));
+      .filter((id) => !datasetResults.has(id) && !datasetInfo.has(id) && !inFlightRef.current.has(id));
 
     if (wanted.length === 0) {
       return;
@@ -122,6 +127,14 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     await Promise.all(
       wanted.map(async (id) => {
         try {
+          // Metadata first: an Import dataset's rows stay on the server and are fetched per
+          // widget, so pulling the whole result here would defeat the entire point.
+          const info = await getDataset(id);
+          setDatasetInfo((prev) => new Map(prev).set(id, info));
+          if (info.storageMode === "Import") {
+            return;
+          }
+
           const result = await executeDataset(id);
           loadedIdsRef.current.add(id);
           setDatasetResults((prev) => new Map(prev).set(id, result));
@@ -181,6 +194,19 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     [datasetErrors, reportDatasetId],
   );
 
+  const resolveDatasetId = useCallback(
+    (datasetId: number | null) => resolveWidgetDatasetId(datasetId, reportDatasetId),
+    [reportDatasetId],
+  );
+
+  const datasetInfoFor = useCallback(
+    (datasetId: number | null) => {
+      const resolved = resolveWidgetDatasetId(datasetId, reportDatasetId);
+      return resolved === null ? null : datasetInfo.get(resolved) ?? null;
+    },
+    [datasetInfo, reportDatasetId],
+  );
+
   // Defined in terms of filteredResultFor so the two can never disagree about the default.
   const filteredResult = useMemo(() => filteredResultFor(null), [filteredResultFor]);
 
@@ -198,6 +224,8 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     ensureDatasets,
     filteredResultFor,
     datasetErrorFor,
+    datasetInfoFor,
+    resolveDatasetId,
     filterState,
     setFilterState,
     saveFilterState,
