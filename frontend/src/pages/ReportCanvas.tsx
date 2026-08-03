@@ -18,6 +18,7 @@ import BuildTab from "../reportEditor/BuildTab";
 import FormatTab from "../reportEditor/FormatTab";
 import DataPane from "../reportEditor/DataPane";
 import FiltersPane from "../reportEditor/FiltersPane";
+import { useFilterableFields } from "../reportEditor/useFilterableFields";
 import PageTabsBar from "../reportEditor/PageTabsBar";
 import WidgetChrome from "../reportEditor/WidgetChrome";
 import QueryResultGrid from "../components/QueryResultGrid";
@@ -40,7 +41,9 @@ function toWidgetDrafts(summaries: WidgetSummary[]): WidgetDraft[] {
 
 function ReportCanvasInner() {
   const navigate = useNavigate();
-  const { reportId, reportName: fetchedReportName, reportDatasetId, reportPages, reportPageId, setReportPageId, filteredResult, filteredResultFor, datasetResults, ensureDatasets, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
+  const { reportId, reportName: fetchedReportName, reportDatasetId, reportPages, reportPageId, setReportPageId, filteredResult, filteredResultFor, datasetResults, datasetInfo, ensureDatasets, filterState, setFilterState, saveFilterState, rawResult, loading: queryLoading, refresh } = useReportQuery();
+
+  const filterableFields = useFilterableFields();
 
   const [widgets, dispatch] = useReducer(widgetDraftReducer, [] as WidgetDraft[]);
   const [error, setError] = useState<string | null>(null);
@@ -296,7 +299,8 @@ function ReportCanvasInner() {
       <div className="body">
         <FiltersPane
           visible={filtersVisible}
-          results={[...datasetResults.values()]}
+          fields={filterableFields}
+          hasData={datasetResults.size > 0 || datasetInfo.size > 0}
           filterState={filterState}
           onChange={setFilterState}
           crossFilter={crossFilter}

@@ -1,12 +1,15 @@
-import type { QueryResult } from "../api/datasets";
-import { mergeFilterableFields } from "./mergeFilterableFields";
+import type { FilterableField } from "./mergeFilterableFields";
 import "./reportEditor.css";
 
+// Takes the field list rather than deriving it: for an Import dataset there are no rows on the
+// client to derive it from, so where the values come from is the caller's concern.
+// See useFilterableFields.
 function FiltersPane({
-  visible, results, filterState, onChange, crossFilter, onClearCrossFilter, onResetAll,
+  visible, fields, hasData, filterState, onChange, crossFilter, onClearCrossFilter, onResetAll,
 }: {
   visible: boolean;
-  results: QueryResult[];
+  fields: FilterableField[];
+  hasData: boolean;
   filterState: Record<string, string[]>;
   onChange: (next: Record<string, string[]>) => void;
   crossFilter?: { field: string; value: string } | null;
@@ -17,7 +20,7 @@ function FiltersPane({
     return null;
   }
 
-  if (results.length === 0) {
+  if (!hasData) {
     return (
       <div className="pane pane-filters">
         <div className="pane-head">Filters</div>
@@ -26,9 +29,7 @@ function FiltersPane({
     );
   }
 
-  // Union across every loaded dataset, matched by column name — a filter group can therefore
-  // drive widgets bound to different datasets.
-  const filterableFields = mergeFilterableFields(results);
+  const filterableFields = fields;
   const hasActiveFilters = Object.values(filterState).some((values) => values.length > 0) || Boolean(crossFilter);
 
   function toggle(field: string, value: string, checked: boolean) {

@@ -17,6 +17,7 @@ export interface ReportQueryContextValue {
   filteredResult: QueryResult | null;
   datasetResults: Map<number, QueryResult>;
   datasetErrors: Map<number, string>;
+  datasetInfo: Map<number, DatasetSummary>;
   ensureDatasets: (ids: Array<number | null>) => Promise<void>;
   filteredResultFor: (datasetId: number | null) => QueryResult | null;
   datasetErrorFor: (datasetId: number | null) => string | null;
@@ -221,6 +222,7 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
     filteredResult,
     datasetResults,
     datasetErrors,
+    datasetInfo,
     ensureDatasets,
     filteredResultFor,
     datasetErrorFor,

@@ -33,6 +33,14 @@ public record QueryDistinctRequest(
     string Column,
     int Take = 1000);
 
+/// <summary>
+/// Every categorical column and its distinct values, in one round trip. A per-column request
+/// would mean dozens of calls to render one filters pane.
+/// </summary>
+public record QueryFilterableFieldsRequest(IReadOnlyList<DatasetFilter>? Filters, int MaxValues = 30);
+
+public record FilterableField(DataSources.ColumnDescriptor Column, IReadOnlyList<string> Values);
+
 /// <summary>A page of rows plus the unfiltered-by-paging total, so the UI can show "page 3 of 13".</summary>
 public record PagedQueryResult(
     IReadOnlyList<DataSources.ColumnDescriptor> Columns,

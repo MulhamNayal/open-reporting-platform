@@ -96,6 +96,14 @@ public class DatasetsController : ControllerBase
         return Ok(await queries.QueryDistinctAsync(id, request, HttpContext.RequestAborted));
     }
 
+    // Every categorical column and its distinct values in one call — the filters pane would
+    // otherwise need a request per column.
+    [HttpPost("{id}/query/filterable")]
+    public async Task<ActionResult<IReadOnlyList<FilterableField>>> QueryFilterableFields(int id, QueryFilterableFieldsRequest request, [FromServices] IDatasetQueryService queries)
+    {
+        return Ok(await queries.QueryFilterableFieldsAsync(id, request, HttpContext.RequestAborted));
+    }
+
     // Import datasets only — runs the source in full and replaces the materialised copy.
     [HttpPost("{id}/materialize")]
     public async Task<ActionResult<MaterializationResult>> Materialize(int id, [FromServices] IMaterializationService materialization)

@@ -15,4 +15,6 @@ public interface IDatasetQueryService
     Task<QueryResult> QueryAggregateAsync(int datasetId, QueryAggregateRequest request, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<string>> QueryDistinctAsync(int datasetId, QueryDistinctRequest request, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<FilterableField>> QueryFilterableFieldsAsync(int datasetId, QueryFilterableFieldsRequest request, CancellationToken cancellationToken = default);
 }

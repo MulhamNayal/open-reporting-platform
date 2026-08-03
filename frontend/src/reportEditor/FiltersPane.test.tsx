@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+﻿import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { QueryResult } from "../api/datasets";
 import FiltersPane from "./FiltersPane";
+import { mergeFilterableFields } from "./mergeFilterableFields";
 
 const result: QueryResult = {
   columns: [
@@ -14,12 +15,12 @@ const result: QueryResult = {
 
 describe("FiltersPane", () => {
   it("renders nothing visible when visible is false", () => {
-    const { container } = render(<FiltersPane visible={false} results={[result]} filterState={{}} onChange={vi.fn()} />);
+    const { container } = render(<FiltersPane visible={false} fields={mergeFilterableFields([result])} hasData filterState={{}} onChange={vi.fn()} />);
     expect(container.firstChild).toBeNull();
   });
 
   it("auto-populates one collapsible group per Categorical field, with its distinct values", () => {
-    render(<FiltersPane visible results={[result]} filterState={{}} onChange={vi.fn()} />);
+    render(<FiltersPane visible fields={mergeFilterableFields([result])} hasData filterState={{}} onChange={vi.fn()} />);
 
     expect(screen.getByText("Region")).toBeInTheDocument();
     expect(screen.queryByText("Revenue")).not.toBeInTheDocument();
@@ -29,7 +30,7 @@ describe("FiltersPane", () => {
 
   it("checking a value adds it to that field's filterState selection", async () => {
     const onChange = vi.fn();
-    render(<FiltersPane visible results={[result]} filterState={{}} onChange={onChange} />);
+    render(<FiltersPane visible fields={mergeFilterableFields([result])} hasData filterState={{}} onChange={onChange} />);
 
     await userEvent.click(screen.getByRole("checkbox", { name: "North" }));
 
@@ -38,7 +39,7 @@ describe("FiltersPane", () => {
 
   it("unchecking a value removes it from that field's filterState selection", async () => {
     const onChange = vi.fn();
-    render(<FiltersPane visible results={[result]} filterState={{ Region: ["North", "South"] }} onChange={onChange} />);
+    render(<FiltersPane visible fields={mergeFilterableFields([result])} hasData filterState={{ Region: ["North", "South"] }} onChange={onChange} />);
 
     await userEvent.click(screen.getByRole("checkbox", { name: "North" }));
 
@@ -46,7 +47,7 @@ describe("FiltersPane", () => {
   });
 
   it("shows an empty-state message when there's no data yet", () => {
-    render(<FiltersPane visible results={[]} filterState={{}} onChange={vi.fn()} />);
+    render(<FiltersPane visible fields={[]} hasData={false} filterState={{}} onChange={vi.fn()} />);
 
     expect(screen.getByText(/no data to filter yet/i)).toBeInTheDocument();
   });
@@ -60,7 +61,7 @@ describe("FiltersPane", () => {
       rows: [["North", 100], [null, 50]],
     };
     const onChange = vi.fn();
-    render(<FiltersPane visible results={[withNull]} filterState={{}} onChange={onChange} />);
+    render(<FiltersPane visible fields={mergeFilterableFields([withNull])} hasData filterState={{}} onChange={onChange} />);
 
     // The null cell must not surface as the literal string "null".
     expect(screen.queryByText("null")).not.toBeInTheDocument();
@@ -80,7 +81,7 @@ describe("FiltersPane", () => {
       ],
       rows: [["North", 100], [null, 50]],
     };
-    render(<FiltersPane visible results={[withNull]} filterState={{}} onChange={vi.fn()} />);
+    render(<FiltersPane visible fields={mergeFilterableFields([withNull])} hasData filterState={{}} onChange={vi.fn()} />);
 
     expect(screen.getByText("(blank)")).toBeInTheDocument();
   });
@@ -89,7 +90,7 @@ describe("FiltersPane", () => {
     const { container } = render(
       <FiltersPane
         visible
-        results={[result]}
+        fields={mergeFilterableFields([result])} hasData
         filterState={{}}
         onChange={vi.fn()}
         crossFilter={{ field: "Region", value: "North" }}
@@ -112,7 +113,7 @@ describe("FiltersPane", () => {
     render(
       <FiltersPane
         visible
-        results={[result]}
+        fields={mergeFilterableFields([result])} hasData
         filterState={{}}
         onChange={vi.fn()}
         crossFilter={{ field: "Region", value: "North" }}
@@ -131,7 +132,7 @@ describe("FiltersPane", () => {
     render(
       <FiltersPane
         visible
-        results={[result]}
+        fields={mergeFilterableFields([result])} hasData
         filterState={{ Region: ["North"] }}
         onChange={vi.fn()}
         onResetAll={onResetAll}
@@ -144,7 +145,7 @@ describe("FiltersPane", () => {
   });
 
   it("does not show a Reset filters link when nothing is active", () => {
-    render(<FiltersPane visible results={[result]} filterState={{}} onChange={vi.fn()} onResetAll={vi.fn()} />);
+    render(<FiltersPane visible fields={mergeFilterableFields([result])} hasData filterState={{}} onChange={vi.fn()} onResetAll={vi.fn()} />);
 
     expect(screen.queryByRole("button", { name: "Reset filters" })).not.toBeInTheDocument();
   });
@@ -157,7 +158,7 @@ describe("FiltersPane", () => {
       ],
       rows: Array.from({ length: 40 }, (_, i) => ["North", `PVS-${i}`]),
     };
-    render(<FiltersPane visible results={[highCardinality]} filterState={{}} onChange={vi.fn()} />);
+    render(<FiltersPane visible fields={mergeFilterableFields([highCardinality])} hasData filterState={{}} onChange={vi.fn()} />);
 
     expect(screen.getByText("Region")).toBeInTheDocument();
     expect(screen.queryByText("DocNo")).not.toBeInTheDocument();
@@ -172,9 +173,9 @@ describe("FiltersPane", () => {
       ],
       rows: [["East", 5]],
     };
-    render(<FiltersPane visible results={[result, other]} filterState={{}} onChange={vi.fn()} />);
+    render(<FiltersPane visible fields={mergeFilterableFields([result, other])} hasData filterState={{}} onChange={vi.fn()} />);
 
-    // One "Region" label, not two — and the union of both datasets' values.
+    // One "Region" label, not two â€” and the union of both datasets' values.
     expect(screen.getAllByText("Region")).toHaveLength(1);
     expect(screen.getByRole("checkbox", { name: "North" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "East" })).toBeInTheDocument();

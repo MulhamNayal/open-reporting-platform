@@ -142,6 +142,18 @@ export async function queryDistinct(
   return res.data;
 }
 
+// One call for the whole filters pane — a request per column would mean dozens per page load.
+export async function queryFilterableFields(
+  id: number,
+  request: { filters?: DatasetFilter[]; maxValues?: number },
+): Promise<Array<{ column: ColumnDescriptor; values: string[] }>> {
+  const res = await api.post<Array<{ column: ColumnDescriptor; values: string[] }>>(
+    `/datasets/${id}/query/filterable`,
+    request,
+  );
+  return res.data;
+}
+
 export async function materializeDataset(id: number): Promise<MaterializationResult> {
   const res = await api.post<MaterializationResult>(`/datasets/${id}/materialize`);
   return res.data;

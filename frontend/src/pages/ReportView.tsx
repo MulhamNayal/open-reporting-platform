@@ -4,6 +4,7 @@ import { Alert, Box } from "@mui/material";
 import { getWidgets, type WidgetSummary } from "../api/widgets";
 import { recordReportView } from "../api/reports";
 import WidgetHost from "../reportEditor/WidgetHost";
+import { useFilterableFields } from "../reportEditor/useFilterableFields";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
 import FiltersPane from "../reportEditor/FiltersPane";
 import PageTabsBar from "../reportEditor/PageTabsBar";
@@ -13,9 +14,10 @@ import "../reportEditor/reportEditor.css";
 
 function ReportViewInner() {
   const {
-    reportName, reportPageId, setReportPageId, reportPages, datasetResults, ensureDatasets,
+    reportName, reportPageId, setReportPageId, reportPages, datasetResults, datasetInfo, ensureDatasets,
     filterState, setFilterState, loading: queryLoading, refresh,
   } = useReportQuery();
+  const filterableFields = useFilterableFields();
   const [widgets, setWidgets] = useState<WidgetSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [crossFilter, setCrossFilter] = useState<{ field: string; value: string } | null>(null);
@@ -74,7 +76,8 @@ function ReportViewInner() {
       <div className="body" style={{ flex: 1 }}>
         <FiltersPane
           visible
-          results={[...datasetResults.values()]}
+          fields={filterableFields}
+          hasData={datasetResults.size > 0 || datasetInfo.size > 0}
           filterState={filterState}
           onChange={setFilterState}
           crossFilter={crossFilter}

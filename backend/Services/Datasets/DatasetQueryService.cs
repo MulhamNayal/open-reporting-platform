@@ -169,6 +169,83 @@ SELECT COUNT_BIG(1) FROM {source} {where};";
         return result.Rows.Select(r => Normalize(r.Length > 0 ? r[0] : null)).ToList();
     }
 
+    public async Task<IReadOnlyList<FilterableField>> QueryFilterableFieldsAsync(int datasetId, QueryFilterableFieldsRequest request, CancellationToken cancellationToken = default)
+    {
+        var dataset = await GetDatasetAsync(datasetId);
+        var columns = ColumnsOf(dataset);
+        ValidateFilters(request.Filters, columns);
+
+        var categorical = columns.Where(c => IsCategorical(c.NativeType)).ToList();
+
+        if (!DatasetService.CanPushDownQueries(dataset.Mode, dataset.StorageMode))
+        {
+            var all = ApplyFilters(await _datasetService.ExecuteAsync(datasetId), request.Filters);
+            return categorical
+                .Select(c =>
+                {
+                    var index = IndexOf(all.Columns, c.Name);
+                    var values = all.Rows
+                        .Select(r => Normalize(index >= 0 && index < r.Length ? r[index] : null))
+                        .Distinct(StringComparer.Ordinal)
+                        .OrderBy(v => v, StringComparer.Ordinal)
+                        .ToList();
+                    return new FilterableField(c, values);
+                })
+                // Above the cap a field isn't a usable chip list, so it's dropped rather than
+                // rendered as an unbrowsable wall — same rule the client applies.
+                .Where(f => f.Values.Count <= request.MaxValues)
+                .ToList();
+        }
+
+        await EnsureReadyAsync(dataset, cancellationToken);
+
+        var source = await BuildSourceAsync(dataset);
+        var fields = new List<FilterableField>();
+
+        await using var connection = await OpenAsync(dataset, cancellationToken);
+        foreach (var column in categorical)
+        {
+            var parameters = new List<SqlParameter>();
+            var where = BuildWhere(request.Filters, parameters);
+            // One more than the cap, so a field that exceeds it can be detected and dropped
+            // without pulling back the whole distinct list.
+            var sql = $"SELECT DISTINCT TOP ({request.MaxValues + 1}) {Quote(column.Name)} FROM {source} {where} ORDER BY {Quote(column.Name)};";
+
+            await using var command = new SqlCommand(sql, connection) { CommandTimeout = _materializationOptions.CommandTimeoutSeconds };
+            command.Parameters.AddRange(parameters.ToArray());
+
+            var values = new List<string>();
+            await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+            {
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    values.Add(await reader.IsDBNullAsync(0, cancellationToken) ? "" : Normalize(reader.GetValue(0)));
+                }
+            }
+
+            if (values.Count <= request.MaxValues)
+            {
+                fields.Add(new FilterableField(column, values));
+            }
+        }
+
+        return fields;
+    }
+
+    /// <summary>Mirrors the frontend's fieldClassification.classify — only these types make sense
+    /// as a checkbox filter.</summary>
+    private static bool IsCategorical(string? nativeType)
+    {
+        if (string.IsNullOrWhiteSpace(nativeType))
+        {
+            return false;
+        }
+
+        var prefix = nativeType.Split('(')[0].Trim().ToLowerInvariant();
+        return prefix is "nvarchar" or "varchar" or "nchar" or "char" or "text" or "ntext"
+            or "uniqueidentifier" or "bit" or "string" or "boolean";
+    }
+
     // ---------------------------------------------------------------- SQL building
 
     private static string Quote(string identifier) => "[" + identifier.Replace("]", "]]") + "]";
