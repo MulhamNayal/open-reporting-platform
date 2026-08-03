@@ -72,9 +72,12 @@ This plan was written after reading the approved design doc
 
 ## Open Decisions (resolve before Task 2)
 
-1. **Which SQL Server hosts the materialisation database?** Same instance as `IQIADMIN-REP` keeps
-   three-part-name joins possible but that server has **16.5 GB free of 450 GB**. The local instance
-   is roomier but isolated. *Blocked on Mulham — Task 2 cannot start without this.*
+1. ~~Which SQL Server hosts the materialisation database?~~ **Resolved 2026-08-03.** Two databases
+   on the same instance: `ReportingDb` (application state, EF migrations, backed up) and
+   `ReportingCacheDb` (materialised tables in a `mat` schema, runtime-created, never backed up).
+   Both already exist locally and `ConnectionStrings:ReportingCacheDatabase` is configured. **Task 2
+   is unblocked.** For deployment, note a company-owned `ReportingDb` already exists on the shared
+   staging instance — those names would collide there.
 2. **Refresh cadence default.** Plan assumes nightly. Several of these reports are weekly.
 3. **Is DirectQuery worth offering for `RawSql` at all,** or should Import be the default for
    everything until a real-time requirement appears? Plan implements both; making Import universal
