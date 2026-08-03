@@ -43,4 +43,11 @@ public class Dataset
     /// <summary>Last materialisation failure, kept so the UI can explain why data looks stale.
     /// Cleared on the next success.</summary>
     public string? LastMaterializeError { get; set; }
+
+    /// <summary>
+    /// How often an Import dataset refreshes itself, in minutes. Null means manual only — the
+    /// default, because a background job that re-runs a 160-second procedure is something the
+    /// author should opt into rather than inherit.
+    /// </summary>
+    public int? RefreshIntervalMinutes { get; set; }
 }

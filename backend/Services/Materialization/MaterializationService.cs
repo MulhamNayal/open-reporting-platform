@@ -17,12 +17,19 @@ public class MaterializationService : IMaterializationService
     private readonly ReportingDbContext _context;
     private readonly IDatasetService _datasetService;
     private readonly IMaterializationStore _store;
+    private readonly IMaterializationTracker? _tracker;
 
-    public MaterializationService(ReportingDbContext context, IDatasetService datasetService, IMaterializationStore store)
+    public MaterializationService(
+        ReportingDbContext context,
+        IDatasetService datasetService,
+        IMaterializationStore store,
+        // Optional so tests can construct this directly; DI always supplies it.
+        IMaterializationTracker? tracker = null)
     {
         _context = context;
         _datasetService = datasetService;
         _store = store;
+        _tracker = tracker;
     }
 
     public async Task<MaterializationResult> MaterializeAsync(int datasetId, CancellationToken cancellationToken = default)
@@ -33,6 +40,13 @@ public class MaterializationService : IMaterializationService
         {
             throw new InvalidOperationException(
                 $"Dataset {datasetId} is {dataset.StorageMode}; only Import datasets are materialised.");
+        }
+
+        // Two loads of the same dataset would race on the swap: one could drop the table the
+        // other just renamed into place.
+        if (_tracker is not null && !_tracker.TryBegin(datasetId))
+        {
+            throw new InvalidOperationException($"Dataset {datasetId} is already being refreshed.");
         }
 
         try
@@ -62,6 +76,10 @@ public class MaterializationService : IMaterializationService
             dataset.LastMaterializeError = ex.Message;
             await _context.SaveChangesAsync(CancellationToken.None);
             throw;
+        }
+        finally
+        {
+            _tracker?.End(datasetId);
         }
     }
 

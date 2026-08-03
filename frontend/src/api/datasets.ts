@@ -28,6 +28,8 @@ export interface DatasetSummary {
   lastMaterializedAtUtc: string | null;
   materializedRowCount: number | null;
   lastMaterializeError: string | null;
+  // null means manual refresh only.
+  refreshIntervalMinutes: number | null;
 }
 
 export interface CreateDatasetRequest {
@@ -48,6 +50,7 @@ export interface UpdateDatasetRequest {
   rowLimit: number | null;
   // Omitted means "leave unchanged".
   storageMode?: DatasetStorageMode | null;
+  refreshIntervalMinutes?: number | null;
 }
 
 // --- the three narrow query shapes -------------------------------------------------

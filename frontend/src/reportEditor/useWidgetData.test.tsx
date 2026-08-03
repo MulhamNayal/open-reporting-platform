@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as reportsApi from "../api/reports";
@@ -24,7 +24,7 @@ function mockDataset(storageMode: datasetsApi.DatasetStorageMode) {
     id, dataSourceConnectionId: 1, name: `Ds ${id}`, description: null, mode: "StoredProcedure",
     definitionJson: "{}", rowLimit: null, isSaved: true, columns: [],
     createdAtUtc: "2026-01-01T00:00:00Z", updatedAtUtc: "2026-01-01T00:00:00Z",
-    storageMode, lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null,
+    storageMode, lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null, refreshIntervalMinutes: null,
   }));
 }
 
@@ -124,7 +124,7 @@ describe("useWidgetData", () => {
     renderWith(makeWidget({ type: "Table", datasetId: null }));
 
     await waitFor(() => expect(execute).toHaveBeenCalled());
-    // No server-side query — filtering and paging stay in the browser for these.
+    // No server-side query â€” filtering and paging stay in the browser for these.
     expect(rows).not.toHaveBeenCalled();
     expect(screen.getByText("paged: false")).toBeInTheDocument();
   });

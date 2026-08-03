@@ -10,4 +10,5 @@ public record UpdateDatasetRequest(
     DatasetMode Mode,
     string DefinitionJson,
     int? RowLimit,
-    DatasetStorageMode? StorageMode = null);
+    DatasetStorageMode? StorageMode = null,
+    int? RefreshIntervalMinutes = null);

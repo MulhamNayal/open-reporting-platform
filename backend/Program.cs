@@ -43,7 +43,10 @@ builder.Services.Configure<SqlServerProviderOptions>(builder.Configuration.GetSe
 builder.Services.Configure<DatasetCacheOptions>(builder.Configuration.GetSection("DataSources:Cache"));
 builder.Services.Configure<MaterializationOptions>(builder.Configuration.GetSection("Materialization"));
 builder.Services.AddScoped<IMaterializationStore, SqlMaterializationStore>();
+builder.Services.Configure<ScheduledRefreshOptions>(builder.Configuration.GetSection("Materialization:Schedule"));
+builder.Services.AddSingleton<IMaterializationTracker, MaterializationTracker>();
 builder.Services.AddScoped<IMaterializationService, MaterializationService>();
+builder.Services.AddHostedService<ScheduledRefreshService>();
 builder.Services.AddScoped<IDatasetQueryService, DatasetQueryService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IDatasetResultCache, MemoryDatasetResultCache>();

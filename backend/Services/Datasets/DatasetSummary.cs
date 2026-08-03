@@ -18,4 +18,5 @@ public record DatasetSummary(
     DatasetStorageMode StorageMode = DatasetStorageMode.DirectQuery,
     DateTime? LastMaterializedAtUtc = null,
     int? MaterializedRowCount = null,
-    string? LastMaterializeError = null);
+    string? LastMaterializeError = null,
+    int? RefreshIntervalMinutes = null);

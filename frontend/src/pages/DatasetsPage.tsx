@@ -47,12 +47,21 @@ function formatAsOf(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+function formatInterval(minutes: number): string {
+  if (minutes % 10080 === 0) return `${minutes / 10080}w`;
+  if (minutes % 1440 === 0) return `${minutes / 1440}d`;
+  if (minutes % 60 === 0) return `${minutes / 60}h`;
+  return `${minutes}m`;
+}
+
 function DatasetsPage() {
   const [refreshingId, setRefreshingId] = useState<number | null>(null);
   // Separate create/edit state, matching how every other field on this page works — opening
   // Edit on a row must never clobber an in-progress Add draft.
   const [storageMode, setStorageMode] = useState<DatasetStorageMode>("DirectQuery");
   const [editStorageMode, setEditStorageMode] = useState<DatasetStorageMode>("DirectQuery");
+  // Minutes, as a string because it's a select value. "" means manual only.
+  const [editRefreshInterval, setEditRefreshInterval] = useState("");
   const [connections, setConnections] = useState<DataSourceConnectionSummary[]>([]);
   const [selectedConnectionId, setSelectedConnectionId] = useState<number | "">("");
   const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
@@ -263,6 +272,7 @@ function DatasetsPage() {
     setEditDescription(dataset.description ?? "");
     setEditRowLimit(dataset.rowLimit !== null ? String(dataset.rowLimit) : "");
     setEditStorageMode(dataset.storageMode);
+    setEditRefreshInterval(dataset.refreshIntervalMinutes !== null ? String(dataset.refreshIntervalMinutes) : "");
     setEditError(null);
 
     if (dataset.mode === "TableQuery") {
@@ -337,6 +347,10 @@ function DatasetsPage() {
         definitionJson,
         rowLimit: editRowLimit === "" ? null : Number(editRowLimit),
         storageMode: editStorageMode,
+        // Only meaningful for Import; clear it when switching away so a dataset can't sit
+        // scheduled for a refresh it will never run.
+        refreshIntervalMinutes:
+          editStorageMode === "Import" && editRefreshInterval !== "" ? Number(editRefreshInterval) : null,
       });
       closeEditDataset();
       await refreshDatasets(selectedConnectionId as number);
@@ -385,7 +399,7 @@ function DatasetsPage() {
           : d.lastMaterializeError
             ? <Typography variant="caption" color="error">refresh failed</Typography>
             : d.lastMaterializedAtUtc
-              ? `${formatAsOf(d.lastMaterializedAtUtc)}${d.materializedRowCount !== null ? ` · ${d.materializedRowCount.toLocaleString()} rows` : ""}`
+              ? `${formatAsOf(d.lastMaterializedAtUtc)}${d.materializedRowCount !== null ? ` · ${d.materializedRowCount.toLocaleString()} rows` : ""}${d.refreshIntervalMinutes !== null ? ` · auto ${formatInterval(d.refreshIntervalMinutes)}` : ""}`
               : "not loaded",
     },
     {
@@ -716,6 +730,23 @@ function DatasetsPage() {
                 <MenuItem value="DirectQuery">Direct query (live)</MenuItem>
                 <MenuItem value="Import">Import (faster, cached)</MenuItem>
               </TextField>
+              {editStorageMode === "Import" && (
+                <TextField
+                  select
+                  label="Auto refresh"
+                  size="small"
+                  sx={{ minWidth: 170 }}
+                  value={editRefreshInterval}
+                  onChange={(e) => setEditRefreshInterval(e.target.value)}
+                  helperText="How often this reloads itself"
+                >
+                  <MenuItem value="">Manual only</MenuItem>
+                  <MenuItem value="60">Hourly</MenuItem>
+                  <MenuItem value="360">Every 6 hours</MenuItem>
+                  <MenuItem value="1440">Daily</MenuItem>
+                  <MenuItem value="10080">Weekly</MenuItem>
+                </TextField>
+              )}
             </Box>
             <TextField label="Description (optional)" size="small" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
 

@@ -93,6 +93,7 @@ public class DatasetService : IDatasetService
         dataset.Definition = request.DefinitionJson;
         dataset.RowLimit = request.RowLimit;
         dataset.StorageMode = ResolveStorageMode(request.Mode, request.StorageMode ?? dataset.StorageMode);
+        dataset.RefreshIntervalMinutes = request.RefreshIntervalMinutes;
 
         // A materialised table is a copy of the *old* query's output. Once the definition changes
         // it is stale at best and wrong at worst — if the new query drops a column, a widget
@@ -387,6 +388,7 @@ public class DatasetService : IDatasetService
             dataset.StorageMode,
             dataset.LastMaterializedAtUtc,
             dataset.MaterializedRowCount,
-            dataset.LastMaterializeError);
+            dataset.LastMaterializeError,
+            dataset.RefreshIntervalMinutes);
     }
 }

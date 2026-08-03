@@ -114,7 +114,7 @@ describe("ReportQueryProvider multi-dataset cache", () => {
       id, dataSourceConnectionId: 1, name: `Ds ${id}`, description: null, mode: "RawSql",
       definitionJson: "{}", rowLimit: null, isSaved: true, columns: [],
       createdAtUtc: "2026-01-01T00:00:00Z", updatedAtUtc: "2026-01-01T00:00:00Z",
-      storageMode, lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null,
+      storageMode, lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null, refreshIntervalMinutes: null,
     }));
   }
 

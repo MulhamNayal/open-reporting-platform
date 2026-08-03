@@ -38,7 +38,7 @@ describe("DatasetsPage", () => {
     const createDataset = vi.spyOn(datasetsApi, "createDataset").mockResolvedValue({
       id: 10, dataSourceConnectionId: 1, name: "My dataset", description: null, mode: "RawSql",
       definitionJson: JSON.stringify({ sqlText: "select 1" }), rowLimit: null, isSaved: true, columns: [],
-      createdAtUtc: "", updatedAtUtc: "", storageMode: "DirectQuery", lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null,
+      createdAtUtc: "", updatedAtUtc: "", storageMode: "DirectQuery", lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null, refreshIntervalMinutes: null,
     });
     vi.spyOn(datasetsApi, "discoverDatasetColumns").mockResolvedValue([]);
 
@@ -82,7 +82,7 @@ describe("DatasetsPage", () => {
     const createDataset = vi.spyOn(datasetsApi, "createDataset").mockResolvedValue({
       id: 11, dataSourceConnectionId: 1, name: "Proc dataset", description: null, mode: "StoredProcedure",
       definitionJson: JSON.stringify({ routineName: "dbo.GetAgentSummary", parameters: [] }), rowLimit: null,
-      isSaved: true, columns: [], createdAtUtc: "", updatedAtUtc: "", storageMode: "DirectQuery", lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null,
+      isSaved: true, columns: [], createdAtUtc: "", updatedAtUtc: "", storageMode: "DirectQuery", lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null, refreshIntervalMinutes: null,
     });
     vi.spyOn(datasetsApi, "discoverDatasetColumns").mockResolvedValue([]);
 
