@@ -15,9 +15,9 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ReportSummary>>> GetAll()
+    public async Task<ActionResult<IEnumerable<ReportSummary>>> GetAll([FromQuery] bool includeInactive = false)
     {
-        return Ok(await _service.GetAllAsync());
+        return Ok(await _service.GetAllAsync(includeInactive));
     }
 
     [HttpGet("{id}")]
@@ -53,6 +53,21 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         await _service.DeleteAsync(id);
+        return NoContent();
+    }
+
+    [HttpPut("{id}/active")]
+    public async Task<ActionResult<ReportSummary>> SetActive(int id, SetReportActiveRequest request)
+    {
+        return Ok(await _service.SetActiveAsync(id, request));
+    }
+
+    // Separate from GET {id} on purpose: only the viewer records a view, so opening the
+    // editor doesn't make an unused report look busy.
+    [HttpPost("{id}/view")]
+    public async Task<IActionResult> RecordView(int id)
+    {
+        await _service.RecordViewAsync(id);
         return NoContent();
     }
 

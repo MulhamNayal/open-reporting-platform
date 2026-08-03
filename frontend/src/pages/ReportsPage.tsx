@@ -1,14 +1,31 @@
 import { useEffect, useState } from "react";
 import {
-  Alert, Box, Button, Container, Dialog, DialogContent, DialogTitle, TextField, Typography,
+  Alert, Box, Button, Chip, Container, Dialog, DialogContent, DialogTitle,
+  FormControlLabel, Switch, TextField, Typography,
 } from "@mui/material";
 import axios from "axios";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
-import { createReport, getReports, setReportDataset, type Report } from "../api/reports";
+import { createReport, getReports, setReportActive, setReportDataset, type Report } from "../api/reports";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { executeDataset, type QueryResult } from "../api/datasets";
 import QueryDefinitionForm, { type QueryDefinitionValue } from "./QueryDefinitionForm";
 import "./reportsPage.css";
+
+// Relative rather than absolute: "3 days ago" answers "is anyone still using this?" at a
+// glance, which an ISO timestamp does not.
+function formatLastViewed(iso: string | null): string {
+  if (!iso) {
+    return "never";
+  }
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) {
+    return "today";
+  }
+  if (days === 1) {
+    return "yesterday";
+  }
+  return `${days} days ago`;
+}
 
 function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -16,15 +33,27 @@ function ReportsPage() {
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pendingReport, setPendingReport] = useState<Report | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
   const navigate = useNavigate();
 
-  async function refresh() {
-    setReports(await getReports());
+  async function refresh(includeInactive = showInactive) {
+    setReports(await getReports(includeInactive));
   }
 
   useEffect(() => {
-    refresh().catch(() => setError("Could not load reports — is the backend running on :5198?"));
-  }, []);
+    refresh(showInactive).catch(() => setError("Could not load reports — is the backend running on :5198?"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showInactive]);
+
+  async function handleToggleActive(report: Report) {
+    setError(null);
+    try {
+      await setReportActive(report.id, !report.isActive);
+      await refresh();
+    } catch {
+      setError("Could not change this report's status.");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,12 +104,34 @@ function ReportsPage() {
     { key: "name", label: "Name", value: (r) => r.name, render: (r) => r.name },
     { key: "description", label: "Description", value: (r) => r.description ?? "", render: (r) => r.description },
     {
+      key: "usage",
+      label: "Usage",
+      value: (r) => r.viewCount,
+      render: (r) => (r.viewCount === 0 ? "never opened" : `${r.viewCount} · ${formatLastViewed(r.lastViewedAtUtc)}`),
+    },
+    {
+      key: "status",
+      label: "Status",
+      value: (r) => (r.isActive ? "Active" : "Inactive"),
+      render: (r) => (
+        <Chip
+          size="small"
+          label={r.isActive ? "Active" : "Inactive"}
+          color={r.isActive ? "success" : "default"}
+          variant={r.isActive ? "filled" : "outlined"}
+        />
+      ),
+    },
+    {
       key: "designer",
       label: "Designer",
       render: (r) => (
         <>
           <Button size="small" component={RouterLink} to={`/reports/${r.id}`}>View</Button>
           <Button size="small" component={RouterLink} to={`/reports/${r.id}/edit`}>Edit</Button>
+          <Button size="small" color={r.isActive ? "warning" : "success"} onClick={() => handleToggleActive(r)}>
+            {r.isActive ? "Deactivate" : "Activate"}
+          </Button>
         </>
       ),
     },
@@ -95,6 +146,11 @@ function ReportsPage() {
         <TextField label="Description" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
         <Button type="submit" variant="contained">Add</Button>
       </Box>
+      <FormControlLabel
+        sx={{ mb: 1 }}
+        control={<Switch size="small" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />}
+        label="Show deactivated reports"
+      />
       <div className="list-panel">
         <DataTable columns={reportColumns} rows={reports} rowKey={(r) => r.id} />
       </div>

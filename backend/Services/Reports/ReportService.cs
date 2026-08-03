@@ -20,10 +20,36 @@ public class ReportService : IReportService
         _reportPageService = reportPageService;
     }
 
-    public async Task<IReadOnlyList<ReportSummary>> GetAllAsync()
+    // includeInactive defaults to false so deactivated reports drop out of the list without
+    // any caller changing — the point of archiving is that you stop seeing them.
+    public async Task<IReadOnlyList<ReportSummary>> GetAllAsync(bool includeInactive = false)
     {
-        var reports = await _context.Reports.ToListAsync();
+        var query = _context.Reports.AsQueryable();
+        if (!includeInactive)
+        {
+            query = query.Where(r => r.IsActive);
+        }
+
+        var reports = await query.ToListAsync();
         return reports.Select(ToSummary).ToList();
+    }
+
+    public async Task<ReportSummary> SetActiveAsync(int id, SetReportActiveRequest request)
+    {
+        var report = await GetReportEntityAsync(id);
+        report.IsActive = request.IsActive;
+        await _context.SaveChangesAsync();
+        return ToSummary(report);
+    }
+
+    // Called by the viewer, not by GetByIdAsync — otherwise opening the editor, or any
+    // internal lookup, would inflate the count and make the usage data meaningless.
+    public async Task RecordViewAsync(int id)
+    {
+        var report = await GetReportEntityAsync(id);
+        report.ViewCount++;
+        report.LastViewedAtUtc = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
     }
 
     public async Task<ReportSummary> GetByIdAsync(int id)
@@ -114,5 +140,6 @@ public class ReportService : IReportService
     }
 
     private static ReportSummary ToSummary(Report report) =>
-        new(report.Id, report.Name, report.Description, report.DatasetId);
+        new(report.Id, report.Name, report.Description, report.DatasetId,
+            report.IsActive, report.LastViewedAtUtc, report.ViewCount);
 }

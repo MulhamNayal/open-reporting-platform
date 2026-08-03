@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Alert, Box } from "@mui/material";
 import { getWidgets, type WidgetSummary } from "../api/widgets";
+import { recordReportView } from "../api/reports";
 import WidgetRenderer from "../widgets/WidgetRenderer";
 import { ReportQueryProvider, useReportQuery } from "../reportEditor/ReportQueryContext";
 import FiltersPane from "../reportEditor/FiltersPane";
@@ -115,6 +116,13 @@ function ReportViewInner() {
 function ReportView() {
   const { id } = useParams<{ id: string }>();
   const reportId = Number(id);
+
+  // Only the viewer records a view — opening the editor shouldn't make a report look used.
+  useEffect(() => {
+    if (!Number.isNaN(reportId)) {
+      void recordReportView(reportId);
+    }
+  }, [reportId]);
 
   return (
     <ReportQueryProvider reportId={reportId}>

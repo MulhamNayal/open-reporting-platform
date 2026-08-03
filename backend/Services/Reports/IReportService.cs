@@ -2,7 +2,7 @@ namespace Backend.Services.Reports;
 
 public interface IReportService
 {
-    Task<IReadOnlyList<ReportSummary>> GetAllAsync();
+    Task<IReadOnlyList<ReportSummary>> GetAllAsync(bool includeInactive = false);
 
     Task<ReportSummary> GetByIdAsync(int id);
 
@@ -13,4 +13,8 @@ public interface IReportService
     Task DeleteAsync(int id);
 
     Task<ReportSummary> SetDatasetAsync(int id, SetReportDatasetRequest request);
+
+    Task<ReportSummary> SetActiveAsync(int id, SetReportActiveRequest request);
+
+    Task RecordViewAsync(int id);
 }

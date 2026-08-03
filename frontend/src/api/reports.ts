@@ -6,6 +6,11 @@ export interface Report {
   name: string;
   description: string;
   datasetId: number | null;
+  // Manual archive switch — deactivated reports are hidden from the list, not deleted.
+  isActive: boolean;
+  // Recorded automatically by the viewer, so "unused" is observed rather than declared.
+  lastViewedAtUtc: string | null;
+  viewCount: number;
 }
 
 export interface SetReportDatasetRequest {
@@ -17,9 +22,23 @@ export interface SetReportDatasetRequest {
 
 const api = axios.create({ baseURL: import.meta.env.DEV ? "http://localhost:5198/api" : "/reporting/api" });
 
-export async function getReports(): Promise<Report[]> {
-  const res = await api.get<Report[]>("/reports");
+export async function getReports(includeInactive = false): Promise<Report[]> {
+  const res = await api.get<Report[]>(`/reports${includeInactive ? "?includeInactive=true" : ""}`);
   return res.data;
+}
+
+export async function setReportActive(id: number, isActive: boolean): Promise<Report> {
+  const res = await api.put<Report>(`/reports/${id}/active`, { isActive });
+  return res.data;
+}
+
+// Fire-and-forget: a failed view record must never stop the report rendering.
+export async function recordReportView(id: number): Promise<void> {
+  try {
+    await api.post(`/reports/${id}/view`);
+  } catch {
+    // ignored on purpose
+  }
 }
 
 export async function getReport(id: number): Promise<Report> {
