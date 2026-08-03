@@ -3,6 +3,7 @@ using Backend.Data;
 using Backend.Exceptions;
 using Backend.Models;
 using Backend.Services.DataSources;
+using Backend.Services.Materialization;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services.Datasets;
@@ -22,19 +23,23 @@ public class DatasetService : IDatasetService
     private readonly ICredentialProtector _credentialProtector;
     private readonly IReadOnlyList<IDataSourceProvider> _providers;
     private readonly IDatasetResultCache? _resultCache;
+    private readonly IMaterializationStore? _materializationStore;
 
     public DatasetService(
         ReportingDbContext context,
         ICredentialProtector credentialProtector,
         IEnumerable<IDataSourceProvider> providers,
         // Optional so the existing service tests can keep constructing this directly; DI always
-        // supplies it. A null cache simply means every execute hits the source, as before.
-        IDatasetResultCache? resultCache = null)
+        // supplies them. A null cache means every execute hits the source, as before; a null
+        // store means materialised tables aren't cleaned up, which only matters in production.
+        IDatasetResultCache? resultCache = null,
+        IMaterializationStore? materializationStore = null)
     {
         _context = context;
         _credentialProtector = credentialProtector;
         _providers = providers.ToList();
         _resultCache = resultCache;
+        _materializationStore = materializationStore;
     }
 
     public async Task<DatasetSummary> CreateAsync(CreateDatasetRequest request)
@@ -79,12 +84,34 @@ public class DatasetService : IDatasetService
         ValidateModeMatchesConnectionType(request.Mode, connection.Type);
         var decryptedConnection = WithDecryptedCredentials(connection);
 
+        var wasMaterialized = dataset.MaterializedTableName is not null;
+        var definitionChanged = dataset.Definition != request.DefinitionJson || dataset.Mode != request.Mode;
+
         dataset.Name = request.Name;
         dataset.Description = request.Description;
         dataset.Mode = request.Mode;
         dataset.Definition = request.DefinitionJson;
         dataset.RowLimit = request.RowLimit;
         dataset.StorageMode = ResolveStorageMode(request.Mode, request.StorageMode ?? dataset.StorageMode);
+
+        // A materialised table is a copy of the *old* query's output. Once the definition changes
+        // it is stale at best and wrong at worst — if the new query drops a column, a widget
+        // asking for a column that still exists in the old table would be served last week's data
+        // with no indication anything is amiss. Same when a dataset stops being an Import: the
+        // table becomes an orphan nobody reads.
+        var noLongerImport = dataset.StorageMode != DatasetStorageMode.Import;
+        if (wasMaterialized && (definitionChanged || noLongerImport))
+        {
+            if (_materializationStore is not null)
+            {
+                await _materializationStore.DropAsync(id, CancellationToken.None);
+            }
+
+            dataset.MaterializedTableName = null;
+            dataset.LastMaterializedAtUtc = null;
+            dataset.MaterializedRowCount = null;
+            dataset.LastMaterializeError = null;
+        }
 
         // Same validate-before-persist principle as CreateAsync: run the updated definition
         // before saving, so an edit that breaks the dataset (wrong table, bad SQL, nonexistent
@@ -120,6 +147,14 @@ public class DatasetService : IDatasetService
     public async Task DeleteAsync(int id)
     {
         var dataset = await GetDatasetAsync(id);
+
+        // Otherwise the cache database accumulates tables for datasets that no longer exist, and
+        // nothing left behind knows to clean them up.
+        if (dataset.MaterializedTableName is not null && _materializationStore is not null)
+        {
+            await _materializationStore.DropAsync(id, CancellationToken.None);
+        }
+
         _context.Datasets.Remove(dataset);
         await _context.SaveChangesAsync();
     }
