@@ -1,5 +1,11 @@
 # Dataset Storage Modes Implementation Plan
 
+> **Status: implemented 2026-08-03/04.** All three phases are done. Two things were revised while
+> building and are corrected in place below: storage mode is the author's choice for every query
+> mode (an earlier draft forbade DirectQuery on stored procedures), and the migration does **not**
+> backfill anything. One gap the plan missed was found during testing and fixed — a materialised
+> table outliving a changed definition; see `MaterializedTableLifecycleTests`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stop sending whole result sets to the browser. A dataset is currently executed in full and
