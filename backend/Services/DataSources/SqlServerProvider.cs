@@ -329,7 +329,9 @@ public class SqlServerProvider : IDataSourceProvider
             part.StartsWith('[') && part.EndsWith(']') ? part : $"[{part}]"));
     }
 
-    public async Task<IReadOnlyList<ColumnDescriptor>> DiscoverStoredProcedureColumnsAsync(DataSourceConnection connection, string routineName, IReadOnlyList<StoredProcedureParameter> parameters, CancellationToken cancellationToken)
+    // virtual for the same reason as DiscoverRawSqlColumnsAsync: DatasetService casts to this
+    // concrete type, so a test stub has to derive from it rather than implement the interface.
+    public virtual async Task<IReadOnlyList<ColumnDescriptor>> DiscoverStoredProcedureColumnsAsync(DataSourceConnection connection, string routineName, IReadOnlyList<StoredProcedureParameter> parameters, CancellationToken cancellationToken)
     {
         var connectionString = BuildConnectionString(connection);
         await using var sqlConnection = new SqlConnection(connectionString);

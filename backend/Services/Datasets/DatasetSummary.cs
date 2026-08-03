@@ -14,4 +14,8 @@ public record DatasetSummary(
     bool IsSaved,
     IReadOnlyList<ColumnDescriptor> Columns,
     DateTime CreatedAtUtc,
-    DateTime UpdatedAtUtc);
+    DateTime UpdatedAtUtc,
+    DatasetStorageMode StorageMode = DatasetStorageMode.DirectQuery,
+    DateTime? LastMaterializedAtUtc = null,
+    int? MaterializedRowCount = null,
+    string? LastMaterializeError = null);

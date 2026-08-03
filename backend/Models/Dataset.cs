@@ -30,4 +30,17 @@ public class Dataset
     /// invalidate the cache on the very call that populated it.
     /// </summary>
     public int DefinitionVersion { get; set; } = 1;
+
+    public DatasetStorageMode StorageMode { get; set; } = DatasetStorageMode.DirectQuery;
+
+    /// <summary>Set once the dataset has been materialised at least once; null means it never has.</summary>
+    public string? MaterializedTableName { get; set; }
+
+    public DateTime? LastMaterializedAtUtc { get; set; }
+
+    public int? MaterializedRowCount { get; set; }
+
+    /// <summary>Last materialisation failure, kept so the UI can explain why data looks stale.
+    /// Cleared on the next success.</summary>
+    public string? LastMaterializeError { get; set; }
 }

@@ -53,6 +53,7 @@ public class DatasetService : IDatasetService
             Definition = request.DefinitionJson,
             RowLimit = request.RowLimit,
             IsSaved = request.IsSaved,
+            StorageMode = ResolveStorageMode(request.Mode, request.StorageMode),
             Columns = "[]",
             CreatedAtUtc = now,
             UpdatedAtUtc = now
@@ -83,6 +84,7 @@ public class DatasetService : IDatasetService
         dataset.Mode = request.Mode;
         dataset.Definition = request.DefinitionJson;
         dataset.RowLimit = request.RowLimit;
+        dataset.StorageMode = ResolveStorageMode(request.Mode, request.StorageMode ?? dataset.StorageMode);
 
         // Same validate-before-persist principle as CreateAsync: run the updated definition
         // before saving, so an edit that breaks the dataset (wrong table, bad SQL, nonexistent
@@ -239,6 +241,25 @@ public class DatasetService : IDatasetService
         return await restApiProvider.DiscoverRestQueryColumnsAsync(connection, definition.PathSuffix, definition.QueryParams, CancellationToken.None);
     }
 
+    // A stored procedure's result set can't be filtered or paged inline — SELECT * FROM (EXEC ...)
+    // isn't valid SQL — so DirectQuery over one would re-run the whole procedure on every
+    // interaction. RestQuery is the same story over HTTP. Those modes must materialise.
+    private static bool RequiresImport(DatasetMode mode) =>
+        mode is DatasetMode.StoredProcedure or DatasetMode.RestQuery;
+
+    private static DatasetStorageMode ResolveStorageMode(DatasetMode mode, DatasetStorageMode? requested)
+    {
+        var resolved = requested ?? (RequiresImport(mode) ? DatasetStorageMode.Import : DatasetStorageMode.DirectQuery);
+
+        if (resolved == DatasetStorageMode.DirectQuery && RequiresImport(mode))
+        {
+            throw new InvalidOperationException(
+                $"Dataset mode {mode} cannot use DirectQuery storage — its result set can't be filtered or paged at the source. Use Import.");
+        }
+
+        return resolved;
+    }
+
     private static void ValidateModeMatchesConnectionType(DatasetMode mode, DataSourceType connectionType)
     {
         var expectedType = mode == DatasetMode.RestQuery ? DataSourceType.RestApi : DataSourceType.SqlServer;
@@ -312,6 +333,10 @@ public class DatasetService : IDatasetService
             dataset.IsSaved,
             columns,
             dataset.CreatedAtUtc,
-            dataset.UpdatedAtUtc);
+            dataset.UpdatedAtUtc,
+            dataset.StorageMode,
+            dataset.LastMaterializedAtUtc,
+            dataset.MaterializedRowCount,
+            dataset.LastMaterializeError);
     }
 }
