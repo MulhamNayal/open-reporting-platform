@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+﻿import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
@@ -24,12 +24,12 @@ const datasets: DatasetSummary[] = [
   {
     id: 7, dataSourceConnectionId: 1, name: "Sales by month", description: null, mode: "RawSql",
     definitionJson: "{}", rowLimit: null, isSaved: true, columns: [],
-    createdAtUtc: "2026-01-01T00:00:00Z", updatedAtUtc: "2026-01-01T00:00:00Z",
+    createdAtUtc: "2026-01-01T00:00:00Z", updatedAtUtc: "2026-01-01T00:00:00Z", storageMode: "DirectQuery", lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null,
   },
   {
     id: 8, dataSourceConnectionId: 1, name: "Leads detail", description: null, mode: "RawSql",
     definitionJson: "{}", rowLimit: null, isSaved: true, columns: [],
-    createdAtUtc: "2026-01-01T00:00:00Z", updatedAtUtc: "2026-01-01T00:00:00Z",
+    createdAtUtc: "2026-01-01T00:00:00Z", updatedAtUtc: "2026-01-01T00:00:00Z", storageMode: "DirectQuery", lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null,
   },
 ];
 

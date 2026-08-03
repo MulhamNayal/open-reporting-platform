@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+﻿import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as datasourcesApi from "../api/datasources";
@@ -7,7 +7,7 @@ import DatasetsPage from "./DatasetsPage";
 
 afterEach(cleanup);
 
-// SqlEditor wraps real CodeMirror — its own mounting/rendering is covered by
+// SqlEditor wraps real CodeMirror â€” its own mounting/rendering is covered by
 // SqlEditor.test.tsx. These tests only care that this page wires the right
 // schema in and reads typed SQL back out, so a plain textarea stands in.
 vi.mock("./SqlEditor", () => ({
@@ -38,7 +38,7 @@ describe("DatasetsPage", () => {
     const createDataset = vi.spyOn(datasetsApi, "createDataset").mockResolvedValue({
       id: 10, dataSourceConnectionId: 1, name: "My dataset", description: null, mode: "RawSql",
       definitionJson: JSON.stringify({ sqlText: "select 1" }), rowLimit: null, isSaved: true, columns: [],
-      createdAtUtc: "", updatedAtUtc: "",
+      createdAtUtc: "", updatedAtUtc: "", storageMode: "DirectQuery", lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null,
     });
     vi.spyOn(datasetsApi, "discoverDatasetColumns").mockResolvedValue([]);
 
@@ -82,7 +82,7 @@ describe("DatasetsPage", () => {
     const createDataset = vi.spyOn(datasetsApi, "createDataset").mockResolvedValue({
       id: 11, dataSourceConnectionId: 1, name: "Proc dataset", description: null, mode: "StoredProcedure",
       definitionJson: JSON.stringify({ routineName: "dbo.GetAgentSummary", parameters: [] }), rowLimit: null,
-      isSaved: true, columns: [], createdAtUtc: "", updatedAtUtc: "",
+      isSaved: true, columns: [], createdAtUtc: "", updatedAtUtc: "", storageMode: "DirectQuery", lastMaterializedAtUtc: null, materializedRowCount: null, lastMaterializeError: null,
     });
     vi.spyOn(datasetsApi, "discoverDatasetColumns").mockResolvedValue([]);
 

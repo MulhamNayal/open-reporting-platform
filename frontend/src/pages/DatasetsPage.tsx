@@ -3,6 +3,7 @@ import {
   Alert,
   Autocomplete,
   Box,
+  Chip,
   Button,
   Checkbox,
   Container,
@@ -21,9 +22,11 @@ import {
   createDataset,
   discoverDatasetColumns,
   executeDataset,
+  materializeDataset,
   getDatasets,
   updateDataset,
   type DatasetSummary,
+  type DatasetStorageMode,
   type QueryResult,
 } from "../api/datasets";
 import QueryResultGrid from "../components/QueryResultGrid";
@@ -33,7 +36,23 @@ import SqlEditor from "./SqlEditor";
 import { buildSqlCompletionSchema } from "./sqlCompletionSchema";
 import "./datasetsPage.css";
 
+// Relative rather than an ISO stamp: "2 hours ago" is what tells you whether the numbers on
+// screen can be trusted.
+function formatAsOf(iso: string): string {
+  const minutes = Math.floor((Date.now() - new Date(iso + (iso.endsWith("Z") ? "" : "Z")).getTime()) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 function DatasetsPage() {
+  const [refreshingId, setRefreshingId] = useState<number | null>(null);
+  // Separate create/edit state, matching how every other field on this page works — opening
+  // Edit on a row must never clobber an in-progress Add draft.
+  const [storageMode, setStorageMode] = useState<DatasetStorageMode>("DirectQuery");
+  const [editStorageMode, setEditStorageMode] = useState<DatasetStorageMode>("DirectQuery");
   const [connections, setConnections] = useState<DataSourceConnectionSummary[]>([]);
   const [selectedConnectionId, setSelectedConnectionId] = useState<number | "">("");
   const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
@@ -96,6 +115,27 @@ function DatasetsPage() {
 
   async function refreshDatasets(connectionId: number) {
     setDatasets(await getDatasets(connectionId));
+  }
+
+  async function handleMaterialize(datasetId: number) {
+    setError(null);
+    setRefreshingId(datasetId);
+    try {
+      await materializeDataset(datasetId);
+      if (selectedConnectionId !== "") {
+        await refreshDatasets(selectedConnectionId);
+      }
+    } catch (err) {
+      // Surface the source error — a failed refresh leaves the previous copy servable, so the
+      // user needs to know the data on screen is older than it looks.
+      setError(
+        axios.isAxiosError(err) && typeof err.response?.data?.detail === "string"
+          ? err.response.data.detail
+          : "Could not refresh this dataset.",
+      );
+    } finally {
+      setRefreshingId(null);
+    }
   }
 
   useEffect(() => {
@@ -168,6 +208,7 @@ function DatasetsPage() {
         mode,
         definitionJson,
         rowLimit: rowLimit === "" ? null : Number(rowLimit),
+        storageMode,
       });
 
       setColumnPreviewError(null);
@@ -221,6 +262,7 @@ function DatasetsPage() {
     setEditName(dataset.name);
     setEditDescription(dataset.description ?? "");
     setEditRowLimit(dataset.rowLimit !== null ? String(dataset.rowLimit) : "");
+    setEditStorageMode(dataset.storageMode);
     setEditError(null);
 
     if (dataset.mode === "TableQuery") {
@@ -294,6 +336,7 @@ function DatasetsPage() {
         mode: editingDataset.mode,
         definitionJson,
         rowLimit: editRowLimit === "" ? null : Number(editRowLimit),
+        storageMode: editStorageMode,
       });
       closeEditDataset();
       await refreshDatasets(selectedConnectionId as number);
@@ -319,6 +362,33 @@ function DatasetsPage() {
     { key: "mode", label: "Mode", value: (d) => d.mode, render: (d) => d.mode },
     { key: "rowLimit", label: "Row Limit", value: (d) => d.rowLimit ?? -1, render: (d) => d.rowLimit ?? "default" },
     {
+      key: "storageMode",
+      label: "Storage",
+      value: (d) => d.storageMode,
+      render: (d) => (
+        <Chip
+          size="small"
+          label={d.storageMode === "Import" ? "Import" : "Direct"}
+          color={d.storageMode === "Import" ? "primary" : "default"}
+          variant={d.storageMode === "Import" ? "filled" : "outlined"}
+        />
+      ),
+    },
+    {
+      key: "freshness",
+      label: "Data as of",
+      value: (d) => d.lastMaterializedAtUtc ?? "",
+      // Import data is stale by definition, and without this it's indistinguishable from live.
+      render: (d) =>
+        d.storageMode !== "Import"
+          ? "live"
+          : d.lastMaterializeError
+            ? <Typography variant="caption" color="error">refresh failed</Typography>
+            : d.lastMaterializedAtUtc
+              ? `${formatAsOf(d.lastMaterializedAtUtc)}${d.materializedRowCount !== null ? ` · ${d.materializedRowCount.toLocaleString()} rows` : ""}`
+              : "not loaded",
+    },
+    {
       key: "preview",
       label: "Preview",
       render: (d) => <Button size="small" variant="outlined" onClick={() => handlePreview(d.id)}>Run</Button>,
@@ -326,7 +396,16 @@ function DatasetsPage() {
     {
       key: "edit",
       label: "Edit",
-      render: (d) => <Button size="small" onClick={() => openEditDataset(d)}>Edit</Button>,
+      render: (d) => (
+        <>
+          <Button size="small" onClick={() => openEditDataset(d)}>Edit</Button>
+          {d.storageMode === "Import" && (
+            <Button size="small" disabled={refreshingId === d.id} onClick={() => handleMaterialize(d.id)}>
+              {refreshingId === d.id ? "Refreshing…" : "Refresh"}
+            </Button>
+          )}
+        </>
+      ),
     },
   ];
 
@@ -382,6 +461,18 @@ function DatasetsPage() {
               <TextField label="Dataset Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
               <TextField label="Description (optional)" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
               <TextField label="Row Limit" size="small" value={rowLimit} onChange={(e) => setRowLimit(e.target.value)} />
+              <TextField
+                select
+                label="Storage"
+                size="small"
+                sx={{ minWidth: 190 }}
+                value={storageMode}
+                onChange={(e) => setStorageMode(e.target.value as DatasetStorageMode)}
+                helperText={storageMode === "Import" ? "Cached copy, refreshed on demand" : "Queries the source every time"}
+              >
+                <MenuItem value="DirectQuery">Direct query (live)</MenuItem>
+                <MenuItem value="Import">Import (faster, cached)</MenuItem>
+              </TextField>
             </Box>
 
             {mode === "TableQuery" && (
@@ -613,6 +704,18 @@ function DatasetsPage() {
             <Box sx={{ display: "flex", gap: 2 }}>
               <TextField label="Dataset Name" size="small" value={editName} onChange={(e) => setEditName(e.target.value)} sx={{ flexGrow: 1 }} />
               <TextField label="Row Limit" size="small" value={editRowLimit} onChange={(e) => setEditRowLimit(e.target.value)} />
+              <TextField
+                select
+                label="Storage"
+                size="small"
+                sx={{ minWidth: 190 }}
+                value={editStorageMode}
+                onChange={(e) => setEditStorageMode(e.target.value as DatasetStorageMode)}
+                helperText={editStorageMode === "Import" ? "Cached copy, refreshed on demand" : "Queries the source every time"}
+              >
+                <MenuItem value="DirectQuery">Direct query (live)</MenuItem>
+                <MenuItem value="Import">Import (faster, cached)</MenuItem>
+              </TextField>
             </Box>
             <TextField label="Description (optional)" size="small" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
 
