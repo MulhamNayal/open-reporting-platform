@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using System.Text;
 using System.Text.RegularExpressions;
 using Backend.Services.DataSources;
@@ -9,8 +9,8 @@ namespace Backend.Services.Materialization;
 
 public class SqlMaterializationStore : IMaterializationStore
 {
-    // Column type names we can pass straight through to CREATE TABLE. Anything else — including
-    // the RestApiProvider's "string"/"number"/"boolean" — falls back to nvarchar(max), which is
+    // Column type names we can pass straight through to CREATE TABLE. Anything else â€” including
+    // the RestApiProvider's "string"/"number"/"boolean" â€” falls back to nvarchar(max), which is
     // always safe to land a value in even if it costs some fidelity.
     private static readonly HashSet<string> PassThroughTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -21,23 +21,33 @@ public class SqlMaterializationStore : IMaterializationStore
         "uniqueidentifier", "binary", "varbinary", "image", "xml"
     };
 
-    // Digits are part of the name, not the arguments — datetime2, varbinary, nvarchar2-style names
+    // Digits are part of the name, not the arguments â€” datetime2, varbinary, nvarchar2-style names
     // would otherwise fail to match and silently fall back to nvarchar(max).
     private static readonly Regex TypeShape = new(@"^\s*(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?<args>\([^)]*\))?\s*$", RegexOptions.Compiled);
 
     /// <summary>Every materialised table carries this so paging has a deterministic order even
-    /// when the query has none — without it OFFSET/FETCH can repeat or skip rows.</summary>
+    /// when the query has none â€” without it OFFSET/FETCH can repeat or skip rows.</summary>
     public const string RowNumberColumn = "__RowNumber";
 
     private readonly MaterializationOptions _options;
-    private readonly string _connectionString;
+    private readonly IConfiguration _configuration;
 
     public SqlMaterializationStore(IOptions<MaterializationOptions> options, IConfiguration configuration)
     {
         _options = options.Value;
-        _connectionString = configuration.GetConnectionString("ReportingCacheDatabase")
-            ?? throw new InvalidOperationException("Connection string 'ReportingCacheDatabase' is not configured.");
+        _configuration = configuration;
     }
+
+    /// <summary>
+    /// Resolved per call rather than in the constructor. DatasetService takes this store so it can
+    /// clean up materialised tables, so throwing here at construction would stop every controller
+    /// that touches a dataset from being built â€” an environment that simply hasn't configured the
+    /// cache database would fail to serve anything, not just Import datasets.
+    /// </summary>
+    private string ConnectionString =>
+        _configuration.GetConnectionString("ReportingCacheDatabase")
+        ?? throw new InvalidOperationException(
+            "Connection string 'ReportingCacheDatabase' is not configured, so Import datasets can't be materialised.");
 
     public string TableNameFor(int datasetId) => $"{_options.Schema}.Dataset_{datasetId}";
 
@@ -46,7 +56,7 @@ public class SqlMaterializationStore : IMaterializationStore
 
     private static string Q(string identifier) => "[" + identifier.Replace("]", "]]") + "]";
 
-    // public so it can be tested directly — it's a pure function and the fallback behaviour
+    // public so it can be tested directly â€” it's a pure function and the fallback behaviour
     // (unknown types landing as nvarchar(max)) is worth pinning down.
     public static string MapColumnType(string? nativeType)
     {
@@ -79,7 +89,7 @@ public class SqlMaterializationStore : IMaterializationStore
 
     private async Task<SqlConnection> OpenAsync(CancellationToken cancellationToken)
     {
-        var connection = new SqlConnection(_connectionString);
+        var connection = new SqlConnection(ConnectionString);
         await connection.OpenAsync(cancellationToken);
         return connection;
     }
@@ -136,7 +146,7 @@ public class SqlMaterializationStore : IMaterializationStore
             BatchSize = _options.BulkCopyBatchSize
         };
 
-        // Map by name — the staging table leads with __RowNumber, so ordinal mapping would be off by one.
+        // Map by name â€” the staging table leads with __RowNumber, so ordinal mapping would be off by one.
         foreach (var column in result.Columns)
         {
             bulk.ColumnMappings.Add(column.Name, column.Name);
