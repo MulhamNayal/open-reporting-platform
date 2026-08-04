@@ -44,10 +44,46 @@ public class SqlMaterializationStore : IMaterializationStore
     /// that touches a dataset from being built â€” an environment that simply hasn't configured the
     /// cache database would fail to serve anything, not just Import datasets.
     /// </summary>
-    private string ConnectionString =>
-        _configuration.GetConnectionString("ReportingCacheDatabase")
-        ?? throw new InvalidOperationException(
-            "Connection string 'ReportingCacheDatabase' is not configured, so Import datasets can't be materialised.");
+    private string ConnectionString
+    {
+        get
+        {
+            var configured = _configuration.GetConnectionString("ReportingCacheDatabase");
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                return configured;
+            }
+
+            // Fall back to the application's own connection with the database name suffixed.
+            // Keeps a new environment working without a second secret, and because the name is
+            // derived from whatever this app's database is already called, it can't collide with
+            // an unrelated database on a shared server.
+            var application = _configuration.GetConnectionString("ReportingDatabase")
+                ?? throw new InvalidOperationException(
+                    "Neither 'ReportingCacheDatabase' nor 'ReportingDatabase' is configured, so Import datasets can't be materialised.");
+
+            return new SqlConnectionStringBuilder(application)
+            {
+                InitialCatalog = DeriveCacheDatabaseName(application),
+            }.ConnectionString;
+        }
+    }
+
+    /// <summary>
+    /// The derived cache database name. Public because this is the one value that must never
+    /// collide with an unrelated database on a shared instance, so it's worth pinning in a test.
+    /// </summary>
+    public static string DeriveCacheDatabaseName(string applicationConnectionString)
+    {
+        var name = new SqlConnectionStringBuilder(applicationConnectionString).InitialCatalog;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new InvalidOperationException(
+                "The application connection string names no database, so a cache database name can't be derived from it.");
+        }
+
+        return name + "Cache";
+    }
 
     public string TableNameFor(int datasetId) => $"{_options.Schema}.Dataset_{datasetId}";
 
