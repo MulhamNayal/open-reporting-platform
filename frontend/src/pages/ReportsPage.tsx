@@ -5,10 +5,11 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
-import { createReport, getReports, setReportActive, setReportDataset, type Report } from "../api/reports";
+import { createReport, duplicateReport, getReports, setReportActive, setReportDataset, type Report } from "../api/reports";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { executeDataset, type QueryResult } from "../api/datasets";
 import QueryDefinitionForm, { type QueryDefinitionValue } from "./QueryDefinitionForm";
+import { renderLinkedText } from "./linkedText";
 import "./reportsPage.css";
 
 // Relative rather than absolute: "3 days ago" answers "is anyone still using this?" at a
@@ -52,6 +53,19 @@ function ReportsPage() {
       await refresh();
     } catch {
       setError("Could not change this report's status.");
+    }
+  }
+
+  // Lands you in the editor on the copy: the point of duplicating is to try a design change
+  // without risking the original, so the next action is always editing it.
+  async function handleDuplicate(report: Report) {
+    setError(null);
+    try {
+      const copy = await duplicateReport(report.id);
+      await refresh();
+      navigate(`/reports/${copy.id}/edit`);
+    } catch {
+      setError("Could not duplicate this report.");
     }
   }
 
@@ -102,7 +116,7 @@ function ReportsPage() {
   const reportColumns: DataTableColumn<Report>[] = [
     { key: "id", label: "ID", value: (r) => r.id, render: (r) => r.id },
     { key: "name", label: "Name", value: (r) => r.name, render: (r) => r.name },
-    { key: "description", label: "Description", value: (r) => r.description ?? "", render: (r) => r.description },
+    { key: "description", label: "Description", value: (r) => r.description ?? "", render: (r) => renderLinkedText(r.description) },
     {
       key: "usage",
       label: "Usage",
@@ -129,6 +143,7 @@ function ReportsPage() {
         <>
           <Button size="small" component={RouterLink} to={`/reports/${r.id}`}>View</Button>
           <Button size="small" component={RouterLink} to={`/reports/${r.id}/edit`}>Edit</Button>
+          <Button size="small" onClick={() => handleDuplicate(r)}>Duplicate</Button>
           <Button size="small" color={r.isActive ? "warning" : "success"} onClick={() => handleToggleActive(r)}>
             {r.isActive ? "Deactivate" : "Activate"}
           </Button>

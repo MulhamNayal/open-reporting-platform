@@ -166,6 +166,15 @@ function FormatTab({
                 style={{ width: 70 }}
               />
             </div>
+            <div className="frow">
+              <label htmlFor="format-show-totals">Totals row</label>
+              <input
+                id="format-show-totals"
+                type="checkbox"
+                checked={options.showTotals}
+                onChange={(e) => update({ showTotals: e.target.checked })}
+              />
+            </div>
           </div>
         </details>
       )}

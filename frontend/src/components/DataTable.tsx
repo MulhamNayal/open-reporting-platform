@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Box, Button, Checkbox, ClickAwayListener, FormControlLabel, IconButton, Menu, MenuItem, Paper, Popper, Table,
-  TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography,
+  TableBody, TableCell, TableContainer, TableFooter, TableHead, TableRow, TableSortLabel, TextField, Typography,
 } from "@mui/material";
 import { exportRows } from "./dataTableExport";
 import DataTablePager from "./DataTablePager";
@@ -45,6 +45,7 @@ function distinctValues<T>(column: DataTableColumn<T>, rows: T[]): (string | num
 
 function DataTable<T>({
   columns, rows, rowKey, searchPlaceholder = "Search", exportFileName = "export", columnWidths: presetColumnWidths, rowHeight,
+  footer,
 }: {
   columns: DataTableColumn<T>[];
   rows: T[];
@@ -56,6 +57,12 @@ function DataTable<T>({
   // but never writes back to it; persisting a drag is a separate, explicit "save" action.
   columnWidths?: Record<string, number>;
   rowHeight?: number;
+  // Optional summary row, keyed by column key; columns without an entry render blank. Called with
+  // the filtered+sorted rows across every page, not just the visible one, so a total reflects the
+  // active search/column filters the way a spreadsheet's would. Taking a callback rather than a
+  // ready-made record is what keeps this component ignorant of what's being aggregated — it never
+  // needs to know which columns are numeric or how they should be summarised.
+  footer?: (rows: T[]) => Record<string, ReactNode>;
 }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -97,6 +104,8 @@ function DataTable<T>({
     : filtered;
 
   const paged = sorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const footerCells = footer ? footer(sorted) : null;
 
   // Distinct values only depend on rows/columns, not on the filter/search/sort/page state
   // that changes on every keystroke or checkbox click — memoized so those interactions don't
@@ -341,6 +350,28 @@ function DataTable<T>({
               </TableRow>
             ))}
           </TableBody>
+          {footerCells && (
+            <TableFooter>
+              <TableRow>
+                {columns.map((c) => (
+                  <TableCell
+                    key={c.key}
+                    align={c.numeric ? "right" : undefined}
+                    sx={{
+                      fontWeight: 600,
+                      color: "text.primary",
+                      borderTop: 2,
+                      borderTopColor: "divider",
+                      ...(c.numeric ? { fontVariantNumeric: "tabular-nums" } : {}),
+                    }}
+                    style={effectiveWidth(c.key) ? { width: effectiveWidth(c.key), maxWidth: effectiveWidth(c.key) } : undefined}
+                  >
+                    {footerCells[c.key] ?? ""}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableFooter>
+          )}
         </Table>
         {sorted.length === 0 && (
           <Typography variant="body2" sx={{ p: 2, color: "text.secondary" }}>

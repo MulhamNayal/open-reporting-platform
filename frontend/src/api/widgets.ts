@@ -34,6 +34,10 @@ export interface WidgetFormatOptions {
   dataLabels: boolean;
   // Table widgets only. Pixels; null means the table's default row height.
   rowHeight: number | null;
+  // Table widgets only. Adds a summary row that sums every numeric column. Off by default so
+  // existing tables are unchanged; the Power BI reports this platform replaces show one on their
+  // pivot-style tables and not on their detail listings, so it has to be per-widget.
+  showTotals: boolean;
   fieldFormats: Record<string, Partial<FieldFormat>>;
 }
 
@@ -47,6 +51,7 @@ export const DEFAULT_FORMAT_OPTIONS: WidgetFormatOptions = {
   sortDirection: null,
   dataLabels: false,
   rowHeight: null,
+  showTotals: false,
   fieldFormats: {},
 };
 

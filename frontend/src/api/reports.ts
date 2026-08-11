@@ -51,13 +51,20 @@ export async function createReport(name: string, description: string): Promise<R
   return res.data;
 }
 
-export async function renameReport(id: number, name: string): Promise<Report> {
-  const res = await api.put<Report>(`/reports/${id}`, { name });
+// Omitting description leaves the stored one untouched; pass "" to clear it.
+export async function renameReport(id: number, name: string, description?: string): Promise<Report> {
+  const res = await api.put<Report>(`/reports/${id}`, { name, description: description ?? null });
   return res.data;
 }
 
 export async function deleteReport(id: number): Promise<void> {
   await api.delete(`/reports/${id}`);
+}
+
+// Omitting name lets the backend derive "<source name> (copy)".
+export async function duplicateReport(id: number, name?: string): Promise<Report> {
+  const res = await api.post<Report>(`/reports/${id}/duplicate`, { name: name ?? null });
+  return res.data;
 }
 
 export async function setReportDataset(id: number, request: SetReportDatasetRequest): Promise<Report> {
