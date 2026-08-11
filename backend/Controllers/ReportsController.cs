@@ -49,6 +49,13 @@ public class ReportsController : ControllerBase
         return Ok(await _service.RenameAsync(id, request));
     }
 
+    [HttpPost("{id}/duplicate")]
+    public async Task<ActionResult<ReportSummary>> Duplicate(int id, DuplicateReportRequest request)
+    {
+        var report = await _service.DuplicateAsync(id, request);
+        return Created($"/api/reports/{report.Id}", report);
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

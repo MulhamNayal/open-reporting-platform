@@ -10,6 +10,8 @@ public interface IReportService
 
     Task<ReportSummary> RenameAsync(int id, RenameReportRequest request);
 
+    Task<ReportSummary> DuplicateAsync(int id, DuplicateReportRequest request);
+
     Task DeleteAsync(int id);
 
     Task<ReportSummary> SetDatasetAsync(int id, SetReportDatasetRequest request);
