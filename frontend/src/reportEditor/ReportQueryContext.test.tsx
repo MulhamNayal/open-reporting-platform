@@ -30,6 +30,30 @@ function Probe() {
 }
 
 describe("ReportQueryProvider", () => {
+  // Regression guard: `loading` used to stay true until every dataset had executed, so the whole
+  // report sat behind one spinner and a single slow dataset hid every other widget. It has to
+  // clear once the shell is known, leaving each widget to show its own loading state.
+  it("stops loading once the shell is known, without waiting for dataset execution", async () => {
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: 5, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
+    vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([
+      { id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{}" },
+    ]);
+    // Never resolves — stands in for a dataset that takes a long time, or hangs entirely.
+    vi.spyOn(datasetsApi, "executeDataset").mockReturnValue(new Promise(() => {}));
+
+    render(
+      <ReportQueryProvider reportId={1}>
+        <Probe />
+      </ReportQueryProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("name: R")).toBeInTheDocument());
+    expect(screen.queryByText("loading")).not.toBeInTheDocument();
+    expect(screen.getByText("page: 10")).toBeInTheDocument();
+    // No result yet, which is exactly the signal a widget uses to show its own spinner.
+    expect(screen.getByText("rows: 0")).toBeInTheDocument();
+  });
+
   it("fetches the report's dataset and first page exactly once", async () => {
     vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: 5, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
     vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([

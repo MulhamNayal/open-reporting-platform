@@ -68,6 +68,14 @@ export function ReportQueryProvider({ reportId, children }: { reportId: number; 
       setReportPageIdState(firstPageId);
       setFilterState(firstPageId !== null ? JSON.parse(pages[0].filterState || "{}") : {});
 
+      // The shell — name, pages, active page — is everything a page needs in order to lay itself
+      // out, so it is what `loading` gates on. Executing the datasets below can take many seconds
+      // per dataset, and holding the flag until they finish blanked the entire report behind one
+      // spinner; a single slow dataset hid every other widget. Each widget already renders its own
+      // loading state from the absence of its result, which is how Power BI behaves — visuals
+      // appear as their data arrives. The `finally` below still clears the flag on the error path.
+      setLoading(false);
+
       // A refresh must not serve results cached before it — drop everything and re-seed with
       // the default dataset. Consumers re-request the rest via ensureDatasets.
       inFlightRef.current.clear();
