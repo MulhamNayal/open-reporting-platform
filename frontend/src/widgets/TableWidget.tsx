@@ -4,6 +4,7 @@ import { Paper, Typography } from "@mui/material";
 import type { QueryResult } from "../api/datasets";
 import type { FieldFormat, WidgetFormatOptions } from "../api/widgets";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
+import { POWERBI_TABLE_SX } from "../theme";
 import { formatFieldValue, getFieldFormat, resolveDisplayName } from "./fieldFormat";
 import { shapeTableRows } from "./shaping";
 
@@ -112,8 +113,12 @@ function TableWidget({
   }
 
   return (
-    <Paper sx={{ p: 2, height: "100%" }}>
-      <Typography variant="subtitle2" gutterBottom>{title}</Typography>
+    // Tighter than the app's default padding: Power BI gives a table visual almost the whole tile,
+    // and the roomier chrome was costing two visible rows.
+    <Paper sx={{ p: 1, height: "100%" }}>
+      {title && (
+        <Typography sx={{ fontSize: "12px", fontWeight: 600, mb: 0.5, px: 0.5 }}>{title}</Typography>
+      )}
       <DataTable
         columns={columns}
         rows={rows}
@@ -122,6 +127,7 @@ function TableWidget({
         rowHeight={format?.rowHeight ?? undefined}
         footer={format?.showTotals ? buildFooter : undefined}
         columnValues={columnValues}
+        tableSx={POWERBI_TABLE_SX}
       />
     </Paper>
   );

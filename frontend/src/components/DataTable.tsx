@@ -4,6 +4,7 @@ import {
   Box, Button, Checkbox, ClickAwayListener, FormControlLabel, IconButton, Menu, MenuItem, Paper, Popper, Table,
   TableBody, TableCell, TableContainer, TableFooter, TableHead, TableRow, TableSortLabel, TextField, Typography,
 } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import { exportRows } from "./dataTableExport";
 import DataTablePager from "./DataTablePager";
 
@@ -45,7 +46,7 @@ function distinctValues<T>(column: DataTableColumn<T>, rows: T[]): (string | num
 
 function DataTable<T>({
   columns, rows, rowKey, searchPlaceholder = "Search", exportFileName = "export", columnWidths: presetColumnWidths, rowHeight,
-  footer, columnValues,
+  footer, columnValues, tableSx,
 }: {
   columns: DataTableColumn<T>[];
   rows: T[];
@@ -68,6 +69,9 @@ function DataTable<T>({
   // list silently omits everything not on screen. Callers that can ask the source for the real
   // distinct values pass this instead.
   columnValues?: (columnKey: string) => Promise<(string | number)[]>;
+  // Styling for the table itself, so a report widget can adopt the Power BI look without this
+  // component knowing anything about Power BI. Management pages leave it unset.
+  tableSx?: SxProps<Theme>;
 }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -271,7 +275,7 @@ function DataTable<T>({
         </Menu>
       </div>
       <TableContainer component={Paper}>
-        <Table size="small">
+        <Table size="small" sx={tableSx}>
           <TableHead>
             <TableRow>
               {columns.map((c) => (
@@ -318,11 +322,21 @@ function DataTable<T>({
                   )}
                   {c.value && (
                     <IconButton
-                      size="small"
                       color={isColumnFiltered(c) ? "primary" : "default"}
                       aria-label={`Filter ${c.label}`}
                       aria-pressed={isColumnFiltered(c)}
                       onClick={(e) => openFilterMenu(c, e.currentTarget)}
+                      // A default IconButton is 34px tall and forces the header row to match it,
+                      // which is most of why the header looked oversized next to Power BI's. Sized
+                      // to the text instead, and kept on the same line as the label.
+                      sx={{
+                        p: 0,
+                        ml: 0.25,
+                        fontSize: "0.7em",
+                        lineHeight: 1,
+                        verticalAlign: "middle",
+                        color: isColumnFiltered(c) ? undefined : "text.disabled",
+                      }}
                     >
                       <span aria-hidden="true">&#9662;</span>
                     </IconButton>
