@@ -64,7 +64,7 @@ public class DatasetQueryService : IDatasetQueryService
             RequireKnownColumn(request.Sort.Field, columns);
         }
 
-        if (!DatasetService.CanPushDownQueries(dataset.Mode, dataset.StorageMode))
+        if (!DatasetService.CanPushDownQueries(dataset))
         {
             var all = await _datasetService.ExecuteAsync(datasetId);
             var filtered = ApplyFilters(all, request.Filters);
@@ -109,7 +109,7 @@ SELECT COUNT_BIG(1) FROM {source} {where};";
             RequireKnownColumn(field, columns);
         }
 
-        if (!DatasetService.CanPushDownQueries(dataset.Mode, dataset.StorageMode))
+        if (!DatasetService.CanPushDownQueries(dataset))
         {
             var all = await _datasetService.ExecuteAsync(datasetId);
             return AggregateInMemory(ApplyFilters(all, request.Filters), request);
@@ -146,7 +146,7 @@ SELECT COUNT_BIG(1) FROM {source} {where};";
         ValidateFilters(request.Filters, columns);
         var take = Math.Clamp(request.Take, 1, MaxDistinctTake);
 
-        if (!DatasetService.CanPushDownQueries(dataset.Mode, dataset.StorageMode))
+        if (!DatasetService.CanPushDownQueries(dataset))
         {
             var all = await _datasetService.ExecuteAsync(datasetId);
             var index = IndexOf(all.Columns, request.Column);
@@ -177,7 +177,7 @@ SELECT COUNT_BIG(1) FROM {source} {where};";
 
         var categorical = columns.Where(c => IsCategorical(c.NativeType)).ToList();
 
-        if (!DatasetService.CanPushDownQueries(dataset.Mode, dataset.StorageMode))
+        if (!DatasetService.CanPushDownQueries(dataset))
         {
             var all = ApplyFilters(await _datasetService.ExecuteAsync(datasetId), request.Filters);
             return categorical

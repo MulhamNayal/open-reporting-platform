@@ -220,6 +220,68 @@ ORDER BY column_ordinal;";
         }
     }
 
+    /// <summary>
+    /// Whether a raw SQL query can be embedded in <c>SELECT … FROM (&lt;query&gt;) AS x</c>, which is how
+    /// filtering, paging and aggregation are pushed to the server.
+    ///
+    /// Three shapes can't be: a CTE and a DECLARE/EXEC batch must each begin their own statement,
+    /// and a subquery carrying an ORDER BY needs TOP/OFFSET. Such a query is still perfectly
+    /// valid — it just has to be executed whole and processed in memory instead.
+    /// </summary>
+    public static bool CanWrapInDerivedTable(string sqlText)
+    {
+        if (string.IsNullOrWhiteSpace(sqlText))
+        {
+            return false;
+        }
+
+        var start = SkipLeadingCommentsAndWhitespace(sqlText);
+        foreach (var keyword in new[] { "WITH", "DECLARE", "EXEC", "EXECUTE", ";" })
+        {
+            if (start.StartsWith(keyword, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return !HasTopLevelOrderBy(sqlText);
+    }
+
+    // Leading whitespace and comments hide the keyword that decides the shape above.
+    private static string SkipLeadingCommentsAndWhitespace(string sqlText)
+    {
+        var i = 0;
+        while (i < sqlText.Length)
+        {
+            // A byte-order mark or zero-width space is not whitespace as far as char.IsWhiteSpace is
+            // concerned, and SQL pasted in from a file routinely carries one. Left unskipped it
+            // hides the first keyword, so a DECLARE batch looked like an ordinary SELECT.
+            if (sqlText[i] == '﻿' || sqlText[i] == '​')
+            {
+                i++;
+            }
+            else if (char.IsWhiteSpace(sqlText[i]))
+            {
+                i++;
+            }
+            else if (i + 1 < sqlText.Length && sqlText[i] == '-' && sqlText[i + 1] == '-')
+            {
+                while (i < sqlText.Length && sqlText[i] != '\n') { i++; }
+            }
+            else if (i + 1 < sqlText.Length && sqlText[i] == '/' && sqlText[i + 1] == '*')
+            {
+                var end = sqlText.IndexOf("*/", i + 2, StringComparison.Ordinal);
+                i = end < 0 ? sqlText.Length : end + 2;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return sqlText[i..];
+    }
+
     // A trailing ORDER BY at paren-depth 0 can't be wrapped in a derived table (SQL Server
     // requires TOP/OFFSET on any subquery with an ORDER BY) — nested ORDER BYs (inside a
     // subquery, CTE, or an OVER(...) window clause) sit at depth > 0 and are unaffected.

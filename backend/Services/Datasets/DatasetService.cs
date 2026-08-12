@@ -311,6 +311,39 @@ public class DatasetService : IDatasetService
     public static bool CanPushDownQueries(DatasetMode mode, DatasetStorageMode storageMode) =>
         storageMode == DatasetStorageMode.Import || mode == DatasetMode.RawSql;
 
+    /// <summary>
+    /// As above, but able to inspect the query itself — which the mode alone cannot.
+    ///
+    /// "RawSql can be wrapped in a derived table" is true of most queries and false of three real
+    /// shapes: a CTE, a DECLARE/EXEC batch, and a trailing ORDER BY. Reports migrated off Power BI
+    /// use all three, and claiming pushdown for them produced a syntax error at query time even
+    /// though the query ran fine on its own. Falling back to execute-and-filter-in-memory is
+    /// exactly how a stored procedure is already handled.
+    /// </summary>
+    public static bool CanPushDownQueries(Dataset dataset)
+    {
+        if (dataset.StorageMode == DatasetStorageMode.Import)
+        {
+            return true;
+        }
+
+        if (dataset.Mode != DatasetMode.RawSql)
+        {
+            return false;
+        }
+
+        try
+        {
+            var definition = JsonSerializer.Deserialize<RawSqlDefinition>(dataset.Definition, CaseInsensitiveJson);
+            return definition is not null && SqlServerProvider.CanWrapInDerivedTable(definition.SqlText);
+        }
+        catch (JsonException)
+        {
+            // A definition we can't read is one we shouldn't be rewriting into a derived table.
+            return false;
+        }
+    }
+
     private static void ValidateModeMatchesConnectionType(DatasetMode mode, DataSourceType connectionType)
     {
         var expectedType = mode == DatasetMode.RestQuery ? DataSourceType.RestApi : DataSourceType.SqlServer;
