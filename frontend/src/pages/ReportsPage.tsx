@@ -9,6 +9,7 @@ import { createReport, duplicateReport, getReports, setReportActive, setReportDa
 import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { executeDataset, type QueryResult } from "../api/datasets";
 import QueryDefinitionForm, { type QueryDefinitionValue } from "./QueryDefinitionForm";
+import { AddIcon, CopyIcon, EditIcon, ViewIcon } from "../components/FluentIcons";
 import { renderLinkedText } from "./linkedText";
 import "./reportsPage.css";
 
@@ -149,8 +150,8 @@ function ReportsPage() {
       // pattern and stops every row carrying four competing buttons.
       render: (r) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-          <Button size="small" component={RouterLink} to={`/reports/${r.id}`}>View</Button>
-          <Button size="small" component={RouterLink} to={`/reports/${r.id}/edit`}>Edit</Button>
+          <Button size="small" component={RouterLink} to={`/reports/${r.id}`} startIcon={<ViewIcon />}>View</Button>
+          <Button size="small" component={RouterLink} to={`/reports/${r.id}/edit`} startIcon={<EditIcon />}>Edit</Button>
           <IconButton
             size="small"
             aria-label={`More actions for ${r.name}`}
@@ -177,7 +178,7 @@ function ReportsPage() {
           borderBottom: 1, borderColor: "divider",
         }}
       >
-        <Button size="small" onClick={() => setCreateOpen(true)}>+ New report</Button>
+        <Button size="small" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>New report</Button>
         <Box sx={{ flexGrow: 1 }} />
         <FormControlLabel
           sx={{ mr: 0 }}
@@ -193,8 +194,9 @@ function ReportsPage() {
       <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
         <MenuItem
           onClick={() => { setMenuAnchor(null); if (menuReport) { void handleDuplicate(menuReport); } }}
+          sx={{ gap: 1 }}
         >
-          Duplicate
+          <CopyIcon />Duplicate
         </MenuItem>
         <MenuItem
           onClick={() => { setMenuAnchor(null); if (menuReport) { void handleToggleActive(menuReport); } }}
