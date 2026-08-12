@@ -58,6 +58,11 @@ export function CopyIcon() {
   return <svg {...base}><rect x="7" y="7" width="9" height="9" rx="1.5" /><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4H5.5A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" /></svg>;
 }
 
+/** The small chevron Power BI puts on command-bar items that open a menu. */
+export function ChevronDownIcon() {
+  return <svg {...base} width={10} height={10}><path d="M5 8l5 5 5-5" /></svg>;
+}
+
 export function FilterIcon() {
   return <svg {...base}><path d="M3.5 5h13l-5 5.5v4.5l-3-1.5v-3L3.5 5z" /></svg>;
 }

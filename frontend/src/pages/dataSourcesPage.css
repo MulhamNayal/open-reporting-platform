@@ -2,13 +2,12 @@
   color: var(--text);
 }
 .data-sources-page h4 {
-  font-weight: 700;
+  font-weight: 600;
 }
 .data-sources-page .create-form {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  box-shadow: var(--sh-sm);
   padding: 20px;
   margin-bottom: 24px;
 }
@@ -16,7 +15,6 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  box-shadow: var(--sh-sm);
 }
 .data-sources-page .list-panel th {
   color: var(--muted);

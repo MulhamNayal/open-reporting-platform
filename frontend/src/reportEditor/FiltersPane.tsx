@@ -1,4 +1,5 @@
 import type { FilterableField } from "./mergeFilterableFields";
+import { FilterIcon } from "../components/FluentIcons";
 import "./reportEditor.css";
 
 // Takes the field list rather than deriving it: for an Import dataset there are no rows on the
@@ -23,7 +24,8 @@ function FiltersPane({
   if (!hasData) {
     return (
       <div className="pane pane-filters">
-        <div className="pane-head">Filters</div>
+        {/* Power BI heads its Filters pane with a funnel icon beside the word. */}
+        <div className="pane-head"><FilterIcon />Filters</div>
         <div className="filters-empty">No data to filter yet — define this report's query first.</div>
       </div>
     );

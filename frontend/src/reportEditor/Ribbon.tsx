@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Menu, MenuItem } from "@mui/material";
 import AppearanceMenu from "../appearance/AppearanceMenu";
-import { DocumentIcon, InsertIcon, RefreshIcon, SaveIcon, ViewIcon } from "../components/FluentIcons";
+import { ChevronDownIcon, DocumentIcon, InsertIcon, RefreshIcon, SaveIcon, ViewIcon } from "../components/FluentIcons";
 import "./reportEditor.css";
 
 function Ribbon({
@@ -29,19 +29,22 @@ function Ribbon({
       <div className="brand">{reportName}</div>
       {!readOnly && (
         <div className="menu">
-          <button onClick={(e) => setFileAnchor(e.currentTarget)}><DocumentIcon />File</button>
+          <button onClick={(e) => setFileAnchor(e.currentTarget)}><DocumentIcon />File<ChevronDownIcon /></button>
           <Menu anchorEl={fileAnchor} open={Boolean(fileAnchor)} onClose={() => setFileAnchor(null)}>
             <MenuItem onClick={() => { setFileAnchor(null); onRename(); }}>Rename report</MenuItem>
             <MenuItem onClick={() => { setFileAnchor(null); onChangeDataSource(); }}>Change data source</MenuItem>
             <MenuItem onClick={() => { setFileAnchor(null); onBackToReports(); }}>Back to Reports</MenuItem>
           </Menu>
 
-          <button onClick={(e) => setInsertAnchor(e.currentTarget)}><InsertIcon />Insert</button>
+          {/* Power BI groups its command bar with thin vertical rules rather than spacing alone. */}
+          <div className="divider-v" />
+          <button onClick={(e) => setInsertAnchor(e.currentTarget)}><InsertIcon />Insert<ChevronDownIcon /></button>
           <Menu anchorEl={insertAnchor} open={Boolean(insertAnchor)} onClose={() => setInsertAnchor(null)}>
             <MenuItem onClick={() => { setInsertAnchor(null); onAddText(); }}>Add Text widget</MenuItem>
           </Menu>
 
-          <button onClick={(e) => setViewAnchor(e.currentTarget)}><ViewIcon />View</button>
+          <div className="divider-v" />
+          <button onClick={(e) => setViewAnchor(e.currentTarget)}><ViewIcon />View<ChevronDownIcon /></button>
           <Menu anchorEl={viewAnchor} open={Boolean(viewAnchor)} onClose={() => setViewAnchor(null)}>
             <MenuItem onClick={() => { setViewAnchor(null); onToggleFilters(); }}>Toggle Filters pane</MenuItem>
           </Menu>

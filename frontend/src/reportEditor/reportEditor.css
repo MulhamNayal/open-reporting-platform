@@ -206,14 +206,17 @@
   gap: 2px;
   padding: 0 8px;
 }
+/* Power BI's page tabs are plain text with a thin accent underline on the active one — not
+   filled, bordered, rounded chips. */
 .ptab {
   display: flex;
   align-items: center;
   gap: 7px;
   height: 26px;
   padding: 0 0.625rem;
-  border-radius: 6px;
-  border: 1px solid transparent;
+  border-radius: 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
   background: none;
   color: var(--muted);
   font-size: 0.78125rem;
@@ -225,9 +228,9 @@
   color: var(--text);
 }
 .ptab.active {
-  background: var(--accent-soft);
-  color: var(--accent-ink);
-  border-color: var(--accent-line);
+  background: none;
+  color: var(--text);
+  border-bottom-color: var(--accent);
   font-weight: 600;
 }
 
@@ -241,6 +244,7 @@
 .pane-head {
   display: flex;
   align-items: center;
+  gap: 6px;
   height: 38px;
   flex: 0 0 38px;
   padding: 0 0.75rem;

@@ -3,13 +3,12 @@
   color: var(--text);
 }
 .datasets-page h4 {
-  font-weight: 700;
+  font-weight: 600;
 }
 .datasets-page .create-form {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  box-shadow: var(--sh-sm);
   padding: 20px;
   margin-bottom: 24px;
 }
@@ -39,7 +38,6 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  box-shadow: var(--sh-sm);
 }
 .datasets-page .dataset-list th {
   color: var(--muted);
