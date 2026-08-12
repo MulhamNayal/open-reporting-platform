@@ -1,22 +1,11 @@
 .reports-page {
   color: var(--text);
 }
-.reports-page h4 {
-  font-weight: 700;
-}
-.reports-page .create-form {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: var(--sh-sm);
-  padding: 20px;
-  margin-bottom: 24px;
-}
+/* Fluent list surfaces sit flat on the page with a hairline, not raised on a shadow. */
 .reports-page .list-panel {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  box-shadow: var(--sh-sm);
 }
 .reports-page .list-panel th {
   color: var(--muted);

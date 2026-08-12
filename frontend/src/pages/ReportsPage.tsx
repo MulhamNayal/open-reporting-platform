@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Alert, Box, Button, Chip, Container, Dialog, DialogContent, DialogTitle,
-  FormControlLabel, Switch, TextField, Typography,
+  FormControlLabel, IconButton, Menu, MenuItem, Switch, TextField, Typography,
 } from "@mui/material";
 import axios from "axios";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
@@ -35,6 +35,11 @@ function ReportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [pendingReport, setPendingReport] = useState<Report | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  // The overflow menu's anchor and the row it belongs to are separate: the anchor drives the popup,
+  // the row is what the chosen action applies to.
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [menuReport, setMenuReport] = useState<Report | null>(null);
   const navigate = useNavigate();
 
   async function refresh(includeInactive = showInactive) {
@@ -76,6 +81,7 @@ function ReportsPage() {
       const created = await createReport(name, description);
       setName("");
       setDescription("");
+      setCreateOpen(false);
       await refresh();
       setPendingReport(created);
     } catch (err) {
@@ -138,37 +144,78 @@ function ReportsPage() {
     },
     {
       key: "designer",
-      label: "Designer",
+      label: "Actions",
+      // Two primary verbs stay visible; the rest go behind an overflow, which is the Fluent
+      // pattern and stops every row carrying four competing buttons.
       render: (r) => (
-        <>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <Button size="small" component={RouterLink} to={`/reports/${r.id}`}>View</Button>
           <Button size="small" component={RouterLink} to={`/reports/${r.id}/edit`}>Edit</Button>
-          <Button size="small" onClick={() => handleDuplicate(r)}>Duplicate</Button>
-          <Button size="small" color={r.isActive ? "warning" : "success"} onClick={() => handleToggleActive(r)}>
-            {r.isActive ? "Deactivate" : "Activate"}
-          </Button>
-        </>
+          <IconButton
+            size="small"
+            aria-label={`More actions for ${r.name}`}
+            onClick={(e) => { setMenuReport(r); setMenuAnchor(e.currentTarget); }}
+            sx={{ p: 0.25, fontSize: "1rem", lineHeight: 1 }}
+          >
+            <span aria-hidden="true">&#8943;</span>
+          </IconButton>
+        </Box>
       ),
     },
   ];
 
   return (
-    <Container maxWidth={false} sx={{ py: 4, px: 4 }} className="reports-page">
-      <Typography variant="h4" gutterBottom>Reports</Typography>
+    <Container maxWidth={false} sx={{ py: 3, px: 3 }} className="reports-page">
+      <Typography variant="h4" sx={{ mb: 1.5 }}>Reports</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Box component="form" onSubmit={handleSubmit} className="create-form" sx={{ display: "flex", gap: 2, mb: 3 }}>
-        <TextField label="Name" size="small" value={name} onChange={(e) => setName(e.target.value)} />
-        <TextField label="Description" size="small" value={description} onChange={(e) => setDescription(e.target.value)} sx={{ flexGrow: 1 }} />
-        <Button type="submit" variant="contained">Add</Button>
+
+      {/* Fluent command bar: the page's verbs on one flat row above the list, rather than a
+          permanently-open form pushing the content down. */}
+      <Box
+        sx={{
+          display: "flex", alignItems: "center", gap: 0.5, mb: 1.5, py: 0.5,
+          borderBottom: 1, borderColor: "divider",
+        }}
+      >
+        <Button size="small" onClick={() => setCreateOpen(true)}>+ New report</Button>
+        <Box sx={{ flexGrow: 1 }} />
+        <FormControlLabel
+          sx={{ mr: 0 }}
+          control={<Switch size="small" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />}
+          label={<Typography sx={{ fontSize: "0.8125rem" }}>Show deactivated</Typography>}
+        />
       </Box>
-      <FormControlLabel
-        sx={{ mb: 1 }}
-        control={<Switch size="small" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />}
-        label="Show deactivated reports"
-      />
+
       <div className="list-panel">
-        <DataTable columns={reportColumns} rows={reports} rowKey={(r) => r.id} />
+        <DataTable columns={reportColumns} rows={reports} rowKey={(r) => r.id} exportFileName="reports" />
       </div>
+
+      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
+        <MenuItem
+          onClick={() => { setMenuAnchor(null); if (menuReport) { void handleDuplicate(menuReport); } }}
+        >
+          Duplicate
+        </MenuItem>
+        <MenuItem
+          onClick={() => { setMenuAnchor(null); if (menuReport) { void handleToggleActive(menuReport); } }}
+        >
+          {menuReport?.isActive ? "Deactivate" : "Activate"}
+        </MenuItem>
+      </Menu>
+
+      <Dialog open={createOpen} maxWidth="sm" fullWidth onClose={() => setCreateOpen(false)}>
+        <DialogTitle>New report</DialogTitle>
+        <DialogContent>
+          <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+            <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus fullWidth />
+            <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth />
+            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+              <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button type="submit" variant="contained">Create</Button>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={pendingReport !== null} maxWidth="sm" fullWidth onClose={() => {}}>
         <DialogTitle>Define this report's query</DialogTitle>
