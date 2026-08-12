@@ -172,6 +172,54 @@ public class SqlServerProvider : IDataSourceProvider
         return $"SELECT TOP (0) * FROM ({sqlText}) AS x";
     }
 
+    /// <summary>
+    /// Column names and types for an arbitrary batch, via SQL Server's own static analysis.
+    /// Returns an empty list when the shape can't be determined without running the batch, which
+    /// leaves the caller free to fall back.
+    /// </summary>
+    private async Task<IReadOnlyList<ColumnDescriptor>> DescribeFirstResultSetAsync(
+        SqlConnection connection, string sqlText, CancellationToken cancellationToken)
+    {
+        const string describe = @"
+SELECT name, system_type_name
+FROM sys.dm_exec_describe_first_result_set(@stmt, NULL, 0)
+WHERE is_hidden = 0
+ORDER BY column_ordinal;";
+
+        try
+        {
+            await using var command = new SqlCommand(describe, connection) { CommandTimeout = _commandTimeoutSeconds };
+            command.Parameters.Add(new SqlParameter("@stmt", System.Data.SqlDbType.NVarChar, -1) { Value = sqlText });
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            var columns = new List<ColumnDescriptor>();
+            var unnamed = 0;
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var name = reader.IsDBNull(0) ? $"Column{++unnamed}" : reader.GetString(0);
+                var nativeType = reader.IsDBNull(1) ? "" : reader.GetString(1);
+
+                // system_type_name carries precision ("nvarchar(100)", "decimal(18,2)") where the
+                // reader-based path yields the bare name. Callers match on the bare name — the
+                // frontend's format inference compares against "nvarchar"/"decimal" — so trim it.
+                var paren = nativeType.IndexOf('(');
+                if (paren > 0)
+                {
+                    nativeType = nativeType[..paren];
+                }
+
+                columns.Add(new ColumnDescriptor(name, nativeType));
+            }
+
+            return columns;
+        }
+        catch (SqlException)
+        {
+            // The DMV itself rejected the batch; the wrapper may still manage it.
+            return new List<ColumnDescriptor>();
+        }
+    }
+
     // A trailing ORDER BY at paren-depth 0 can't be wrapped in a derived table (SQL Server
     // requires TOP/OFFSET on any subquery with an ORDER BY) — nested ORDER BYs (inside a
     // subquery, CTE, or an OVER(...) window clause) sit at depth > 0 and are unaffected.
@@ -215,6 +263,18 @@ public class SqlServerProvider : IDataSourceProvider
         var connectionString = BuildConnectionString(connection);
         await using var sqlConnection = new SqlConnection(connectionString);
         await sqlConnection.OpenAsync(cancellationToken);
+
+        // Ask SQL Server to describe the statement instead of wrapping it in a derived table.
+        // A derived table cannot contain a CTE, a trailing ORDER BY, or an EXEC/DECLARE batch, so
+        // wrapping rejected queries that execute perfectly well — real migrated reports use all
+        // three. describe_first_result_set parses the batch without running it, which is both
+        // safer and more permissive. The wrapper below is kept as a fallback: the DMV returns no
+        // rows for a statement whose shape it can't determine statically, typically dynamic SQL.
+        var described = await DescribeFirstResultSetAsync(sqlConnection, sqlText, cancellationToken);
+        if (described.Count > 0)
+        {
+            return described;
+        }
 
         var wrappedSql = BuildRawSqlDiscoveryWrapper(sqlText);
 
