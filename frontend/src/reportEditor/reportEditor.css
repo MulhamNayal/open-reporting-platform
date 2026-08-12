@@ -629,9 +629,11 @@
 .swatch.active {
   border-color: var(--text);
 }
+/* Power BI's Filters pane is a narrow strip, not a third of the canvas. 214px plus a 200px sidebar
+   meant 414px of chrome before any data. */
 .pane-filters {
-  width: 214px;
-  flex: 0 0 214px;
+  width: 168px;
+  flex: 0 0 168px;
 }
 .filter-scope {
   font-size: 0.6875rem;
