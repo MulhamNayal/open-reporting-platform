@@ -17,34 +17,38 @@ interface PaletteColors {
   tableRowHoverBackground: string;
 }
 
+// Fluent's own values, so the app reads as a sibling of the Power BI reports it hosts rather than
+// as a different product: Segoe UI, the #FAF9F8/#F3F2F1 neutral ramp, #605E5C secondary text,
+// #EDEBE9 hairlines, and #0078D4 as the accent. Power BI's own tableAccent is #118DFF; the darker
+// #0078D4 is the shell accent and gives better contrast on white.
 const LIGHT_COLORS: PaletteColors = {
-  primaryMain: "#5b4fe6",
-  primaryDark: "#4a3fd6",
-  backgroundDefault: "#e7eaf1",
+  primaryMain: "#0078d4",
+  primaryDark: "#106ebe",
+  backgroundDefault: "#faf9f8",
   backgroundPaper: "#ffffff",
-  textPrimary: "#1b1e27",
-  textSecondary: "#6c7480",
-  paperBorder: "#e3e7ef",
-  tableCellBorder: "#eef0f4",
-  tableHeadColor: "#6c7480",
-  tableHeadBackground: "#f6f7f9",
-  tableHeadBorder: "#cfd5e0",
-  tableRowHoverBackground: "#edeafc",
+  textPrimary: "#242424",
+  textSecondary: "#605e5c",
+  paperBorder: "#edebe9",
+  tableCellBorder: "#f3f2f1",
+  tableHeadColor: "#323130",
+  tableHeadBackground: "#ffffff",
+  tableHeadBorder: "#c8c6c4",
+  tableRowHoverBackground: "#f3f2f1",
 };
 
 const DARK_COLORS: PaletteColors = {
-  primaryMain: "#7b70f0",
-  primaryDark: "#8f86f5",
-  backgroundDefault: "#14151c",
-  backgroundPaper: "#1b1e27",
-  textPrimary: "#e7e9ee",
-  textSecondary: "#9aa1ad",
-  paperBorder: "#2f333f",
-  tableCellBorder: "#2f333f",
-  tableHeadColor: "#9aa1ad",
-  tableHeadBackground: "#20232d",
-  tableHeadBorder: "#3d4250",
-  tableRowHoverBackground: "#2a2650",
+  primaryMain: "#2899f5",
+  primaryDark: "#3aa0f3",
+  backgroundDefault: "#1b1a19",
+  backgroundPaper: "#252423",
+  textPrimary: "#f3f2f1",
+  textSecondary: "#c8c6c4",
+  paperBorder: "#3b3a39",
+  tableCellBorder: "#323130",
+  tableHeadColor: "#f3f2f1",
+  tableHeadBackground: "#252423",
+  tableHeadBorder: "#484644",
+  tableRowHoverBackground: "#323130",
 };
 
 /**
@@ -97,19 +101,30 @@ export function buildTheme(mode: ThemeMode): Theme {
       text: { primary: colors.textPrimary, secondary: colors.textSecondary },
     },
     typography: {
-      fontFamily: "'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+      // Segoe UI first — the same face the reports use, so a report and its surrounding chrome
+      // don't disagree about what product this is.
+      fontFamily: "'Segoe UI', 'Segoe UI Web (West European)', system-ui, -apple-system, Roboto, sans-serif",
       button: { textTransform: "none" },
+      fontSize: 14,
+      h4: { fontSize: "1.75rem", fontWeight: 600 },
+      h5: { fontSize: "1.25rem", fontWeight: 600 },
+      h6: { fontSize: "1rem", fontWeight: 600 },
+      subtitle2: { fontWeight: 600 },
     },
-    shape: { borderRadius: 8 },
+    // Fluent corners are 2-4px. The previous 8px pill look is the single biggest reason the app
+    // read as a different design language.
+    shape: { borderRadius: 4 },
+    // Fluent depth is far shallower than MUI's default ramp: a hairline border does the work and
+    // elevation is reserved for things that genuinely float.
     shadows: [
       "none",
-      "0 1px 2px rgba(20,24,40,.06), 0 1px 1px rgba(20,24,40,.04)",
-      ...Array(23).fill("0 4px 14px rgba(20,24,40,.10), 0 1px 3px rgba(20,24,40,.06)"),
+      "0 1px 2px rgba(0,0,0,.09)",
+      ...Array(23).fill("0 4px 8px rgba(0,0,0,.10), 0 0 2px rgba(0,0,0,.08)"),
     ] as unknown as Theme["shadows"],
     components: {
       MuiPaper: {
         styleOverrides: {
-          root: { border: `1px solid ${colors.paperBorder}` },
+          root: { border: `1px solid ${colors.paperBorder}`, backgroundImage: "none" },
         },
       },
       MuiOutlinedInput: {
@@ -142,9 +157,44 @@ export function buildTheme(mode: ThemeMode): Theme {
           },
         },
       },
+      // Fluent's command-bar button: flat, no fill, no border, regular weight, tight padding —
+      // what Power BI's File/Export/Share row looks like. The row-action buttons in the reports
+      // list are exactly that pattern, and were rendering as heavy pills.
       MuiButton: {
+        defaultProps: { disableElevation: true },
         styleOverrides: {
-          root: { fontWeight: 600 },
+          root: {
+            fontWeight: 400,
+            minWidth: 0,
+            padding: "4px 8px",
+            borderRadius: 2,
+          },
+          text: {
+            color: colors.textPrimary,
+            "&:hover": { background: colors.tableRowHoverBackground },
+          },
+          // Kept for the one or two genuine primary actions (Create, Save); Fluent fills only those.
+          contained: { boxShadow: "none", "&:hover": { boxShadow: "none" } },
+          outlined: { borderColor: colors.tableHeadBorder, color: colors.textPrimary },
+          sizeSmall: { fontSize: "0.8125rem", padding: "2px 6px" },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: { borderRadius: 2, height: 20, fontSize: "0.75rem" },
+        },
+      },
+      MuiTooltip: {
+        styleOverrides: {
+          tooltip: { borderRadius: 2, fontSize: "0.75rem" },
+        },
+      },
+      MuiTextField: {
+        defaultProps: { size: "small" },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: { borderRadius: 4 },
         },
       },
     },

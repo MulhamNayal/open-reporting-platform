@@ -33,14 +33,25 @@ function resolveFieldFormat(result: QueryResult, format: WidgetFormatOptions | u
 
 // Named colour themes selectable in the Format tab, one color set per theme mode. The first
 // entry of each array is the palette's swatch colour shown in FormatTab.
+// The first twelve dataColors of Power BI's own CY20SU09 theme, in its order — read out of the
+// exported .pbix files rather than eyeballed. A chart migrated off Power BI has to colour its
+// series the same way or it reads as a different report. Used for both modes: these are the
+// colours the originals use, and re-tinting them for dark mode would defeat the point.
+const POWERBI_DATA_COLORS = [
+  "#118DFF", "#12239E", "#E66C37", "#6B007B", "#E044A7", "#744EC2",
+  "#D9B300", "#D64550", "#197278", "#1AAB40", "#15C6F4", "#4092FF",
+];
+
 export const PALETTES: Record<ThemeMode, Record<string, string[]>> = {
   light: {
+    powerbi: POWERBI_DATA_COLORS,
     meridian: ["#5b4fe6", "#8b7ff0", "#b3a9f7", "#7c6ff2", "#4a3fd0", "#c9c2fa"],
     ocean: ["#0ea5e9", "#38bdf8", "#0284c7", "#7dd3fc", "#0369a1", "#bae6fd"],
     sunset: ["#f5a524", "#fb923c", "#f97316", "#fbbf24", "#ea580c", "#fed7aa"],
     forest: ["#46a758", "#65b874", "#2f8f43", "#86c98f", "#227d38", "#b7e0bd"],
   },
   dark: {
+    powerbi: POWERBI_DATA_COLORS,
     meridian: ["#8b7ff0", "#a89cf5", "#c9c2fa", "#7c6ff2", "#6a5ce8", "#d6d0fc"],
     ocean: ["#38bdf8", "#7dd3fc", "#0ea5e9", "#bae6fd", "#0284c7", "#e0f2fe"],
     sunset: ["#fb923c", "#fbbf24", "#f97316", "#fed7aa", "#ea580c", "#ffedd5"],
