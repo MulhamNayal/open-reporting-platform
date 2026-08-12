@@ -14,7 +14,7 @@ function WidgetHost({
   onDataPointClick?: (field: string, value: string) => void;
   hideTitle?: boolean;
 }) {
-  const { result, error, totalRows, page, setPage, paged } = useWidgetData(widget);
+  const { result, error, totalRows, page, setPage, paged, columnValues, columnTotals } = useWidgetData(widget);
 
   const lastPage = totalRows === null ? 0 : Math.max(0, Math.ceil(totalRows / PAGE_SIZE) - 1);
 
@@ -27,6 +27,8 @@ function WidgetHost({
           error={error}
           onDataPointClick={onDataPointClick}
           hideTitle={hideTitle}
+          columnValues={columnValues}
+          columnTotals={columnTotals}
         />
       </Box>
       {paged && (

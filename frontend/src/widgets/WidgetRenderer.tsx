@@ -14,9 +14,13 @@ import ScatterWidget from "./ScatterWidget";
 import TextWidget from "./TextWidget";
 
 function WidgetRenderer({
-  widget, result, error = null, onDataPointClick, hideTitle = false,
+  widget, result, error = null, onDataPointClick, hideTitle = false, columnValues, columnTotals,
 }: {
   widget: WidgetSummary;
+  // Table widgets only: a column's full distinct values, for its filter checklist.
+  columnValues?: (column: string) => Promise<(string | number)[]>;
+  // Table widgets only: server-side sums, required once the table is paged.
+  columnTotals?: (fields: string[]) => Promise<Record<string, number>>;
   result: QueryResult | null;
   error?: string | null;
   onDataPointClick?: (field: string, value: string) => void;
@@ -90,7 +94,7 @@ function WidgetRenderer({
 
   switch (widget.type) {
     case "Table":
-      return <TableWidget title={chartTitle} result={data} valueFields={widget.binding.valueFields} format={format} />;
+      return <TableWidget title={chartTitle} result={data} valueFields={widget.binding.valueFields} format={format} columnValues={columnValues} columnTotals={columnTotals} />;
     case "Bar":
       return <BarWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "StackedColumn":

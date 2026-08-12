@@ -45,7 +45,7 @@ function distinctValues<T>(column: DataTableColumn<T>, rows: T[]): (string | num
 
 function DataTable<T>({
   columns, rows, rowKey, searchPlaceholder = "Search", exportFileName = "export", columnWidths: presetColumnWidths, rowHeight,
-  footer,
+  footer, columnValues,
 }: {
   columns: DataTableColumn<T>[];
   rows: T[];
@@ -63,6 +63,11 @@ function DataTable<T>({
   // ready-made record is what keeps this component ignorant of what's being aggregated — it never
   // needs to know which columns are numeric or how they should be summarised.
   footer?: (rows: T[]) => Record<string, ReactNode>;
+  // Supplies a column's full set of distinct values. Without it the filter checklist is built from
+  // the rows this component happens to hold — which for a server-paged table is one page, so the
+  // list silently omits everything not on screen. Callers that can ask the source for the real
+  // distinct values pass this instead.
+  columnValues?: (columnKey: string) => Promise<(string | number)[]>;
 }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -75,6 +80,8 @@ function DataTable<T>({
   const [filterSearchText, setFilterSearchText] = useState("");
   const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
   const [manualColumnWidths, setManualColumnWidths] = useState<Record<string, number>>({});
+  const [fetchedColumnValues, setFetchedColumnValues] = useState<Record<string, (string | number)[]>>({});
+  const [loadingColumnValues, setLoadingColumnValues] = useState(false);
   const headerCellRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
 
   function effectiveWidth(columnKey: string): number | undefined {
@@ -120,8 +127,10 @@ function DataTable<T>({
     return map;
   }, [columns, rows]);
 
+  // Server-supplied values win once they arrive; until then the locally-derived set keeps the
+  // checklist populated rather than showing an empty menu.
   function distinctValuesFor(column: DataTableColumn<T>): (string | number)[] {
-    return distinctValuesByColumn.get(column.key) ?? [];
+    return fetchedColumnValues[column.key] ?? distinctValuesByColumn.get(column.key) ?? [];
   }
 
   const activeFilterColumn = filterMenuColumnKey ? columns.find((c) => c.key === filterMenuColumnKey) : undefined;
@@ -155,6 +164,18 @@ function DataTable<T>({
     setFilterMenuColumnKey(column.key);
     setFilterMenuAnchor(anchor);
     setFilterSearchText("");
+
+    // Fetched once per column per mount — the distinct set doesn't change as the user pages around,
+    // and refetching on every menu open would make the filter feel sluggish.
+    if (columnValues && !fetchedColumnValues[column.key]) {
+      setLoadingColumnValues(true);
+      columnValues(column.key)
+        .then((values) => setFetchedColumnValues((prev) => ({ ...prev, [column.key]: values })))
+        .catch(() => {
+          // Leave the locally-derived list in place; a failed lookup must not empty the filter.
+        })
+        .finally(() => setLoadingColumnValues(false));
+    }
   }
 
   function closeFilterMenu() {
@@ -409,6 +430,11 @@ function DataTable<T>({
               }
               label="Select all"
             />
+            {loadingColumnValues && (
+              <Typography variant="caption" sx={{ color: "text.secondary", px: 1 }}>
+                Loading all values…
+              </Typography>
+            )}
             <div style={{ display: "flex", flexDirection: "column", maxHeight: 200, overflowY: "auto" }}>
               {renderedFilterValues.map((value) => (
                 <FormControlLabel
