@@ -10,5 +10,5 @@
 .sql-editor .cm-scroller {
   min-height: 120px;
   max-height: 320px;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
 }

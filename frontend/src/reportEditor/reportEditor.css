@@ -389,7 +389,7 @@
   place-items: center;
   font-size: 0.625rem;
   font-weight: 700;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
 }
 .gl.dim {
   background: #e4f4f1;
@@ -465,7 +465,7 @@
   place-items: center;
   font-size: 0.5625rem;
   font-weight: 700;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
 }
 .field-row .fname {
   flex: 1;

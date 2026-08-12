@@ -1,65 +1,75 @@
+/*
+ * Cross-cutting design tokens for the hand-written CSS — the report editor, the sidebar and the
+ * management pages. theme.ts covers the MUI components; these cover everything else, and the two
+ * have to agree or the app looks like two products stitched together.
+ *
+ * Values are Fluent's, matching theme.ts: Segoe UI, the #FAF9F8/#F3F2F1 neutral ramp, #605E5C
+ * secondary text, #EDEBE9 hairlines, #0078D4 accent, 4px corners, shallow elevation.
+ */
 :root {
-  --ink: #15171e;
-  --rail: #1b1e27;
-  --rail-hover: #2a2e3a;
-  --rail-line: #2f333f;
+  --ink: #242424;
+  --rail: #f3f2f1;
+  --rail-hover: #edebe9;
+  --rail-line: #e1dfdd;
   --panel: #ffffff;
-  --panel-2: #f6f7f9;
-  --groove: #eef0f4;
-  --line: #e3e7ef;
-  --line-strong: #cfd5e0;
-  --canvas: #e7eaf1;
+  --panel-2: #faf9f8;
+  --groove: #f3f2f1;
+  --line: #edebe9;
+  --line-strong: #c8c6c4;
+  --canvas: #faf9f8;
   --page: #ffffff;
-  --text: #1b1e27;
-  --muted: #6c7480;
-  --faint: #9aa1ad;
-  --accent: #5b4fe6;
-  --accent-ink: #4a3fd6;
-  --accent-soft: #edeafc;
-  --accent-line: #c9c2f7;
-  --good: #12a594;
-  --warn: #e5843a;
-  --good-soft: #e2f6f2;
-  --warn-soft: #fdefe2;
-  --bad: #e5484d;
-  --bad-soft: #fdecec;
-  --sh-sm: 0 1px 2px rgba(20, 24, 40, 0.06), 0 1px 1px rgba(20, 24, 40, 0.04);
-  --sh-md: 0 4px 14px rgba(20, 24, 40, 0.1), 0 1px 3px rgba(20, 24, 40, 0.06);
-  --r: 8px;
+  --text: #242424;
+  --muted: #605e5c;
+  --faint: #a19f9d;
+  --accent: #0078d4;
+  --accent-ink: #106ebe;
+  --accent-soft: #eff6fc;
+  --accent-line: #c7e0f4;
+  --good: #107c10;
+  --warn: #f7630c;
+  --good-soft: #dff6dd;
+  --warn-soft: #fff4ce;
+  --bad: #d13438;
+  --bad-soft: #fde7e9;
+  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.09);
+  --sh-md: 0 4px 8px rgba(0, 0, 0, 0.1), 0 0 2px rgba(0, 0, 0, 0.08);
+  --r: 4px;
 }
 
 :root[data-theme="dark"] {
-  --ink: #e7e9ee;
-  --rail: #0f1015;
-  --rail-hover: #1a1c24;
-  --rail-line: #22242e;
-  --panel: #1b1e27;
-  --panel-2: #20232d;
-  --groove: #252834;
-  --line: #2f333f;
-  --line-strong: #3d4250;
-  --canvas: #14151c;
-  --page: #1b1e27;
-  --text: #e7e9ee;
-  --muted: #9aa1ad;
-  --faint: #6c7480;
-  --accent: #7b70f0;
-  --accent-ink: #8f86f5;
-  --accent-soft: #2a2650;
-  --accent-line: #4b3f8f;
-  --good: #2dd4bf;
-  --warn: #f5a35c;
-  --good-soft: #123330;
-  --warn-soft: #3a2a18;
-  --bad: #f2777a;
-  --bad-soft: #3a1e1f;
+  --ink: #f3f2f1;
+  --rail: #1b1a19;
+  --rail-hover: #323130;
+  --rail-line: #3b3a39;
+  --panel: #252423;
+  --panel-2: #1b1a19;
+  --groove: #323130;
+  --line: #3b3a39;
+  --line-strong: #484644;
+  --canvas: #1b1a19;
+  --page: #252423;
+  --text: #f3f2f1;
+  --muted: #c8c6c4;
+  --faint: #a19f9d;
+  --accent: #2899f5;
+  --accent-ink: #3aa0f3;
+  --accent-soft: #082539;
+  --accent-line: #1a5c8f;
+  --good: #6bb700;
+  --warn: #ff8c00;
+  --good-soft: #0b2a0b;
+  --warn-soft: #3a2a00;
+  --bad: #f1707b;
+  --bad-soft: #3b1a1d;
 }
 
+/* Segoe UI, the same face the reports render in. This previously set IBM Plex Sans, which won
+   over the MUI theme's font for everything outside a MUI component. */
 body {
-  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Segoe UI", "Segoe UI Web (West European)", system-ui, -apple-system, Roboto, sans-serif;
   color: var(--text);
 }
 
 .mono {
-  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
 }

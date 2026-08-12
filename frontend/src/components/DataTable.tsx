@@ -423,7 +423,21 @@ function DataTable<T>({
       </TableContainer>
       <Popper open={Boolean(filterMenuAnchor)} anchorEl={filterMenuAnchor} placement="bottom-start" style={{ zIndex: 1300 }}>
         <ClickAwayListener onClickAway={closeFilterMenu}>
-          <Paper elevation={4} style={{ padding: 8, minWidth: 200 }}>
+          {/* Sized and typed to the table it belongs to. Left on MUI defaults it rendered as a
+              rounded, shadowed card with 14px rows next to an 11px table — the mismatch reads as
+              two different components. */}
+          <Paper
+            elevation={2}
+            sx={{
+              p: 0.75,
+              minWidth: 200,
+              borderRadius: 1,
+              fontSize: "12px",
+              "& .MuiFormControlLabel-label": { fontSize: "12px" },
+              "& .MuiCheckbox-root": { p: 0.25 },
+              "& .MuiFormControlLabel-root": { minHeight: 22 },
+            }}
+          >
             <TextField
               size="small"
               placeholder="Search values"
