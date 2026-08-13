@@ -17,6 +17,23 @@ jobs:
       - name: Publish backend
         run: dotnet publish backend/Backend.csproj -c Release -o publish/backend
 
+      # Generated from the Migrations folder on every deploy rather than committed, so it can't
+      # drift from the migrations it is supposed to apply. --idempotent guards each migration on
+      # __EFMigrationsHistory, so this is safe to run against a database at any version.
+      - name: Generate migration script
+        env:
+          # migrations script never opens a connection, but the design-time context still has to be
+          # constructed, and UseSqlServer wants a string.
+          ConnectionStrings__ReportingDatabase: "Server=localhost;Database=none;Trusted_Connection=True;"
+        run: |
+          dotnet tool install --global dotnet-ef --version 8.*
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          mkdir -p publish/scripts/sql
+          dotnet ef migrations script --idempotent \
+            --project backend/Backend.csproj \
+            --output publish/scripts/sql/migrate-reportingdb.sql
+          test -s publish/scripts/sql/migrate-reportingdb.sql
+
       - uses: actions/setup-node@v4
         with:
           node-version: "24.x"
@@ -32,7 +49,7 @@ jobs:
         run: |
           mkdir -p publish/frontend publish/scripts
           cp -r frontend/dist/. publish/frontend/
-          cp scripts/deploy-bootstrap.ps1 publish/scripts/
+          cp scripts/deploy-bootstrap.ps1 scripts/apply-sql-script.ps1 publish/scripts/
           cd publish && zip -r ../bundle.zip . && cd ..
 
       - name: Configure AWS credentials

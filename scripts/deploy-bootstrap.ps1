@@ -59,6 +59,21 @@ Write-Host "=== ensure IIS Applications exist ==="
 Ensure-Application $backendApp $backendRoot $backendPool
 Ensure-Application $frontendApp $frontendRoot $frontendPool
 
+Write-Host "=== apply database migrations ==="
+# Deliberately BEFORE the pools stop and the files are overwritten. Migrations are additive, so the
+# currently-running build tolerates the new schema; if this fails, the deploy aborts with the old
+# app still serving instead of a new build asking for columns that don't exist. Nothing applies
+# migrations at startup, and this step exists because that previously meant nothing applied them at
+# all -- a deploy shipped schema-dependent code and every request 502'd until someone noticed.
+$migrationScript = Join-Path $PSScriptRoot "sql\migrate-reportingdb.sql"
+if (-not (Test-Path $migrationScript)) {
+    throw "Bundle is missing scripts\sql\migrate-reportingdb.sql -- the deploy workflow generates it from the Migrations folder, so an absent file means that step failed or was skipped."
+}
+if (-not $env:DB_CONNECTION_STRING) {
+    throw "DB_CONNECTION_STRING is not set -- can't apply migrations without knowing which database to apply them to."
+}
+& (Join-Path $PSScriptRoot "apply-sql-script.ps1") -ScriptPath $migrationScript -ConnectionString $env:DB_CONNECTION_STRING
+
 Write-Host "=== stop app pools (before overwriting files they're serving) ==="
 foreach ($pool in @($backendPool, $frontendPool)) {
     if ((Get-WebAppPoolState -Name $pool).Value -eq 'Started') {
