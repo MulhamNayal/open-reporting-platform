@@ -3,6 +3,9 @@ import type { QueryResult } from "../api/datasets";
 import type { WidgetFormatOptions } from "../api/widgets";
 import type { ThemeMode } from "../appearance/AppearanceContext";
 import { formatFieldValue, getFieldFormat, resolveDisplayName } from "./fieldFormat";
+import {
+  chartAxisLabel, chartCategoryAxis, chartGrid, chartLegend, chartTextStyle, chartTooltip, chartValueAxis,
+} from "./chartTheme";
 
 export interface ShapedTableRows {
   columns: string[];
@@ -143,13 +146,20 @@ function buildCategorySeriesOption(
     ...(options?.dataLabels ? { label: { show: true, formatter: (p: { value: unknown }) => formatSeriesValue(field, p.value) } } : {}),
   }));
 
-  const categoryAxis = { type: "category" as const, data: categories };
+  const mode = options?.mode ?? "light";
+  const categoryAxis = { type: "category" as const, data: categories, ...chartCategoryAxis(mode) };
+  const themedValueAxis = chartValueAxis(mode);
   const valueAxis = {
     type: "value" as const,
-    ...(options?.grid !== undefined ? { splitLine: { show: options.grid } } : {}),
+    ...themedValueAxis,
+    // The widget's own grid setting still decides whether gridlines show; the theme only says what
+    // they look like when they do.
+    ...(options?.grid !== undefined
+      ? { splitLine: { ...themedValueAxis.splitLine, show: options.grid } }
+      : {}),
     // Series can mix native types (e.g. a decimal Revenue with an integer Count), but a shared
     // axis can only render one format — the first value field's format wins.
-    axisLabel: { formatter: (value: number) => formatSeriesValue(valueFields[0], value) },
+    axisLabel: { ...themedValueAxis.axisLabel, formatter: (value: number) => formatSeriesValue(valueFields[0], value) },
   };
 
   const colors = paletteColors(options?.palette, options?.mode);
@@ -160,8 +170,11 @@ function buildCategorySeriesOption(
   return {
     ...axes,
     series,
+    textStyle: chartTextStyle(mode),
+    grid: chartGrid(Boolean(options?.showLegend)),
     tooltip: {
       trigger: "axis",
+      ...chartTooltip(mode),
       formatter: (params) => {
         const list = (Array.isArray(params) ? params : [params]) as Array<{
           axisValue?: unknown; name?: string; marker?: string; seriesIndex?: number; value?: unknown;
@@ -177,7 +190,7 @@ function buildCategorySeriesOption(
         return [header, ...lines].join("<br/>");
       },
     },
-    ...(options?.showLegend ? { legend: { show: true } } : {}),
+    ...(options?.showLegend ? { legend: chartLegend(mode) } : {}),
     ...(colors ? { color: colors } : {}),
   };
 }
@@ -218,9 +231,13 @@ export function shapePieOption(
   const fieldFormat = resolveFieldFormat(result, options?.format, valueField);
   const formatValue = (value: unknown) => formatFieldValue(value, fieldFormat);
 
+  const mode = options?.mode ?? "light";
+
   return {
+    textStyle: chartTextStyle(mode),
     tooltip: {
       trigger: "item",
+      ...chartTooltip(mode),
       formatter: (params) => {
         const p = Array.isArray(params) ? params[0] : params;
         return `${p.marker ?? ""}${p.name}: ${formatValue(p.value)} (${p.percent}%)`;
@@ -231,12 +248,15 @@ export function shapePieOption(
         type: "pie",
         data,
         ...(options?.donut ? { radius: ["50%", "70%"] } : {}),
+        // Power BI draws no separator between slices; ECharts' default white border reads as a gap
+        // and disappears entirely on a dark background.
+        itemStyle: { borderWidth: 0 },
         ...(options?.dataLabels
-          ? { label: { show: true, formatter: (p: { value: unknown }) => formatValue(p.value) } }
+          ? { label: { show: true, ...chartAxisLabel(mode), formatter: (p: { value: unknown }) => formatValue(p.value) } }
           : { label: { show: false } }),
       },
     ],
-    ...(options?.showLegend ? { legend: { show: true } } : {}),
+    ...(options?.showLegend ? { legend: chartLegend(mode) } : {}),
     ...(colors ? { color: colors } : {}),
   };
 }
@@ -266,9 +286,15 @@ export function shapeScatterOption(
   const xDisplayName = resolveDisplayName(xField, xFieldFormat);
   const yDisplayName = resolveDisplayName(yField, yFieldFormat);
 
-  const splitLine = options?.grid !== undefined ? { splitLine: { show: options.grid } } : {};
-  const xAxis = { type: "value" as const, name: xDisplayName, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, xFieldFormat) } };
-  const yAxis = { type: "value" as const, name: yDisplayName, ...splitLine, axisLabel: { formatter: (v: number) => formatFieldValue(v, yFieldFormat) } };
+  // Both axes carry values here, so both get the value-axis treatment — but a scatter needs to be
+  // read in two directions, so the theme's gridlines apply to each rather than only the vertical.
+  const mode = options?.mode ?? "light";
+  const themedAxis = chartValueAxis(mode);
+  const splitLine = options?.grid !== undefined
+    ? { splitLine: { ...themedAxis.splitLine, show: options.grid } }
+    : {};
+  const xAxis = { type: "value" as const, name: xDisplayName, ...themedAxis, ...splitLine, axisLabel: { ...themedAxis.axisLabel, formatter: (v: number) => formatFieldValue(v, xFieldFormat) } };
+  const yAxis = { type: "value" as const, name: yDisplayName, ...themedAxis, ...splitLine, axisLabel: { ...themedAxis.axisLabel, formatter: (v: number) => formatFieldValue(v, yFieldFormat) } };
   const colors = paletteColors(options?.palette, options?.mode);
   const label = options?.dataLabels
     ? {
@@ -283,15 +309,18 @@ export function shapeScatterOption(
     : {};
 
   const seriesTail = {
+    textStyle: chartTextStyle(mode),
+    grid: chartGrid(Boolean(options?.showLegend)),
     tooltip: {
       trigger: "item" as const,
+      ...chartTooltip(mode),
       formatter: (params: unknown) => {
         const p = params as { marker?: string; seriesName?: string; value: [number, number] };
         const seriesLine = p.seriesName ? `${p.seriesName}<br/>` : "";
         return `${p.marker ?? ""}${seriesLine}${xDisplayName}: ${formatFieldValue(p.value[0], xFieldFormat)}<br/>${yDisplayName}: ${formatFieldValue(p.value[1], yFieldFormat)}`;
       },
     },
-    ...(options?.showLegend ? { legend: { show: true } } : {}),
+    ...(options?.showLegend ? { legend: chartLegend(mode) } : {}),
     ...(colors ? { color: colors } : {}),
   };
 

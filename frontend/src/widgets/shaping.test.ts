@@ -112,10 +112,14 @@ describe("shapeBarOption legend/grid/palette options", () => {
     const on = shapeBarOption(result, "Month", ["Revenue"], { grid: true });
     const off = shapeBarOption(result, "Month", ["Revenue"], { grid: false });
 
-    expect((on.yAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: true });
-    expect((off.yAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: false });
+    expect((on.yAxis as { splitLine?: { show: boolean } }).splitLine).toMatchObject({ show: true });
+    expect((off.yAxis as { splitLine?: { show: boolean } }).splitLine).toMatchObject({ show: false });
     // Unset by default so ECharts' own default gridlines stand.
-    expect((shapeBarOption(result, "Month", ["Revenue"]).yAxis as { splitLine?: unknown }).splitLine).toBeUndefined();
+    // The theme always says what a gridline looks like; it deliberately doesn't say whether one
+    // shows, so an unset widget keeps ECharts' own default rather than being forced either way.
+    const unset = (shapeBarOption(result, "Month", ["Revenue"]).yAxis as { splitLine?: { show?: boolean } }).splitLine;
+    expect(unset).toBeDefined();
+    expect(unset!.show).toBeUndefined();
   });
 
   it("feeds the named palette's colors into ECharts' color array", () => {
@@ -283,8 +287,8 @@ describe("shapeScatterOption", () => {
 
     expect(option.legend).toBeDefined();
     expect(option.color).toEqual(PALETTES.light.meridian);
-    expect((option.xAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: false });
-    expect((option.yAxis as { splitLine?: { show: boolean } }).splitLine).toEqual({ show: false });
+    expect((option.xAxis as { splitLine?: { show: boolean } }).splitLine).toMatchObject({ show: false });
+    expect((option.yAxis as { splitLine?: { show: boolean } }).splitLine).toMatchObject({ show: false });
   });
 
   it("omits legend/color and leaves gridlines at ECharts defaults when no options are given", () => {
@@ -292,7 +296,7 @@ describe("shapeScatterOption", () => {
 
     expect(option.legend).toBeUndefined();
     expect(option.color).toBeUndefined();
-    expect((option.xAxis as { splitLine?: unknown }).splitLine).toBeUndefined();
+    expect((option.xAxis as { splitLine?: { show?: boolean } }).splitLine!.show).toBeUndefined();
   });
 });
 
