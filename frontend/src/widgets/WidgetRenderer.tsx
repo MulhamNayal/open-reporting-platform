@@ -107,7 +107,7 @@ function WidgetRenderer({
 
   switch (widget.type) {
     case "Table":
-      return <TableWidget title={chartTitle} result={data} valueFields={tableFields} format={format} columnValues={columnValues} columnTotals={columnTotals} />;
+      return <TableWidget title={chartTitle} result={data} valueFields={tableFields} format={format} columnValues={columnValues} columnTotals={columnTotals} measures={widget.binding.measures} />;
     case "Bar":
       return <BarWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "StackedColumn":

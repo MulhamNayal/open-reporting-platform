@@ -100,6 +100,68 @@ describe("TableWidget totals row", () => {
     expect(Array.from(footerRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual(["5", "Total"]);
   });
 
+  // Summing a ratio column is meaningless: six teams' growth percentages added together gave 45%
+  // where Power BI shows 1%. The totals row has to recompute the measure from the column totals.
+  it("recomputes a measure in the totals row instead of summing it", () => {
+    const growthResult: QueryResult = {
+      columns: [
+        { name: "Team", nativeType: "nvarchar" },
+        { name: "ThisYear", nativeType: "decimal" },
+        { name: "LastYear", nativeType: "decimal" },
+        { name: "Growth", nativeType: "decimal" },
+      ],
+      rows: [
+        ["Elite", 150, 100, 50],
+        ["United", 300, 100, 200],
+      ],
+    } as unknown as QueryResult;
+
+    render(
+      <TableWidget
+        title="T"
+        result={growthResult}
+        valueFields={["Team", "ThisYear", "LastYear", "Growth"]}
+        format={options({ showTotals: true })}
+        measures={[{ name: "Growth", expression: "DIVIDE([ThisYear] - [LastYear], [LastYear]) * 100" }]}
+      />,
+    );
+
+    const footerRow = screen.getByText("Total").closest("tr")!;
+    const cells = Array.from(footerRow.querySelectorAll("td")).map((td) => td.textContent);
+    // Totals are 450 and 200, so growth recomputes to (450-200)/200 = 125%. Summing the column
+    // would give 50 + 200 = 250% — deliberately a different number, so this test fails if the old
+    // behaviour comes back.
+    expect(cells[1]).toBe("450.00");
+    expect(cells[2]).toBe("200.00");
+    expect(cells[3]).toBe("125.00");
+    expect(cells[3]).not.toBe("250.00");
+  });
+
+  it("blanks a measure total whose inputs don't total to anything usable", () => {
+    const zeroBase: QueryResult = {
+      columns: [
+        { name: "Team", nativeType: "nvarchar" },
+        { name: "ThisYear", nativeType: "decimal" },
+        { name: "LastYear", nativeType: "decimal" },
+        { name: "Growth", nativeType: "decimal" },
+      ],
+      rows: [["Ace", 40, 0, 0]],
+    } as unknown as QueryResult;
+
+    render(
+      <TableWidget
+        title="T"
+        result={zeroBase}
+        valueFields={["Team", "ThisYear", "LastYear", "Growth"]}
+        format={options({ showTotals: true })}
+        measures={[{ name: "Growth", expression: "DIVIDE([ThisYear] - [LastYear], [LastYear]) * 100" }]}
+      />,
+    );
+
+    const footerRow = screen.getByText("Total").closest("tr")!;
+    expect(Array.from(footerRow.querySelectorAll("td")).map((td) => td.textContent).at(-1)).toBe("");
+  });
+
   it("applies a field's display name to the column header", () => {
     render(
       <TableWidget

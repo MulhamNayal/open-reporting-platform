@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Paper, Typography } from "@mui/material";
 import type { QueryResult } from "../api/datasets";
-import type { FieldFormat, WidgetFormatOptions } from "../api/widgets";
+import type { FieldFormat, WidgetFormatOptions, WidgetMeasure } from "../api/widgets";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { POWERBI_TABLE_SX } from "../theme";
+import { compileMeasure } from "./measures";
 import { formatFieldValue, getFieldFormat, resolveDisplayName } from "./fieldFormat";
 import { shapeTableRows } from "./shaping";
 
@@ -20,12 +21,17 @@ function isSummable(format: FieldFormat): boolean {
 }
 
 function TableWidget({
-  title, result, valueFields, format, columnValues, columnTotals,
+  title, result, valueFields, format, columnValues, columnTotals, measures,
 }: {
   title: string;
   result: QueryResult;
   valueFields: string[];
   format?: WidgetFormatOptions;
+  // Needed by the totals row, which has to RECOMPUTE a measure from the column totals rather than
+  // add the measure column up: summing six teams' growth percentages gives 45%, not the 1% Power BI
+  // shows. isSummable can't tell a ratio from a quantity — both are decimals — so the widget has to
+  // be told which columns are measures.
+  measures?: WidgetMeasure[] | null;
   // Passed through to DataTable so a column's filter offers every value in the dataset, not just
   // the ones present in the rows this widget happens to be holding.
   columnValues?: (column: string) => Promise<(string | number)[]>;
@@ -98,24 +104,52 @@ function TableWidget({
   // is numeric got a total row with no label at all, since the sum overwrote it.
   const labelColumn = columnNames.find((name) => !isSummable(formatByColumn[name])) ?? null;
 
-  // Every summable column gets its sum, formatted exactly as its cells are.
+  const measureByName = new Map((measures ?? []).map((m) => [m.name, m.expression]));
+
+  // Quantities get their sum; measures get recomputed from those sums, which is what makes the
+  // totals row agree with Power BI's. Both formatted exactly as their cells are.
   function buildFooter(visible: ResultRow[]): Record<string, ReactNode> {
-    const cells: Record<string, ReactNode> = {};
+    const totals: Record<string, number> = {};
+
+    // First pass: total the real quantities. Measures are skipped — adding up a ratio is meaningless
+    // and it is the input to the second pass, not an output of this one.
     columnNames.forEach((name) => {
-      const fieldFormat = formatByColumn[name];
-      if (!isSummable(fieldFormat)) {
-        cells[name] = name === labelColumn ? (totalsArePartial ? "Total (page)" : "Total") : "";
+      if (!isSummable(formatByColumn[name]) || measureByName.has(name)) {
         return;
       }
       const serverTotal = serverTotals?.[name];
-      const sum = serverTotal !== undefined
+      totals[name] = serverTotal !== undefined
         ? serverTotal
         : visible.reduce((acc, row) => {
             const cell = row.values[indexByColumn[name]];
             const num = typeof cell === "number" ? cell : Number(cell);
             return Number.isNaN(num) ? acc : acc + num;
           }, 0);
-      cells[name] = formatFieldValue(sum, fieldFormat);
+    });
+
+    const cells: Record<string, ReactNode> = {};
+    columnNames.forEach((name) => {
+      const fieldFormat = formatByColumn[name];
+
+      const expression = measureByName.get(name);
+      if (expression !== undefined) {
+        // Same blank-rather-than-wrong rule as the rows: a measure whose inputs don't total to
+        // anything usable leaves the cell empty instead of showing a number nobody can source.
+        let value: number | null = null;
+        try {
+          value = compileMeasure(expression).evaluate((field) => totals[field]);
+        } catch {
+          value = null;
+        }
+        cells[name] = value === null ? "" : formatFieldValue(value, fieldFormat);
+        return;
+      }
+
+      if (!isSummable(fieldFormat)) {
+        cells[name] = name === labelColumn ? (totalsArePartial ? "Total (page)" : "Total") : "";
+        return;
+      }
+      cells[name] = formatFieldValue(totals[name], fieldFormat);
     });
     return cells;
   }
