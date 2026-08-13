@@ -58,6 +58,29 @@ export function CopyIcon() {
   return <svg {...base}><rect x="7" y="7" width="9" height="9" rx="1.5" /><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4H5.5A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" /></svg>;
 }
 
+/** The 3x3 app-switcher grid that sits at the top of the rail. */
+export function WaffleIcon() {
+  return (
+    <svg {...base} fill="currentColor" stroke="none">
+      {[4, 9, 14].flatMap((y) => [4, 9, 14].map((x) => <rect key={`${x}-${y}`} x={x} y={y} width={2.5} height={2.5} rx={0.5} />))}
+    </svg>
+  );
+}
+
+export function HomeIcon() {
+  return <svg {...base}><path d="M3.5 9.5L10 4l6.5 5.5V16H3.5V9.5z" /><path d="M8 16v-4h4v4" /></svg>;
+}
+
+/** Stacked panes — Power BI's Workspaces glyph. */
+export function WorkspacesIcon() {
+  return <svg {...base}><rect x="3" y="4.5" width="14" height="9" rx="1.5" /><path d="M6 16h8" /></svg>;
+}
+
+/** A small bar-chart, matching how the rail marks a report. */
+export function ReportIcon() {
+  return <svg {...base}><path d="M4 16V9M8 16V5M12 16v-5M16 16V7" /></svg>;
+}
+
 /** The small chevron Power BI puts on command-bar items that open a menu. */
 export function ChevronDownIcon() {
   return <svg {...base} width={10} height={10}><path d="M5 8l5 5 5-5" /></svg>;

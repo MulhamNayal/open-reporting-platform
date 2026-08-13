@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Menu, MenuItem } from "@mui/material";
 import AppearanceMenu from "../appearance/AppearanceMenu";
-import { ChevronDownIcon, DocumentIcon, InsertIcon, RefreshIcon, SaveIcon, ViewIcon } from "../components/FluentIcons";
+import { ChevronDownIcon, DocumentIcon, ExportIcon, InsertIcon, RefreshIcon, SaveIcon, ViewIcon } from "../components/FluentIcons";
 import "./reportEditor.css";
 
 function Ribbon({
   reportName, onRename, onChangeDataSource, onBackToReports, onAddText, onToggleFilters, onRefresh, onSave,
-  readOnly = false,
+  onExport, readOnly = false,
 }: {
   reportName: string;
   onRename: () => void;
@@ -16,11 +16,15 @@ function Ribbon({
   onToggleFilters: () => void;
   onRefresh: () => void;
   onSave: () => void;
+  // Omitted where there is nothing to export, which hides the button rather than offering a
+  // control that does nothing.
+  onExport?: (format: "xlsx" | "csv") => void;
   readOnly?: boolean;
 }) {
   const [fileAnchor, setFileAnchor] = useState<HTMLElement | null>(null);
   const [insertAnchor, setInsertAnchor] = useState<HTMLElement | null>(null);
   const [viewAnchor, setViewAnchor] = useState<HTMLElement | null>(null);
+  const [exportAnchor, setExportAnchor] = useState<HTMLElement | null>(null);
 
   return (
     <div className="ribbon">
@@ -47,6 +51,19 @@ function Ribbon({
           <button onClick={(e) => setViewAnchor(e.currentTarget)}><ViewIcon />View<ChevronDownIcon /></button>
           <Menu anchorEl={viewAnchor} open={Boolean(viewAnchor)} onClose={() => setViewAnchor(null)}>
             <MenuItem onClick={() => { setViewAnchor(null); onToggleFilters(); }}>Toggle Filters pane</MenuItem>
+          </Menu>
+        </div>
+      )}
+      {/* Export sits in the command bar because that is where a reader looks for it — until now it
+          existed only on each table widget, so exporting a report meant exporting every visual
+          separately. Shown in the viewer too, which is where reading happens. */}
+      {onExport && (
+        <div className="menu">
+          <div className="divider-v" />
+          <button onClick={(e) => setExportAnchor(e.currentTarget)}><ExportIcon />Export<ChevronDownIcon /></button>
+          <Menu anchorEl={exportAnchor} open={Boolean(exportAnchor)} onClose={() => setExportAnchor(null)}>
+            <MenuItem onClick={() => { setExportAnchor(null); onExport("xlsx"); }}>Export as Excel (.xlsx)</MenuItem>
+            <MenuItem onClick={() => { setExportAnchor(null); onExport("csv"); }}>Export as CSV</MenuItem>
           </Menu>
         </div>
       )}
