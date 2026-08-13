@@ -69,6 +69,37 @@ describe("TableWidget totals row", () => {
     expect(cells).toEqual(["Total", "", "3,000.75", ""]);
   });
 
+  // A total left-aligned under ragged left-aligned numbers reads as belonging to no column at all.
+  // Power BI right-aligns a numeric column and its total together.
+  it("right-aligns numeric columns in the body and the totals row alike", () => {
+    render(<TableWidget title="T" result={result} valueFields={valueFields} format={options({ showTotals: true })} />);
+
+    const footerRow = screen.getByText("Total").closest("tr")!;
+    const footerCells = Array.from(footerRow.querySelectorAll("td"));
+    // ProjectName and BookingDate are not numeric; Units and NetPrice are.
+    expect(footerCells.map((td) => td.classList.contains("MuiTableCell-alignRight")))
+      .toEqual([false, true, true, false]);
+
+    const bodyRow = screen.getByText("Alpha").closest("tr")!;
+    expect(Array.from(bodyRow.querySelectorAll("td")).map((td) => td.classList.contains("MuiTableCell-alignRight")))
+      .toEqual([false, true, true, false]);
+  });
+
+  // Anchoring the label at column 0 unconditionally lost it entirely when that column was summed.
+  it("labels the totals row in the first column that isn't being summed", () => {
+    const numericFirst: QueryResult = {
+      columns: [{ name: "Units", nativeType: "int" }, { name: "ProjectName", nativeType: "nvarchar" }],
+      rows: [[2, "Alpha"], [3, "Beta"]],
+    } as unknown as QueryResult;
+
+    render(
+      <TableWidget title="T" result={numericFirst} valueFields={["Units", "ProjectName"]} format={options({ showTotals: true })} />,
+    );
+
+    const footerRow = screen.getByText("Total").closest("tr")!;
+    expect(Array.from(footerRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual(["5", "Total"]);
+  });
+
   it("applies a field's display name to the column header", () => {
     render(
       <TableWidget

@@ -50,6 +50,10 @@ function TableWidget({
     return {
       key: name,
       label: resolveDisplayName(name, fieldFormat),
+      // Right-aligns the header, the cells and the total together, with tabular figures so the
+      // digits line up in a column. Without this a total sat left-aligned under ragged
+      // left-aligned numbers and read as belonging to no column in particular.
+      numeric: isSummable(fieldFormat),
       // Sorting/searching compares the raw value, not the formatted display string — formatting
       // a number as "1,234.50" would sort lexicographically ("10" < "2"), not numerically.
       value: (row) => {
@@ -89,14 +93,18 @@ function TableWidget({
 
   const totalsArePartial = Boolean(columnTotals) && serverTotals === null;
 
-  // Labelled in the leftmost column so the row reads as a total rather than as data; every
-  // summable column gets its sum, formatted exactly as its cells are.
+  // Labelled in the leftmost column that isn't itself being summed, so the row reads as a total
+  // rather than as data. Anchoring it at column 0 unconditionally meant a table whose first column
+  // is numeric got a total row with no label at all, since the sum overwrote it.
+  const labelColumn = columnNames.find((name) => !isSummable(formatByColumn[name])) ?? null;
+
+  // Every summable column gets its sum, formatted exactly as its cells are.
   function buildFooter(visible: ResultRow[]): Record<string, ReactNode> {
     const cells: Record<string, ReactNode> = {};
-    columnNames.forEach((name, colIndex) => {
+    columnNames.forEach((name) => {
       const fieldFormat = formatByColumn[name];
       if (!isSummable(fieldFormat)) {
-        cells[name] = colIndex === 0 ? (totalsArePartial ? "Total (page)" : "Total") : "";
+        cells[name] = name === labelColumn ? (totalsArePartial ? "Total (page)" : "Total") : "";
         return;
       }
       const serverTotal = serverTotals?.[name];
