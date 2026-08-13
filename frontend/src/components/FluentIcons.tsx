@@ -86,6 +86,28 @@ export function ChevronDownIcon() {
   return <svg {...base} width={10} height={10}><path d="M5 8l5 5 5-5" /></svg>;
 }
 
+// The rail used emoji for these two (🔌 and 📚), which render as full-colour glyphs in whatever
+// font the OS picks and sit at odds with every stroked icon beside them.
+export function ConnectionIcon() {
+  return <svg {...base}><path d="M8 12l-4 4M12 8l4-4" /><path d="M6.5 9.5l4 4a2.5 2.5 0 003.5 0l1-1a2.5 2.5 0 000-3.5l-4-4a2.5 2.5 0 00-3.5 0l-1 1a2.5 2.5 0 000 3.5z" /></svg>;
+}
+
+export function DatasetIcon() {
+  return <svg {...base}><ellipse cx="10" cy="5.5" rx="5.5" ry="2" /><path d="M4.5 5.5v9c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-9" /><path d="M4.5 10c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2" /></svg>;
+}
+
+export function ClockIcon() {
+  return <svg {...base}><circle cx="10" cy="10" r="6.5" /><path d="M10 6.5V10l2.5 1.75" /></svg>;
+}
+
+export function SearchIcon() {
+  return <svg {...base}><circle cx="9" cy="9" r="4.75" /><path d="M12.5 12.5l3.5 3.5" /></svg>;
+}
+
+export function CloseIcon() {
+  return <svg {...base}><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" /></svg>;
+}
+
 export function FilterIcon() {
   return <svg {...base}><path d="M3.5 5h13l-5 5.5v4.5l-3-1.5v-3L3.5 5z" /></svg>;
 }

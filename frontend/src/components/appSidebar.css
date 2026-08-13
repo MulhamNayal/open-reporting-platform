@@ -67,42 +67,10 @@
   font-family: inherit;
   width: 100%;
 }
-.app-nav-sub {
-  display: flex;
-  flex-direction: column;
-  background: var(--panel-2);
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-.app-nav-subitem {
-  color: var(--text);
-  text-decoration: none;
-  font-size: 0.5625rem;
-  line-height: 1.2;
-  padding: 5px 4px;
-  text-align: center;
-  /* Workspace names are long and the rail is 68px, so clamp to two lines rather than let one
-     entry push the rail wider. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.app-nav-subitem:hover {
-  background: var(--groove);
-}
 .app-nav-rule {
   height: 1px;
   background: var(--line);
   margin: 6px 8px;
-}
-/* A report name has to survive in 68px; two clamped lines is what the reference rail shows. */
-.app-nav-recent {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
 }
 .app-nav-spacer {
   flex: 1;
@@ -113,4 +81,136 @@
   margin-top: 6px;
   display: flex;
   justify-content: center;
+}
+
+/*
+ * The flyout the rail opens beside itself. 290px is the width a workspace name actually needs;
+ * inside 68px the same names were clamped to two unreadable lines.
+ *
+ * Overlays rather than displaces: opening it must not reflow the report behind it.
+ */
+.nav-flyout {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 68px;
+  width: 290px;
+  z-index: 1200;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  /* Directional, so the panel reads as sitting above the page and hinged on the rail. */
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.09);
+  display: flex;
+  flex-direction: column;
+}
+.nav-flyout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 8px 8px 16px;
+}
+.nav-flyout-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.nav-flyout-close {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 2px;
+  display: grid;
+  place-items: center;
+}
+.nav-flyout-close:hover {
+  background: var(--groove);
+  color: var(--text);
+}
+.nav-flyout-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 8px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--panel-2);
+}
+.nav-flyout-search:focus-within {
+  border-color: var(--accent);
+}
+.nav-flyout-search-icon {
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+.nav-flyout-search input {
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 6px 0;
+}
+.nav-flyout-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+.nav-flyout-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 16px;
+  color: var(--text);
+  text-decoration: none;
+  /* Mirrors the rail's selected-item bar so the two read as one navigation surface. */
+  border-left: 3px solid transparent;
+}
+.nav-flyout-item:hover {
+  background: var(--groove);
+}
+.nav-flyout-item.active {
+  background: var(--groove);
+  border-left-color: var(--accent);
+}
+.nav-flyout-item-icon {
+  color: var(--muted);
+  margin-top: 2px;
+  display: grid;
+  place-items: center;
+}
+.nav-flyout-item.active .nav-flyout-item-icon {
+  color: var(--accent);
+}
+.nav-flyout-item-text {
+  min-width: 0;
+}
+.nav-flyout-item-name {
+  display: block;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  /* Wraps instead of truncating: a workspace whose name only differs at the end is otherwise
+     indistinguishable from its siblings. */
+  word-break: break-word;
+}
+.nav-flyout-item.active .nav-flyout-item-name {
+  font-weight: 600;
+}
+.nav-flyout-item-meta {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.nav-flyout-empty {
+  margin: 4px 16px;
+  font-size: 0.8125rem;
+  color: var(--muted);
 }
