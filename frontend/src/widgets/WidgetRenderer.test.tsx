@@ -39,6 +39,71 @@ describe("WidgetRenderer", () => {
     } as unknown as echarts.ECharts);
   });
 
+  // Aggregating reshapes columns to [categoryField, ...valueFields]. A table given only valueFields
+  // rendered correct totals with nothing saying which group each belonged to.
+  describe("an aggregated table", () => {
+    const teamResult: QueryResult = {
+      columns: [
+        { name: "Team", nativeType: "nvarchar" },
+        { name: "Project", nativeType: "nvarchar" },
+        { name: "ThisYear", nativeType: "decimal" },
+      ],
+      rows: [
+        ["Elite", "Subsales", 100],
+        ["Elite", "Rentals", 20],
+        ["United", "Subsales", 50],
+      ],
+    } as unknown as QueryResult;
+
+    const widget = makeWidget({
+      type: "Table",
+      title: "By Team",
+      datasetId: 1,
+      binding: {
+        categoryField: "Team",
+        valueFields: ["ThisYear"],
+        aggregations: ["Sum"],
+        formatOptions: formatOptionsJson,
+      },
+    });
+
+    // A header cell also holds a sort label and a filter control, so its accessible name is not the
+    // bare column name — the header text is what's being asserted here.
+    function headerTexts(): string[] {
+      return Array.from(document.querySelectorAll("thead th")).map((th) => th.textContent ?? "");
+    }
+
+    it("keeps the grouped column and collapses the rows", () => {
+      renderWidget(<WidgetRenderer widget={widget} result={teamResult} />);
+
+      expect(headerTexts().some((h) => h.includes("Team"))).toBe(true);
+      expect(screen.getByText("Elite")).toBeInTheDocument();
+      expect(screen.getByText("United")).toBeInTheDocument();
+      // Elite's two rows summed into one, so the split column is gone with them.
+      expect(screen.queryByText("Subsales")).not.toBeInTheDocument();
+      expect(screen.getByText("120.00")).toBeInTheDocument();
+    });
+
+    it("leaves an unaggregated table's columns alone", () => {
+      const plain = makeWidget({
+        type: "Table",
+        datasetId: 1,
+        binding: {
+          categoryField: "Team",
+          valueFields: ["Project", "ThisYear"],
+          aggregations: null,
+          formatOptions: formatOptionsJson,
+        },
+      });
+      renderWidget(<WidgetRenderer widget={plain} result={teamResult} />);
+
+      // No aggregation, so the binding is rendered verbatim — Team is not silently prepended.
+      expect(headerTexts().some((h) => h.includes("Team"))).toBe(false);
+      expect(headerTexts().some((h) => h.includes("Project"))).toBe(true);
+      expect(screen.getAllByText("Subsales")).toHaveLength(2);
+    });
+  });
+
   it("renders a Text widget without needing a result", () => {
     renderWidget(<WidgetRenderer widget={makeWidget({ type: "Text", title: "A note", content: "hello" })} result={null} />);
 

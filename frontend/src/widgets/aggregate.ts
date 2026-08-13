@@ -10,6 +10,16 @@ function isNoOp(aggregations: AggregationFn[] | null | undefined): boolean {
   return !aggregations || aggregations.every((fn) => !fn || fn === "None");
 }
 
+/**
+ * Whether aggregateResult will reshape the columns rather than pass the result through.
+ *
+ * Callers need this because aggregating changes the column list to [categoryField, ...valueFields]:
+ * a table rendering only valueFields would silently lose the column it is grouped by.
+ */
+export function isAggregating(aggregations: AggregationFn[] | null | undefined, valueFields: string[]): boolean {
+  return !isNoOp(aggregations) && valueFields.length > 0;
+}
+
 function toNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === "") {
     return null;

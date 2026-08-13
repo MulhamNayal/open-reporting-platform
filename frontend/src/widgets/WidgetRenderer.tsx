@@ -3,7 +3,7 @@ import type { QueryResult } from "../api/datasets";
 import type { WidgetSummary } from "../api/widgets";
 import { parseFormatOptions } from "../api/widgets";
 import { useAppearance } from "../appearance/AppearanceContext";
-import { aggregateResult } from "./aggregate";
+import { aggregateResult, isAggregating } from "./aggregate";
 import { findMissingFields, isBindingComplete } from "./staleBindingCheck";
 import TableWidget from "./TableWidget";
 import BarWidget from "./BarWidget";
@@ -86,6 +86,13 @@ function WidgetRenderer({
   // the caller has already applied page filters, so a cross-filter click recomputes the totals.
   const data = aggregateResult(result, widget.binding.categoryField, widget.binding.valueFields, widget.binding.aggregations);
 
+  // Aggregating reshapes the columns to [categoryField, ...valueFields], so a table has to be told
+  // about the grouped column too. Without this it rendered only the measures and dropped the very
+  // column the rows were grouped by — six correct totals with nothing saying which team each was.
+  const tableFields = isAggregating(widget.binding.aggregations, widget.binding.valueFields) && widget.binding.categoryField
+    ? [widget.binding.categoryField, ...widget.binding.valueFields]
+    : widget.binding.valueFields;
+
   const format = parseFormatOptions(widget.binding.formatOptions);
   // showTitle toggles the displayed title; a non-empty format title overrides the widget's own.
   // hideTitle suppresses it regardless — used when a wrapping chrome (the report editor's
@@ -94,7 +101,7 @@ function WidgetRenderer({
 
   switch (widget.type) {
     case "Table":
-      return <TableWidget title={chartTitle} result={data} valueFields={widget.binding.valueFields} format={format} columnValues={columnValues} columnTotals={columnTotals} />;
+      return <TableWidget title={chartTitle} result={data} valueFields={tableFields} format={format} columnValues={columnValues} columnTotals={columnTotals} />;
     case "Bar":
       return <BarWidget title={chartTitle} result={data} categoryField={widget.binding.categoryField!} valueFields={widget.binding.valueFields} format={format} mode={mode} onDataPointClick={onDataPointClick ? (value) => onDataPointClick(widget.binding!.categoryField!, value) : undefined} />;
     case "StackedColumn":
