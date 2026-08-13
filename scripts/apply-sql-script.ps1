@@ -33,7 +33,15 @@ if ($batches.Count -eq 0) {
     return
 }
 
-$connection = New-Object System.Data.SqlClient.SqlConnection $ConnectionString
+# MARS forbids a transaction outliving the batch that opened it, and an EF-generated script opens
+# one in its first batch and commits in its last -- with MultipleActiveResultSets=True it fails on
+# batch 2 with "a transaction that was started in a MARS batch is still active at the end of the
+# batch". Nothing here needs it: these are sequential DDL batches on one connection. Turned off for
+# this connection only, leaving the application's own connection string untouched.
+$builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder $ConnectionString
+$builder['MultipleActiveResultSets'] = $false
+
+$connection = New-Object System.Data.SqlClient.SqlConnection $builder.ConnectionString
 try {
     $connection.Open()
     Write-Host "Applying $(Split-Path -Leaf $ScriptPath) to '$($connection.Database)' ($($batches.Count) batches)..."
