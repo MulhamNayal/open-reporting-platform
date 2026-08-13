@@ -9,6 +9,7 @@ using Backend.Services.Materialization;
 using Backend.Services.ReportPages;
 using Backend.Services.Reports;
 using Backend.Services.Widgets;
+using Backend.Services.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +24,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<ReportingDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ReportingDatabase")));
+builder.Services.AddScoped<IWorkspaceService, WorkspaceService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 
 builder.Services.AddHttpClient();

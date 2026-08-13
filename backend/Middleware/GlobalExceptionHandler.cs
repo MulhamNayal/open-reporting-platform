@@ -57,6 +57,7 @@ public class GlobalExceptionHandler : IExceptionHandler
     {
         NotFoundException => StatusCodes.Status404NotFound,
         LastPageDeletionException => StatusCodes.Status409Conflict,
+        WorkspaceNotEmptyException => StatusCodes.Status409Conflict,
         WidgetValidationException => StatusCodes.Status400BadRequest,
         UnsupportedQueryOperationException => StatusCodes.Status400BadRequest,
         InvalidOperationException => StatusCodes.Status400BadRequest,

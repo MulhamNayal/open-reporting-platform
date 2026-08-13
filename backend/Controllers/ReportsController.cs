@@ -15,9 +15,16 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ReportSummary>>> GetAll([FromQuery] bool includeInactive = false)
+    public async Task<ActionResult<IEnumerable<ReportSummary>>> GetAll(
+        [FromQuery] bool includeInactive = false, [FromQuery] int? workspaceId = null)
     {
-        return Ok(await _service.GetAllAsync(includeInactive));
+        return Ok(await _service.GetAllAsync(includeInactive, workspaceId));
+    }
+
+    [HttpPut("{id}/workspace")]
+    public async Task<ActionResult<ReportSummary>> SetWorkspace(int id, SetReportWorkspaceRequest request)
+    {
+        return Ok(await _service.SetWorkspaceAsync(id, request));
     }
 
     [HttpGet("{id}")]

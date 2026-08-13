@@ -2,7 +2,9 @@ namespace Backend.Services.Reports;
 
 public interface IReportService
 {
-    Task<IReadOnlyList<ReportSummary>> GetAllAsync(bool includeInactive = false);
+    Task<IReadOnlyList<ReportSummary>> GetAllAsync(bool includeInactive = false, int? workspaceId = null);
+
+    Task<ReportSummary> SetWorkspaceAsync(int id, SetReportWorkspaceRequest request);
 
     Task<ReportSummary> GetByIdAsync(int id);
 

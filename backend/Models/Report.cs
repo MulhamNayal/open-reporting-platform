@@ -4,6 +4,15 @@ public class Report
 {
     public int Id { get; set; }
 
+    /// <summary>
+    /// Every report is filed somewhere — the migration seeds a default workspace and points
+    /// existing rows at it, so there is no "unfiled" state to handle in every query and screen.
+    /// </summary>
+    public int WorkspaceId { get; set; } = DefaultWorkspaceId;
+
+    /// <summary>The workspace the migration seeds and existing reports are assigned to.</summary>
+    public const int DefaultWorkspaceId = 1;
+
     public string Name { get; set; } = "";
 
     public string Description { get; set; } = "";

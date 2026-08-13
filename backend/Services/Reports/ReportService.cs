@@ -22,7 +22,9 @@ public class ReportService : IReportService
 
     // includeInactive defaults to false so deactivated reports drop out of the list without
     // any caller changing — the point of archiving is that you stop seeing them.
-    public async Task<IReadOnlyList<ReportSummary>> GetAllAsync(bool includeInactive = false)
+    // workspaceId is optional so the existing unfiltered list keeps working — the reports page shows
+    // everything by default, since most people arrive looking for one report by name.
+    public async Task<IReadOnlyList<ReportSummary>> GetAllAsync(bool includeInactive = false, int? workspaceId = null)
     {
         var query = _context.Reports.AsQueryable();
         if (!includeInactive)
@@ -30,8 +32,29 @@ public class ReportService : IReportService
             query = query.Where(r => r.IsActive);
         }
 
+        if (workspaceId.HasValue)
+        {
+            query = query.Where(r => r.WorkspaceId == workspaceId.Value);
+        }
+
         var reports = await query.ToListAsync();
         return reports.Select(ToSummary).ToList();
+    }
+
+    public async Task<ReportSummary> SetWorkspaceAsync(int id, SetReportWorkspaceRequest request)
+    {
+        var report = await GetReportEntityAsync(id);
+
+        // Checked rather than left to the foreign key: a bad id should read as "no such workspace",
+        // not as a database error.
+        if (!await _context.Workspaces.AnyAsync(w => w.Id == request.WorkspaceId))
+        {
+            throw new NotFoundException($"No workspace found with id {request.WorkspaceId}.");
+        }
+
+        report.WorkspaceId = request.WorkspaceId;
+        await _context.SaveChangesAsync();
+        return ToSummary(report);
     }
 
     public async Task<ReportSummary> SetActiveAsync(int id, SetReportActiveRequest request)
@@ -238,5 +261,5 @@ public class ReportService : IReportService
 
     private static ReportSummary ToSummary(Report report) =>
         new(report.Id, report.Name, report.Description, report.DatasetId,
-            report.IsActive, report.LastViewedAtUtc, report.ViewCount);
+            report.IsActive, report.LastViewedAtUtc, report.ViewCount, report.WorkspaceId);
 }

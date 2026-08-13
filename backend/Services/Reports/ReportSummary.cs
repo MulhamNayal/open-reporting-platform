@@ -7,4 +7,7 @@ public record ReportSummary(
     int? DatasetId,
     bool IsActive,
     DateTime? LastViewedAtUtc,
-    int ViewCount);
+    int ViewCount,
+    // Last with a default so the existing positional call sites keep compiling; the JSON body
+    // binds by name, so the wire shape is unaffected by the position.
+    int WorkspaceId = Backend.Models.Report.DefaultWorkspaceId);
