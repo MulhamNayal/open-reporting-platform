@@ -17,7 +17,7 @@ const page = [{ id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: 
 
 function mockDataset(storageMode: datasetsApi.DatasetStorageMode) {
   vi.spyOn(reportsApi, "getReport").mockResolvedValue({
-    id: 1, name: "R", description: "", datasetId: 5, isActive: true, lastViewedAtUtc: null, viewCount: 0,
+    id: 1, name: "R", description: "", datasetId: 5, isActive: true, lastViewedAtUtc: null, viewCount: 0, workspaceId: 1,
   });
   vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue(page);
   vi.spyOn(datasetsApi, "getDataset").mockImplementation(async (id: number) => ({

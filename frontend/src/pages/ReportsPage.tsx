@@ -4,7 +4,8 @@ import {
   FormControlLabel, IconButton, Menu, MenuItem, Switch, TextField, Typography,
 } from "@mui/material";
 import axios from "axios";
-import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { useNavigate, useSearchParams, Link as RouterLink } from "react-router-dom";
+import { getWorkspaces, type Workspace } from "../api/workspaces";
 import { createReport, duplicateReport, getReports, setReportActive, setReportDataset, type Report } from "../api/reports";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
 import { executeDataset, type QueryResult } from "../api/datasets";
@@ -41,16 +42,32 @@ function ReportsPage() {
   // the row is what the chosen action applies to.
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [menuReport, setMenuReport] = useState<Report | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  // The rail links here with ?workspaceId=N, so the workspace lives in the URL rather than in local
+  // state: the filtered list is then a shareable address, and Back leaves it the way it was found.
+  const workspaceIdParam = searchParams.get("workspaceId");
+  const workspaceId = workspaceIdParam === null ? undefined : Number(workspaceIdParam);
+  const activeWorkspace = workspaceId === undefined
+    ? null
+    : workspaces.find((w) => w.id === workspaceId) ?? null;
+
   async function refresh(includeInactive = showInactive) {
-    setReports(await getReports(includeInactive));
+    setReports(await getReports(includeInactive, Number.isNaN(workspaceId) ? undefined : workspaceId));
   }
 
   useEffect(() => {
     refresh(showInactive).catch(() => setError("Could not load reports — is the backend running on :5198?"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInactive]);
+  }, [showInactive, workspaceIdParam]);
+
+  // Only needed to name workspaces in the list and the heading; a failure shouldn't stop reports
+  // from rendering, so the column falls back to the raw id.
+  useEffect(() => {
+    getWorkspaces().then(setWorkspaces).catch(() => setWorkspaces([]));
+  }, []);
 
   async function handleToggleActive(report: Report) {
     setError(null);
@@ -120,10 +137,30 @@ function ReportsPage() {
     navigate(`/reports/${reportId}/edit`);
   }
 
+  // Falls back to the id so an unnamed workspace still reads as something specific, rather than a
+  // blank cell that looks like missing data.
+  function workspaceName(id: number): string {
+    return workspaces.find((w) => w.id === id)?.name ?? `Workspace ${id}`;
+  }
+
   const reportColumns: DataTableColumn<Report>[] = [
     { key: "id", label: "ID", value: (r) => r.id, render: (r) => r.id },
     { key: "name", label: "Name", value: (r) => r.name, render: (r) => r.name },
     { key: "description", label: "Description", value: (r) => r.description ?? "", render: (r) => renderLinkedText(r.description) },
+    // Dropped while viewing a single workspace, where every row would repeat the same value. Sorts
+    // and filters on the name via DataTable's own per-column filter, so it doubles as the picker.
+    ...(activeWorkspace === null
+      ? [{
+          key: "workspace",
+          label: "Workspace",
+          value: (r: Report) => workspaceName(r.workspaceId),
+          render: (r: Report) => (
+            <RouterLink to={`/reports?workspaceId=${r.workspaceId}`} onClick={(e) => e.stopPropagation()}>
+              {workspaceName(r.workspaceId)}
+            </RouterLink>
+          ),
+        }]
+      : []),
     {
       key: "usage",
       label: "Usage",
@@ -167,7 +204,23 @@ function ReportsPage() {
 
   return (
     <Container maxWidth={false} sx={{ py: 3, px: 3 }} className="reports-page">
-      <Typography variant="h4" sx={{ mb: 1.5 }}>Reports</Typography>
+      {/* Naming the workspace in the heading, with one obvious way out. A filtered list that still
+          says plain "Reports" reads as a report list that has lost most of its rows. */}
+      <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 1.5 }}>
+        <Typography variant="h4">{activeWorkspace?.name ?? "Reports"}</Typography>
+        {activeWorkspace !== null && (
+          <Button
+            size="small"
+            onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.delete("workspaceId");
+              setSearchParams(next);
+            }}
+          >
+            All reports
+          </Button>
+        )}
+      </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {/* Fluent command bar: the page's verbs on one flat row above the list, rather than a

@@ -34,7 +34,7 @@ describe("ReportQueryProvider", () => {
   // report sat behind one spinner and a single slow dataset hid every other widget. It has to
   // clear once the shell is known, leaving each widget to show its own loading state.
   it("stops loading once the shell is known, without waiting for dataset execution", async () => {
-    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: 5, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: 5, isActive: true, lastViewedAtUtc: null, viewCount: 0, workspaceId: 1 });
     vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([
       { id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{}" },
     ]);
@@ -55,7 +55,7 @@ describe("ReportQueryProvider", () => {
   });
 
   it("fetches the report's dataset and first page exactly once", async () => {
-    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: 5, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: 5, isActive: true, lastViewedAtUtc: null, viewCount: 0, workspaceId: 1 });
     vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([
       { id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{}" },
     ]);
@@ -77,7 +77,7 @@ describe("ReportQueryProvider", () => {
   });
 
   it("exposes the fetched report's real name", async () => {
-    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "Q3 Sales", description: "", datasetId: null, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "Q3 Sales", description: "", datasetId: null, isActive: true, lastViewedAtUtc: null, viewCount: 0, workspaceId: 1 });
     vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([
       { id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{}" },
     ]);
@@ -92,7 +92,7 @@ describe("ReportQueryProvider", () => {
   });
 
   it("does not call executeDataset when the report has no datasetId yet", async () => {
-    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 2, name: "R", description: "", datasetId: null, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 2, name: "R", description: "", datasetId: null, isActive: true, lastViewedAtUtc: null, viewCount: 0, workspaceId: 1 });
     vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([
       { id: 11, reportId: 2, name: "Page 1", sortOrder: 0, filterState: "{}" },
     ]);
@@ -143,7 +143,7 @@ describe("ReportQueryProvider multi-dataset cache", () => {
   }
 
   function mockReport(datasetId: number | null) {
-    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId, isActive: true, lastViewedAtUtc: null, viewCount: 0, workspaceId: 1 });
     vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue(page);
     mockDatasetInfo();
   }
@@ -314,7 +314,7 @@ describe("ReportQueryProvider saveFilterState", () => {
   }
 
   it("persists the current filterState to the active ReportPage via updateReportPage", async () => {
-    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: null, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: null, isActive: true, lastViewedAtUtc: null, viewCount: 0, workspaceId: 1 });
     vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([
       { id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{}" },
     ]);
@@ -338,7 +338,7 @@ describe("ReportQueryProvider saveFilterState", () => {
 
 describe("ReportQueryProvider setReportPageId", () => {
   it("loads the newly-selected page's own FilterState instead of keeping the previous page's", async () => {
-    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: null, isActive: true, lastViewedAtUtc: null, viewCount: 0 });
+    vi.spyOn(reportsApi, "getReport").mockResolvedValue({ id: 1, name: "R", description: "", datasetId: null, isActive: true, lastViewedAtUtc: null, viewCount: 0, workspaceId: 1 });
     vi.spyOn(reportPagesApi, "getReportPages").mockResolvedValue([
       { id: 10, reportId: 1, name: "Page 1", sortOrder: 0, filterState: "{\"Region\":[\"North\"]}" },
       { id: 11, reportId: 1, name: "Page 2", sortOrder: 1, filterState: "{\"Region\":[\"South\"]}" },

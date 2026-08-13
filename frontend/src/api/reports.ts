@@ -11,6 +11,7 @@ export interface Report {
   // Recorded automatically by the viewer, so "unused" is observed rather than declared.
   lastViewedAtUtc: string | null;
   viewCount: number;
+  workspaceId: number;
 }
 
 export interface SetReportDatasetRequest {
@@ -22,8 +23,18 @@ export interface SetReportDatasetRequest {
 
 const api = axios.create({ baseURL: import.meta.env.DEV ? "http://localhost:5198/api" : "/reporting/api" });
 
-export async function getReports(includeInactive = false): Promise<Report[]> {
-  const res = await api.get<Report[]>(`/reports${includeInactive ? "?includeInactive=true" : ""}`);
+export async function getReports(includeInactive = false, workspaceId?: number): Promise<Report[]> {
+  const params = new URLSearchParams();
+  if (includeInactive) {
+    params.set("includeInactive", "true");
+  }
+  // Filtered server-side rather than in the browser, so selecting a workspace doesn't mean fetching
+  // every report to discard most of them.
+  if (workspaceId !== undefined) {
+    params.set("workspaceId", String(workspaceId));
+  }
+  const query = params.toString();
+  const res = await api.get<Report[]>(`/reports${query ? `?${query}` : ""}`);
   return res.data;
 }
 
