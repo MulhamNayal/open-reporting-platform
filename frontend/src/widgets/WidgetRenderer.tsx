@@ -84,14 +84,20 @@ function WidgetRenderer({
 
   // After the missing-field check above, which must run against the source columns — and after
   // the caller has already applied page filters, so a cross-filter click recomputes the totals.
-  const data = aggregateResult(result, widget.binding.categoryField, widget.binding.valueFields, widget.binding.aggregations);
+  const data = aggregateResult(
+    result, widget.binding.categoryField, widget.binding.valueFields, widget.binding.aggregations, widget.binding.measures,
+  );
 
   // Aggregating reshapes the columns to [categoryField, ...valueFields], so a table has to be told
   // about the grouped column too. Without this it rendered only the measures and dropped the very
   // column the rows were grouped by — six correct totals with nothing saying which team each was.
-  const tableFields = isAggregating(widget.binding.aggregations, widget.binding.valueFields) && widget.binding.categoryField
-    ? [widget.binding.categoryField, ...widget.binding.valueFields]
-    : widget.binding.valueFields;
+  // Measures are appended last, in the order they were declared, matching aggregateResult.
+  const tableFields = [
+    ...(isAggregating(widget.binding.aggregations, widget.binding.valueFields) && widget.binding.categoryField
+      ? [widget.binding.categoryField, ...widget.binding.valueFields]
+      : widget.binding.valueFields),
+    ...(widget.binding.measures?.map((m) => m.name) ?? []),
+  ];
 
   const format = parseFormatOptions(widget.binding.formatOptions);
   // showTitle toggles the displayed title; a non-empty format title overrides the widget's own.

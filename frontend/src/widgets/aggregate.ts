@@ -1,6 +1,7 @@
 import type { QueryResult } from "../api/datasets";
-import type { AggregationFn } from "../api/widgets";
+import type { AggregationFn, WidgetMeasure } from "../api/widgets";
 import { normalizeCell } from "../reportEditor/crossFilter";
+import { compileMeasure } from "./measures";
 
 // Applied AFTER applyFilters, deliberately: filtering then aggregating is what keeps
 // click-to-cross-filter working — a click narrows the rows, and the aggregate recomputes
@@ -72,24 +73,27 @@ function resultType(fn: AggregationFn, sourceType: string): string {
 }
 
 /**
- * Groups `result` by `categoryField` and reduces each value field with its aggregation.
- * Returns `result` untouched when nothing is aggregated, so an unaggregated widget renders
- * byte-identically to how it did before this existed.
+ * Groups `result` by `categoryField`, reduces each value field with its aggregation, and appends any
+ * measures. Returns `result` with measures only — grouping untouched — when nothing is aggregated,
+ * so an unaggregated widget renders as it did before this existed.
  */
 export function aggregateResult(
   result: QueryResult,
   categoryField: string | null,
   valueFields: string[],
   aggregations: AggregationFn[] | null | undefined,
+  measures?: WidgetMeasure[] | null,
 ): QueryResult {
+  // Measures still apply without aggregation: a table listing raw rows can carry a computed column
+  // too, it just computes per row rather than per group.
   if (isNoOp(aggregations) || valueFields.length === 0) {
-    return result;
+    return appendMeasures(result, measures);
   }
 
   const indexOf = (name: string) => result.columns.findIndex((c) => c.name === name);
   const categoryIndex = categoryField ? indexOf(categoryField) : -1;
   if (categoryField && categoryIndex === -1) {
-    return result;
+    return appendMeasures(result, measures);
   }
 
   const valueIndexes = valueFields.map(indexOf);
@@ -131,6 +135,63 @@ export function aggregateResult(
       return fn === "None" ? values[0] ?? null : applyFn(fn, values);
     }),
   ]);
+
+  return appendMeasures({ columns, rows }, measures);
+}
+
+/**
+ * Appends each measure as a column computed from the row it sits on.
+ *
+ * Runs last, against the aggregated rows, because that is what makes a measure a measure: growth is
+ * the difference of the sums over the sum, not the sum of per-row growths. Measures can also read
+ * earlier measures, since they are evaluated left to right into the same row.
+ *
+ * A measure that doesn't compile yields a blank column rather than taking the widget down — a typo
+ * in one expression shouldn't cost you the other nine columns. The name still appears, so the
+ * mistake is visible instead of the column silently vanishing.
+ */
+export function appendMeasures(result: QueryResult, measures: WidgetMeasure[] | null | undefined): QueryResult {
+  if (!measures || measures.length === 0) {
+    return result;
+  }
+
+  const compiled = measures.map((measure) => {
+    try {
+      return { name: measure.name, measure: compileMeasure(measure.expression) };
+    } catch {
+      return { name: measure.name, measure: null };
+    }
+  });
+
+  const columns = [
+    ...result.columns,
+    // decimal so the formatter treats a measure as a number: a ratio rendered as text loses its
+    // decimal places and its right alignment.
+    ...compiled.map((c) => ({ name: c.name, nativeType: "decimal" })),
+  ];
+
+  const indexByName = new Map(result.columns.map((c, i) => [c.name, i]));
+
+  const rows = result.rows.map((row) => {
+    const extended = [...row];
+    compiled.forEach((c, i) => {
+      if (!c.measure) {
+        extended.push(null);
+        return;
+      }
+      const value = c.measure.evaluate((field) => {
+        const sourceIndex = indexByName.get(field);
+        if (sourceIndex !== undefined) {
+          return row[sourceIndex];
+        }
+        // Not a source column — look among the measures already computed for this row.
+        const measureIndex = compiled.findIndex((other, j) => j < i && other.name === field);
+        return measureIndex === -1 ? undefined : extended[result.columns.length + measureIndex];
+      });
+      extended.push(value);
+    });
+    return extended;
+  });
 
   return { columns, rows };
 }

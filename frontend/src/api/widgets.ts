@@ -61,12 +61,24 @@ export type AggregationFn = "None" | "Sum" | "Count" | "CountDistinct" | "Avg" |
 
 export const AGGREGATION_FNS: AggregationFn[] = ["None", "Sum", "Count", "CountDistinct", "Avg", "Min", "Max"];
 
+/**
+ * A column computed from other columns rather than read from the source — growth, a conversion rate,
+ * variance against target. Evaluated against the AGGREGATED rows, so it yields the ratio of the sums
+ * rather than the sum of the ratios, which is the whole reason it can't be an aggregation function.
+ */
+export interface WidgetMeasure {
+  name: string;
+  expression: string;
+}
+
 export interface WidgetBindingSummary {
   categoryField: string | null;
   valueFields: string[];
   // Aligned by index with valueFields. Absent/null (or a short array) means "None" for the
   // rest — which is how every widget behaved before aggregation existed.
   aggregations?: AggregationFn[] | null;
+  // Appended after the aggregated value fields, in order. Absent/null means the widget has none.
+  measures?: WidgetMeasure[] | null;
   formatOptions: string;
 }
 
@@ -88,6 +100,7 @@ export interface SaveWidgetBindingRequest {
   categoryField: string | null;
   valueFields: string[];
   aggregations?: AggregationFn[] | null;
+  measures?: WidgetMeasure[] | null;
   formatOptions: string;
 }
 

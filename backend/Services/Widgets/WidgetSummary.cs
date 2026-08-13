@@ -19,4 +19,7 @@ public record WidgetBindingSummary(
     string? CategoryField,
     IReadOnlyList<string> ValueFields,
     IReadOnlyList<string>? Aggregations,
-    string FormatOptions);
+    string FormatOptions,
+    // Last with a default: every existing construction site is positional, and a widget without
+    // measures must serialise exactly as it did before the column existed.
+    IReadOnlyList<WidgetMeasureRequest>? Measures = null);

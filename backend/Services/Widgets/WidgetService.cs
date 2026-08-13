@@ -79,6 +79,11 @@ public class WidgetService : IWidgetService
                     Aggregations = widgetRequest.Binding.Aggregations is { Count: > 0 }
                         ? JsonSerializer.Serialize(widgetRequest.Binding.Aggregations)
                         : null,
+                    // Same reasoning as Aggregations: null rather than "[]" when there are none, so a
+                    // widget with no measures is byte-identical to one saved before this column.
+                    Measures = widgetRequest.Binding.Measures is { Count: > 0 }
+                        ? JsonSerializer.Serialize(widgetRequest.Binding.Measures)
+                        : null,
                     FormatOptions = widgetRequest.Binding.FormatOptions ?? "{}"
                 };
             }
@@ -137,7 +142,11 @@ public class WidgetService : IWidgetService
             var aggregations = widget.Binding.Aggregations is null
                 ? null
                 : JsonSerializer.Deserialize<List<string>>(widget.Binding.Aggregations);
-            bindingSummary = new WidgetBindingSummary(widget.Binding.CategoryField, valueFields, aggregations, widget.Binding.FormatOptions);
+            var measures = widget.Binding.Measures is null
+                ? null
+                : JsonSerializer.Deserialize<List<WidgetMeasureRequest>>(widget.Binding.Measures);
+            bindingSummary = new WidgetBindingSummary(
+                widget.Binding.CategoryField, valueFields, aggregations, widget.Binding.FormatOptions, measures);
         }
 
         return new WidgetSummary(widget.Id, widget.Type, widget.X, widget.Y, widget.W, widget.H, widget.Title, widget.Content, widget.DatasetId, bindingSummary);
