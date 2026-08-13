@@ -4,10 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <title>Reporting</title>
+    <!--
+      No webfont. The app is Segoe UI throughout, which ships with Windows, so fetching one is a
+      round trip to Google for a font nothing asks for any more: IBM Plex was Meridian's typeface and
+      every stylesheet moved off it. It was still being preloaded on every page load, which also
+      meant a blocking third-party request on a self-hosted, intranet-facing app.
+    -->
   </head>
   <body>
     <div id="root"></div>
